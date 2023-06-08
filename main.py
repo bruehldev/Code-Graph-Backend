@@ -1,0 +1,139 @@
+import os
+import json
+import torch
+import umap
+import uvicorn
+import numpy as np
+from fastapi import Depends, FastAPI
+from bertopic import BERTopic
+from sklearn.datasets import fetch_20newsgroups
+from transformers import BertTokenizer, BertModel
+import logging
+
+app = FastAPI()
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+model = BertModel.from_pretrained('bert-base-uncased').to(device)
+models = {}
+docs = None
+embeddings_2d_bert = None
+
+# Configuration
+CONFIG = {
+    'model_path': 'models',
+    'embeddings_path': 'embeddings',
+    'results_path': 'results',
+    'host': '0.0.0.0',
+    'port': 8000
+}
+
+# Add logging configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def get_docs(dataset: str) -> list:
+    if dataset == "fetch_20newsgroups":
+        return fetch_20newsgroups(subset='all', remove=('headers', 'footers', 'quotes'))['data']
+    elif dataset == "few_nerd":
+        with open('data/few_nerd/train.txt', 'r', encoding='utf8') as f:
+            return [doc.strip() for doc in f.readlines() if doc.strip()]
+    return None
+
+def save_embeddings(embeddings: np.ndarray, filename: str):
+    with open(filename, 'w') as f:
+        json.dump(embeddings.tolist(), f)
+
+def load_embeddings(filename: str) -> np.ndarray:
+    with open(filename, 'r') as f:
+        embeddings_list = json.load(f)
+        return np.array(embeddings_list)
+
+def load_results(results_file):
+    with open(results_file, 'r') as file:
+        results_data = json.load(file)
+    return results_data
+
+def save_results(results_data, results_file):
+    with open(results_file, 'w') as file:
+        json.dump(results_data, file)
+
+def load_model(dataset: str, docs: list = Depends(get_docs)):
+    global models
+    if dataset in models:
+        return models[dataset]
+    
+    model_path = os.path.join(CONFIG['model_path'], dataset)
+    if not os.path.exists(model_path):
+        model = BERTopic()
+        topics, probs = model.fit_transform(docs)
+        model.save(model_path)
+        models[dataset] = model
+        logger.info(f"Model trained and saved for dataset: {dataset}")
+        return model
+    else:
+        model = BERTopic.load(model_path)
+        models[dataset] = model
+        logger.info(f"Loaded model from file for dataset: {dataset}")
+        return model
+
+def get_embeddings_file(dataset: str):
+    return os.path.join(CONFIG['embeddings_path'], f"embeddings_{dataset}.json")
+
+def get_results_file(dataset: str):
+    return os.path.join(CONFIG['results_path'], f"results_{dataset}.json")
+
+def extract_embeddings(model, docs):
+    logger.info("Extracting embeddings for documents")
+    embeddings = model._extract_embeddings(docs)
+    umap_model = umap.UMAP(n_neighbors=15, n_components=2, metric='cosine', random_state=42)
+    return umap_model.fit_transform(embeddings)
+
+@app.get("/")
+def read_root():
+    return {"Hello": "BERTopic API"}
+
+@app.get("/load_model/{dataset}")
+def load_model_endpoint(dataset: str, model: BERTopic = Depends(load_model)):
+    logger.info(f"Model loaded successfully for dataset: {dataset}")
+    return {"message": f"{dataset} dataset loaded successfully"}
+
+@app.get("/topicinfo/{dataset}")
+def get_topic_info(dataset: str, model: BERTopic = Depends(load_model)):
+    logger.info(f"Getting topic info for dataset: {dataset}")
+    topic_info = model.get_topic_info()
+    return {"topic_info": topic_info.to_dict()}
+
+@app.get("/embeddings/{dataset}")
+def get_embeddings(dataset: str, model: BERTopic = Depends(load_model), docs: list = Depends(get_docs)):
+    global embeddings_2d_bert
+    embeddings_file = get_embeddings_file(dataset)
+
+    if os.path.exists(embeddings_file):
+        embeddings_2d_bert = load_embeddings(embeddings_file)
+        logger.info(f"Loaded embeddings from file for dataset: {dataset}")
+    else:
+        embeddings_2d_bert = extract_embeddings(model, docs)
+        save_embeddings(embeddings_2d_bert, embeddings_file)
+        logger.info(f"Computed and saved embeddings for dataset: {dataset}")
+
+    return embeddings_2d_bert.tolist()
+
+@app.get("/results/{dataset}")
+def get_results(dataset: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings), docs: list = Depends(get_docs)):
+    results_file = get_results_file(dataset)
+
+    if os.path.exists(results_file):
+        positions_list = load_results(results_file)
+        logger.info(f"Loaded results from file for dataset: {dataset}")
+    else:
+        positions_list = embeddings
+        save_results(positions_list, results_file)
+        logger.info(f"Saved results to file for dataset: {dataset}")
+
+    results = list(zip(docs, positions_list))
+
+    logger.info(f"Retrieved results for dataset: {dataset}")
+    return {"positions": results}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host=CONFIG['host'], port=CONFIG['port'])
