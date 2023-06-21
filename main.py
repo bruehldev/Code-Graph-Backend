@@ -10,6 +10,9 @@ from sklearn.datasets import fetch_20newsgroups
 from transformers import BertTokenizer, BertModel
 import logging
 import hdbscan
+from pydantic import BaseModel, Field
+from typing import Dict, Any, Optional
+import ast
 
 app = FastAPI()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -19,50 +22,148 @@ models = {}
 docs = None
 embeddings_2d_bert = None
 
-class ConfigModel:
-    def __init__(self, name: str, model_config: dict, embedding_config: dict, cluster_config: dict):
-        self.name = name
-        self.model_config = model_config
-        self.embedding_config = embedding_config
-        self.cluster_config = cluster_config
+
+class ModelConfig(BaseModel):
+    language: str
+    top_n_words: int
+    n_gram_range: tuple[int, int]
+    min_topic_size: int
+    nr_topics: Optional[int]
+    low_memory: bool
+    calculate_probabilities: bool
+    seed_topic_list: Optional[Any]
+    embedding_model: Optional[Any]
+    umap_model: Optional[Any]
+    hdbscan_model: Optional[Any]
+    vectorizer_model: Optional[Any]
+    ctfidf_model: Optional[Any]
+    representation_model: Optional[Any]
+    verbose: bool
+
+class EmbeddingConfig(BaseModel):
+    n_neighbors: int
+    n_components: int
+    metric: str
+    random_state: int
+
+class ClusterConfig(BaseModel):
+    min_cluster_size: int
+    metric: str
+    cluster_selection_method: str
+
+class ConfigModel(BaseModel):
+    name: str = "default"
+    model_config: ModelConfig
+    embedding_config: EmbeddingConfig
+    cluster_config: ClusterConfig
 
 
-# Configuration
-CONFIG = {
+# Environment variables
+env = {
     'model_path': 'models',
     'embeddings_path': 'embeddings',
     'clusters_path': 'clusters',
     'positions_path': 'positions',
     'host': '0.0.0.0',
-    'port': 8000
+    'port': 8000,
+    'configs' : 'configs.json'
 }
+
+# Load configurations from file or use default if file does not exist
+if os.path.exists(env["configs"]):
+    with open(env["configs"], 'r') as f:
+        config = json.load(f)
+
+class ConfigManager:
+    def __init__(self, config_file):
+        self.config_file = config_file
+        self.configs = {}
+        self.load_configs()
+
+    def load_configs(self):
+        if os.path.exists(self.config_file):
+            with open(self.config_file, 'r') as f:
+                self.configs = json.load(f)
+
+    def save_configs(self):
+        with open(self.config_file, 'w') as f:
+            json.dump(self.configs, f, indent=4)
+
+config_manager = ConfigManager(env["configs"])
+
+config = ConfigModel(
+    name="default",
+    model_config=ModelConfig(
+        language="english",
+        top_n_words=10,
+        n_gram_range=(1, 1),
+        min_topic_size=10,
+        nr_topics=None,
+        low_memory=False,
+        calculate_probabilities=False,
+        seed_topic_list=None,
+        embedding_model=None,
+        umap_model=None,
+        hdbscan_model=None,
+        vectorizer_model=None,
+        ctfidf_model=None,
+        representation_model=None,
+        verbose=False
+    ),
+    embedding_config=EmbeddingConfig(
+        n_neighbors=15,
+        n_components=2,
+        metric="cosine",
+        random_state=42
+    ),
+    cluster_config=ClusterConfig(
+        min_cluster_size=15,
+        metric="euclidean",
+        cluster_selection_method="eom"
+    )
+)
+
+
+@app.post("/config", response_model=ConfigModel)
+def create_config(config: ConfigModel):
+    config_manager.configs[config.name] = config.dict()
+    config_manager.save_configs()
+    return config
+
+
+@app.get("/config/{name}")
+def get_config(name: str):
+    if name in config_manager.configs:
+        return config_manager.configs[name]
+    else:
+        return {"message": f"Config '{name}' does not exist."}
+
+@app.get("/configs")
+def get_all_configs():
+    return config_manager.configs
+
+@app.put("/config/{name}")
+def update_config(name: str, config: ConfigModel):
+    if name in config_manager.configs:
+        config_manager.configs[name] = config.dict()
+        config_manager.save_configs()
+        return {"message": f"Config '{name}' updated successfully."}
+    else:
+        return {"message": f"Config '{name}' does not exist."}
+
+@app.delete("/config/{name}")
+def delete_config(name: str):
+    if name in config_manager.configs:
+        del config_manager.configs[name]
+        config_manager.save_configs()
+        return {"message": f"Config '{name}' deleted successfully."}
+    else:
+        return {"message": f"Config '{name}' does not exist."}
+
 
 # model_config source: https://github.com/MaartenGr/BERTopic/blob/master/bertopic/_bertopic.py
 # embedding_config source: https://github.com/lmcinnes/umap/blob/master/umap/umap_.py
 # cluster_config source: https://github.com/scikit-learn-contrib/hdbscan/blob/master/hdbscan/hdbscan_.py
-
-default_config = ConfigModel(
-    name="default",
-    model_config={
-        "language": "english",
-        "top_n_words": 10,
-        "n_gram_range": (1, 1),
-        "min_topic_size": 10,
-        "nr_topics": None,
-        "low_memory": False,
-        "calculate_probabilities": False,
-        "seed_topic_list": None,
-        "embedding_model": None,
-        "umap_model": None,
-        "hdbscan_model": None,
-        "vectorizer_model": None,
-        "ctfidf_model": None,
-        "representation_model": None,
-        "verbose": False
-    },
-    embedding_config={"n_neighbors": 15, "n_components": 2, "metric": "cosine", "random_state": 42},
-    cluster_config={"min_cluster_size": 15, "metric": "euclidean", "cluster_selection_method": "eom"}
-)
 
 # Add logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -99,11 +200,11 @@ def load_model(dataset: str, docs: list = Depends(get_docs)):
     if dataset in models:
         return models[dataset]
     
-    model_path = os.path.join(CONFIG['model_path'], dataset)
+    model_path = os.path.join(env['model_path'], dataset)
     os.makedirs(model_path, exist_ok=True)
     
     if not os.path.exists(os.path.join(model_path, 'BERTopic')):
-        model = BERTopic(**default_config.model_config)
+        model = BERTopic(**config.model_config.dict())
         topics, probs = model.fit_transform(docs)
         model.save(os.path.join(model_path, 'BERTopic'))
         models[dataset] = model
@@ -116,24 +217,24 @@ def load_model(dataset: str, docs: list = Depends(get_docs)):
         return model
 
 def get_embeddings_file(dataset: str):
-    embeddings_directory = os.path.join(CONFIG['embeddings_path'], dataset)
+    embeddings_directory = os.path.join(env['embeddings_path'], dataset)
     os.makedirs(embeddings_directory, exist_ok=True)
     return os.path.join(embeddings_directory, f"embeddings_{dataset}.json")
 
 def get_positions_file(dataset: str):
-    positions_directory = os.path.join(CONFIG['positions_path'], dataset)
+    positions_directory = os.path.join(env['positions_path'], dataset)
     os.makedirs(positions_directory, exist_ok=True)
     return os.path.join(positions_directory, f"positions_{dataset}.json")
 
 def get_clusters_file(dataset: str):
-    clusters_directory = os.path.join(CONFIG['clusters_path'], dataset)
+    clusters_directory = os.path.join(env['clusters_path'], dataset)
     os.makedirs(clusters_directory, exist_ok=True)
     return os.path.join(clusters_directory, f"clusters_{dataset}.json")
 
 def extract_embeddings(model, docs):
     logger.info("Extracting embeddings for documents")
     embeddings = model._extract_embeddings(docs)
-    umap_model = umap.UMAP(**default_config.embedding_config)
+    umap_model = umap.UMAP(**config.embedding_config.dict())
     return umap_model.fit_transform(embeddings)
 
 def save_clusters(clusters: np.ndarray, filename: str):
@@ -207,14 +308,12 @@ def get_clusters(dataset: str, model: BERTopic = Depends(load_model), embeddings
         clusters = clusterer.fit_predict(embeddings)
         # convert the clusters to a JSON serializable format
         clusters = [int(c) for c in clusterer.labels_]
-
         # serialize the clusters to JSON
         json_clusters = json.dumps(clusters)
-        print(type(clusters))
         save_clusters(json_clusters, clusters_file)
         logger.info(f"Computed and saved clusters for dataset: {dataset}")
 
     return {"clusters": list(clusters)}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=CONFIG['host'], port=CONFIG['port'])
+    uvicorn.run(app, host=env['host'], port=env['port'])
