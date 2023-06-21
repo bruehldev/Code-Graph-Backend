@@ -99,7 +99,8 @@ def save_clusters(clusters: list, filename: str):
 def load_clusters(filename: str) -> list:
     with open(filename, 'r') as f:
         clusters_list = json.load(f)
-        return clusters_list
+        clusters_array = np.array(clusters_list)
+        return clusters_array.tolist()
 
 @app.get("/")
 def read_root():
