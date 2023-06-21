@@ -37,6 +37,10 @@ CONFIG = {
     'port': 8000
 }
 
+# model_config source: https://github.com/MaartenGr/BERTopic/blob/master/bertopic/_bertopic.py
+# embedding_config source: https://github.com/lmcinnes/umap/blob/master/umap/umap_.py
+# cluster_config source: https://github.com/scikit-learn-contrib/hdbscan/blob/master/hdbscan/hdbscan_.py
+
 default_config = ConfigModel(
     name="default",
     model_config={
@@ -96,27 +100,35 @@ def load_model(dataset: str, docs: list = Depends(get_docs)):
         return models[dataset]
     
     model_path = os.path.join(CONFIG['model_path'], dataset)
-    if not os.path.exists(model_path):
+    os.makedirs(model_path, exist_ok=True)
+    
+    if not os.path.exists(os.path.join(model_path, 'BERTopic')):
         model = BERTopic(**default_config.model_config)
         topics, probs = model.fit_transform(docs)
-        model.save(model_path)
+        model.save(os.path.join(model_path, 'BERTopic'))
         models[dataset] = model
         logger.info(f"Model trained and saved for dataset: {dataset}")
         return model
     else:
-        model = BERTopic.load(model_path)
+        model = BERTopic.load(os.path.join(model_path, 'BERTopic'))
         models[dataset] = model
         logger.info(f"Loaded model from file for dataset: {dataset}")
         return model
 
 def get_embeddings_file(dataset: str):
-    return os.path.join(CONFIG['embeddings_path'], f"embeddings_{dataset}.json")
+    embeddings_directory = os.path.join(CONFIG['embeddings_path'], dataset)
+    os.makedirs(embeddings_directory, exist_ok=True)
+    return os.path.join(embeddings_directory, f"embeddings_{dataset}.json")
 
 def get_positions_file(dataset: str):
-    return os.path.join(CONFIG['positions_path'], f"positions_{dataset}.json")
+    positions_directory = os.path.join(CONFIG['positions_path'], dataset)
+    os.makedirs(positions_directory, exist_ok=True)
+    return os.path.join(positions_directory, f"positions_{dataset}.json")
 
 def get_clusters_file(dataset: str):
-    return os.path.join(CONFIG['clusters_path'], f"clusters_{dataset}.json")
+    clusters_directory = os.path.join(CONFIG['clusters_path'], dataset)
+    os.makedirs(clusters_directory, exist_ok=True)
+    return os.path.join(clusters_directory, f"clusters_{dataset}.json")
 
 def extract_embeddings(model, docs):
     logger.info("Extracting embeddings for documents")
