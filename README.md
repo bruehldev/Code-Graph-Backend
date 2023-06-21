@@ -10,20 +10,28 @@ This is a FastAPI-based API that provides topic modeling and sentence embedding 
 ## Usage
 
 1. Install the required packages by running the following command:
-conda create --name CodeGraph --file requirements.txt
-or
-pip install -r requirements.txt
+   - Using conda:
+     ```
+     conda create --name CodeGraph --file requirements.txt
+     ```
+   - Using pip:
+     ```
+     pip install -r requirements.txt
+     ```
 
 2. Start the server using the following command:
+```
 uvicorn main:app --reload
+```
 
 3. Once the server is running, you can access the API at `http://localhost:8000`.
 
 4. API Endpoints:
-GET /load_model/{dataset}: Load a BERTopic model for the specified dataset. Replace {dataset} with the desired dataset name ("fetch_20newsgroups" or "few_nerd").
-GET /topicinfo/{dataset}: Retrieve topic information for the specified dataset. 
-GET /embeddings/{dataset}: Compute or retrieve BERT embeddings for the specified dataset. 
-GET /results/{dataset}: Retrieve topic results (documents and their corresponding positions) for the specified dataset. 
+- **GET /load_model/{dataset}**: Load a BERTopic model for the specified dataset. Replace `{dataset}` with the desired dataset name ("fetch_20newsgroups" or "few_nerd").
+- **GET /topicinfo/{dataset}**: Retrieve topic information for the specified dataset.
+- **GET /embeddings/{dataset}**: Compute or retrieve BERT embeddings for the specified dataset.
+- **GET /results/{dataset}**: Retrieve topic results (documents and their corresponding positions) for the specified dataset.
+
 
 ## Contributing
 
@@ -54,6 +62,7 @@ project/
 ├─ requirements.txt
 └─ main.py
 ```
+
 - `api/`: Contains the API-related code.
 - `data/`: Stores the datasets.
 - `embeddings/`: Used to store generated embeddings.
