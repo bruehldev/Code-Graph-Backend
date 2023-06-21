@@ -19,6 +19,14 @@ models = {}
 docs = None
 embeddings_2d_bert = None
 
+class ConfigModel:
+    def __init__(self, name: str, model_config: dict, embedding_config: dict, cluster_config: dict):
+        self.name = name
+        self.model_config = model_config
+        self.embedding_config = embedding_config
+        self.cluster_config = cluster_config
+
+
 # Configuration
 CONFIG = {
     'model_path': 'models',
@@ -28,6 +36,29 @@ CONFIG = {
     'host': '0.0.0.0',
     'port': 8000
 }
+
+default_config = ConfigModel(
+    name="default",
+    model_config={
+        "language": "english",
+        "top_n_words": 10,
+        "n_gram_range": (1, 1),
+        "min_topic_size": 10,
+        "nr_topics": None,
+        "low_memory": False,
+        "calculate_probabilities": False,
+        "seed_topic_list": None,
+        "embedding_model": None,
+        "umap_model": None,
+        "hdbscan_model": None,
+        "vectorizer_model": None,
+        "ctfidf_model": None,
+        "representation_model": None,
+        "verbose": False
+    },
+    embedding_config={"n_neighbors": 15, "n_components": 2, "metric": "cosine", "random_state": 42},
+    cluster_config={"min_cluster_size": 15, "metric": "euclidean", "cluster_selection_method": "eom"}
+)
 
 # Add logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -66,7 +97,7 @@ def load_model(dataset: str, docs: list = Depends(get_docs)):
     
     model_path = os.path.join(CONFIG['model_path'], dataset)
     if not os.path.exists(model_path):
-        model = BERTopic()
+        model = BERTopic(**default_config.model_config)
         topics, probs = model.fit_transform(docs)
         model.save(model_path)
         models[dataset] = model
@@ -90,7 +121,7 @@ def get_clusters_file(dataset: str):
 def extract_embeddings(model, docs):
     logger.info("Extracting embeddings for documents")
     embeddings = model._extract_embeddings(docs)
-    umap_model = umap.UMAP(n_neighbors=15, n_components=2, metric='cosine', random_state=42)
+    umap_model = umap.UMAP(**default_config.embedding_config)
     return umap_model.fit_transform(embeddings)
 
 def to_serializable(value):
@@ -164,7 +195,7 @@ def get_clusters(dataset: str, model: BERTopic = Depends(load_model), embeddings
         clusters = load_clusters(clusters_file)
         logger.info(f"Loaded clusters from file for dataset: {dataset}")
     else:
-        clusterer = hdbscan.HDBSCAN(min_cluster_size=15, metric='euclidean', cluster_selection_method='eom')
+        clusterer = hdbscan.HDBSCAN(**default_config.cluster_config)
         clusters = clusterer.fit_predict(embeddings)
         save_clusters(clusters.tolist(), clusters_file)
         logger.info(f"Computed and saved clusters for dataset: {dataset}")
