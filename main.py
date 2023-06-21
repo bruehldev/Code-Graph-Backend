@@ -23,7 +23,8 @@ embeddings_2d_bert = None
 CONFIG = {
     'model_path': 'models',
     'embeddings_path': 'embeddings',
-    'results_path': 'results',
+    'clusters_path': 'clusters',
+    'positions_path': 'positions',
     'host': '0.0.0.0',
     'port': 8000
 }
@@ -49,14 +50,14 @@ def load_embeddings(filename: str) -> np.ndarray:
         embeddings_list = json.load(f)
         return np.array(embeddings_list)
 
-def load_results(results_file):
-    with open(results_file, 'r') as file:
-        results_data = json.load(file)
-    return results_data
+def load_positions(positions_file):
+    with open(positions_file, 'r') as file:
+        positions_data = json.load(file)
+    return positions_data
 
-def save_results(results_data, results_file):
-    with open(results_file, 'w') as file:
-        json.dump(results_data, file)
+def save_positions(positions_data, positions_file):
+    with open(positions_file, 'w') as file:
+        json.dump(positions_data, file)
 
 def load_model(dataset: str, docs: list = Depends(get_docs)):
     global models
@@ -80,11 +81,11 @@ def load_model(dataset: str, docs: list = Depends(get_docs)):
 def get_embeddings_file(dataset: str):
     return os.path.join(CONFIG['embeddings_path'], f"embeddings_{dataset}.json")
 
-def get_results_file(dataset: str):
-    return os.path.join(CONFIG['results_path'], f"results_{dataset}.json")
+def get_positions_file(dataset: str):
+    return os.path.join(CONFIG['positions_path'], f"positions_{dataset}.json")
 
 def get_clusters_file(dataset: str):
-    return os.path.join(CONFIG['results_path'], f"clusters_{dataset}.json")
+    return os.path.join(CONFIG['clusters_path'], f"clusters_{dataset}.json")
 
 def extract_embeddings(model, docs):
     logger.info("Extracting embeddings for documents")
@@ -132,22 +133,22 @@ def get_embeddings(dataset: str, model: BERTopic = Depends(load_model), docs: li
 
     return embeddings_2d_bert.tolist()
 
-@app.get("/results/{dataset}")
-def get_results(dataset: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings), docs: list = Depends(get_docs)):
-    results_file = get_results_file(dataset)
+@app.get("/positions/{dataset}")
+def get_positions(dataset: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings), docs: list = Depends(get_docs)):
+    positions_file = get_positions_file(dataset)
 
-    if os.path.exists(results_file):
-        positions_list = load_results(results_file)
-        logger.info(f"Loaded results from file for dataset: {dataset}")
+    if os.path.exists(positions_file):
+        positions_list = load_positions(positions_file)
+        logger.info(f"Loaded positions from file for dataset: {dataset}")
     else:
         positions_list = embeddings
-        save_results(positions_list, results_file)
-        logger.info(f"Saved results to file for dataset: {dataset}")
+        save_positions(positions_list, positions_file)
+        logger.info(f"Saved positions to file for dataset: {dataset}")
 
-    results = list(zip(docs, positions_list))
+    positions = list(zip(docs, positions_list))
 
-    logger.info(f"Retrieved results for dataset: {dataset}")
-    return {"positions": results}
+    logger.info(f"Retrieved positions for dataset: {dataset}")
+    return {"positions": positions}
 
 @app.get("/clusters/{dataset}")
 def get_clusters(dataset: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings)):
