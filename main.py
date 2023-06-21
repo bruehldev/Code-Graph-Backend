@@ -199,9 +199,11 @@ def get_clusters(dataset: str, model: BERTopic = Depends(load_model), embeddings
 
     if os.path.exists(clusters_file):
         clusters = load_clusters(clusters_file)
+        clusters = np.atleast_1d(clusters)
         logger.info(f"Loaded clusters from file for dataset: {dataset}")
+        # TODO Fix clusters not being a list but a string
     else:
-        clusterer = hdbscan.HDBSCAN(**default_config.cluster_config)
+        clusterer = hdbscan.HDBSCAN(**config.cluster_config.dict())
         clusters = clusterer.fit_predict(embeddings)
         # convert the clusters to a JSON serializable format
         clusters = [int(c) for c in clusterer.labels_]
