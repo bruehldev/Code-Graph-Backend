@@ -9,6 +9,7 @@ from bertopic import BERTopic
 from sklearn.datasets import fetch_20newsgroups
 from transformers import BertTokenizer, BertModel
 import logging
+import hdbscan
 
 app = FastAPI()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -134,6 +135,14 @@ def get_results(dataset: str, model: BERTopic = Depends(load_model), embeddings:
 
     logger.info(f"Retrieved results for dataset: {dataset}")
     return {"positions": results}
+
+# Endpoint to get clusters
+@app.get("/clusters/{dataset}")
+def get_clusters(dataset: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings)):
+    logger.info(f"Getting clusters for dataset: {dataset}")
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=15, metric='euclidean', cluster_selection_method='eom')
+    clusters = clusterer.fit_predict(embeddings)
+    return {"clusters": clusters.tolist()}
 
 if __name__ == "__main__":
     uvicorn.run(app, host=CONFIG['host'], port=CONFIG['port'])
