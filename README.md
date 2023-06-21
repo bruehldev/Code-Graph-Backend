@@ -35,7 +35,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 
 ## Folder Structure
-
+```
 The project follows the following folder structure:
 project/
 ├─ api/
@@ -53,7 +53,7 @@ project/
 ├─ .gitignore
 ├─ requirements.txt
 └─ main.py
-
+```
 - `api/`: Contains the API-related code.
 - `data/`: Stores the datasets.
 - `embeddings/`: Used to store generated embeddings.

@@ -1,10 +1,13 @@
+# saved models / data / resulsts / embeddings
+data/
+models/
+embeddings
+results/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-
-# saved models
-models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
