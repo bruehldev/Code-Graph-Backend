@@ -136,20 +136,14 @@ def extract_embeddings(model, docs):
     umap_model = umap.UMAP(**default_config.embedding_config)
     return umap_model.fit_transform(embeddings)
 
-def to_serializable(value):
-    if isinstance(value, np.int64):
-        return int(value)
-    return value
-
-def save_clusters(clusters: list, filename: str):
+def save_clusters(clusters: np.ndarray, filename: str):
     with open(filename, 'w') as f:
-        json.dump(clusters, f, default=to_serializable)
+        json.dump(clusters, f)
 
-def load_clusters(filename: str) -> list:
+def load_clusters(filename: str) -> np.ndarray:
     with open(filename, 'r') as f:
         clusters_list = json.load(f)
-        clusters_array = np.array(clusters_list)
-        return clusters_array.tolist()
+        return np.array(clusters_list)
 
 @app.get("/")
 def read_root():
@@ -209,7 +203,13 @@ def get_clusters(dataset: str, model: BERTopic = Depends(load_model), embeddings
     else:
         clusterer = hdbscan.HDBSCAN(**default_config.cluster_config)
         clusters = clusterer.fit_predict(embeddings)
-        save_clusters(clusters.tolist(), clusters_file)
+        # convert the clusters to a JSON serializable format
+        clusters = [int(c) for c in clusterer.labels_]
+
+        # serialize the clusters to JSON
+        json_clusters = json.dumps(clusters)
+        print(type(clusters))
+        save_clusters(json_clusters, clusters_file)
         logger.info(f"Computed and saved clusters for dataset: {dataset}")
 
     return {"clusters": list(clusters)}
