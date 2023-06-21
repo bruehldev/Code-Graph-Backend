@@ -93,9 +93,14 @@ def extract_embeddings(model, docs):
     umap_model = umap.UMAP(n_neighbors=15, n_components=2, metric='cosine', random_state=42)
     return umap_model.fit_transform(embeddings)
 
+def to_serializable(value):
+    if isinstance(value, np.int64):
+        return int(value)
+    return value
+
 def save_clusters(clusters: list, filename: str):
     with open(filename, 'w') as f:
-        json.dump(clusters, f)
+        json.dump(clusters, f, default=to_serializable)
 
 def load_clusters(filename: str) -> list:
     with open(filename, 'r') as f:
