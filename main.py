@@ -83,11 +83,23 @@ def get_embeddings_file(dataset: str):
 def get_results_file(dataset: str):
     return os.path.join(CONFIG['results_path'], f"results_{dataset}.json")
 
+def get_clusters_file(dataset: str):
+    return os.path.join(CONFIG['results_path'], f"clusters_{dataset}.json")
+
 def extract_embeddings(model, docs):
     logger.info("Extracting embeddings for documents")
     embeddings = model._extract_embeddings(docs)
     umap_model = umap.UMAP(n_neighbors=15, n_components=2, metric='cosine', random_state=42)
     return umap_model.fit_transform(embeddings)
+
+def save_clusters(clusters: list, filename: str):
+    with open(filename, 'w') as f:
+        json.dump(clusters, f)
+
+def load_clusters(filename: str) -> list:
+    with open(filename, 'r') as f:
+        clusters_list = json.load(f)
+        return clusters_list
 
 @app.get("/")
 def read_root():
@@ -136,13 +148,21 @@ def get_results(dataset: str, model: BERTopic = Depends(load_model), embeddings:
     logger.info(f"Retrieved results for dataset: {dataset}")
     return {"positions": results}
 
-# Endpoint to get clusters
 @app.get("/clusters/{dataset}")
 def get_clusters(dataset: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings)):
     logger.info(f"Getting clusters for dataset: {dataset}")
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=15, metric='euclidean', cluster_selection_method='eom')
-    clusters = clusterer.fit_predict(embeddings)
-    return {"clusters": clusters.tolist()}
+    clusters_file = get_clusters_file(dataset)
+
+    if os.path.exists(clusters_file):
+        clusters = load_clusters(clusters_file)
+        logger.info(f"Loaded clusters from file for dataset: {dataset}")
+    else:
+        clusterer = hdbscan.HDBSCAN(min_cluster_size=15, metric='euclidean', cluster_selection_method='eom')
+        clusters = clusterer.fit_predict(embeddings)
+        save_clusters(clusters.tolist(), clusters_file)
+        logger.info(f"Computed and saved clusters for dataset: {dataset}")
+
+    return {"clusters": list(clusters)}
 
 if __name__ == "__main__":
     uvicorn.run(app, host=CONFIG['host'], port=CONFIG['port'])
