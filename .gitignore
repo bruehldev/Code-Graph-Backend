@@ -1,5 +1,5 @@
 # saved models / data / resulsts / embeddings
-data/
+#data/
 models/
 embeddings/
 positions/

@@ -237,6 +237,30 @@ def extract_embeddings(model, docs):
     umap_model = umap.UMAP(**config.embedding_config.dict())
     return umap_model.fit_transform(embeddings)
 
+def extract_annotations():
+    annotations = {}
+
+    with open("./data/train.txt", "r", encoding="utf-8") as f:
+        for line in f:
+            fields = line.strip().split("\t")
+            if len(fields) > 1:
+                annotation = fields[1]
+                categories = annotation.split("-")
+
+                nested_obj = annotations
+                for category in categories[:-1]:
+                    nested_obj = nested_obj.setdefault(category, {})
+
+                last_category = categories[-1]
+                last_categories = last_category.split("/")
+                for category in last_categories[:-1]:
+                    nested_obj = nested_obj.setdefault(category, {})
+                nested_obj.setdefault(last_categories[-1], {})
+
+    with open("./data/annotations.json", "w", encoding="utf-8") as f:
+        json.dump(annotations, f, indent=4)
+
+
 def save_clusters(clusters: np.ndarray, filename: str):
     with open(filename, 'w') as f:
         json.dump(clusters, f)
@@ -245,6 +269,11 @@ def load_clusters(filename: str) -> np.ndarray:
     with open(filename, 'r') as f:
         clusters_list = json.load(f)
         return np.array(clusters_list)
+
+def load_annotations():
+    with open("./data/annotations.json", 'r') as f:
+        annotations = json.load(f)
+        return annotations
 
 @app.get("/")
 def read_root():
@@ -314,6 +343,12 @@ def get_clusters(dataset: str, model: BERTopic = Depends(load_model), embeddings
         logger.info(f"Computed and saved clusters for dataset: {dataset}")
 
     return {"clusters": list(clusters)}
+
+@app.get("/annotations/")
+def get_annotations():
+    all_annotations = load_annotations()
+    return all_annotations
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host=env['host'], port=env['port'])
