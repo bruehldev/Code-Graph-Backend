@@ -3,6 +3,9 @@ import json
 import torch
 import umap
 import uvicorn
+import requests
+import zipfile
+import io
 import numpy as np
 from fastapi import Depends, FastAPI
 from bertopic import BERTopic
@@ -64,6 +67,7 @@ env = {
     'embeddings_path': 'embeddings',
     'clusters_path': 'clusters',
     'positions_path': 'positions',
+    'segments_path': 'segments',
     'host': '0.0.0.0',
     'port': 8000,
     'configs' : 'configs.json'
@@ -177,6 +181,16 @@ def get_docs(dataset: str) -> list:
             return [doc.strip() for doc in f.readlines() if doc.strip()]
     return None
 
+def load_few_nerd_dataset():
+    url = "https://cloud.tsinghua.edu.cn/f/09265750ae6340429827/?dl=1"
+    output_file = "supervised.zip"
+    output_folder = "data/few_nerd"
+    response = requests.get(url)
+    with open(output_file, "wb") as file:
+        file.write(response.content)
+    with zipfile.ZipFile(output_file, "r") as zip_ref:
+        zip_ref.extractall(output_folder)
+
 def save_embeddings(embeddings: np.ndarray, filename: str):
     with open(filename, 'w') as f:
         json.dump(embeddings.tolist(), f)
@@ -194,6 +208,10 @@ def load_positions(positions_file):
 def save_positions(positions_data, positions_file):
     with open(positions_file, 'w') as file:
         json.dump(positions_data, file)
+
+def save_segments(segments_data, segments_file: str):
+    with open(segments_file, 'w') as file:
+        json.dump(segments_data, file)
 
 def load_model(dataset: str, docs: list = Depends(get_docs)):
     global models
@@ -226,6 +244,11 @@ def get_positions_file(dataset: str):
     os.makedirs(positions_directory, exist_ok=True)
     return os.path.join(positions_directory, f"positions_{dataset}.json")
 
+def get_segments_file(dataset: str):
+    segments_directory = os.path.join(env['segments_path'], dataset)
+    os.makedirs(segments_directory, exist_ok=True)
+    return os.path.join(segments_directory, f"segments_{dataset}.json")
+
 def get_clusters_file(dataset: str):
     clusters_directory = os.path.join(env['clusters_path'], dataset)
     os.makedirs(clusters_directory, exist_ok=True)
@@ -240,7 +263,7 @@ def extract_embeddings(model, docs):
 def extract_annotations(dataset: str):
     annotations = {}
 
-    with open(f"./data/{dataset}/train.txt", "r", encoding="utf-8") as f:
+    with open(f"./data/{dataset}/supervised/train.txt", "r", encoding="utf-8") as f:
         for line in f:
             fields = line.strip().split("\t")
             if len(fields) > 1:
@@ -260,6 +283,48 @@ def extract_annotations(dataset: str):
     with open(f"./data/{dataset}/annotations.json", "w", encoding="utf-8") as f:
         json.dump(annotations, f, indent=4)
 
+def extract_segments(dataset:str):
+    load_few_nerd_dataset()
+    with open(f"./data/{dataset}/supervised/train.txt", 'r', encoding='utf8') as f:
+      sentence = ""
+      segment = ""
+      segment_list = []
+      cur_annotation = None
+      entries = []
+      pos = 0
+      for line in f:
+        line = line.strip()
+        if line:
+          word, annotation = line.split()
+          sentence += " " + word
+          if annotation != 'O':
+            segment += " " + word
+            if annotation != cur_annotation:
+              cur_annotation = annotation
+              position = pos
+          else:
+            if segment:
+              segment = segment.lstrip()
+              segment_list.append((segment, cur_annotation, position))
+              segment = ""
+              cur_annotation = None
+          pos = pos + 1
+          if word == ".":
+            for i in segment_list:
+              sentence = sentence.lstrip()
+              entry = {
+                   "sentence": sentence,
+                   "segment": i[0],
+                   "annotation": i[1],
+                   "position": i[2]
+                    }
+              entries.append(entry)
+            pos = 0
+            segment_list = []
+            sentence = ""
+    segments_file = get_segments_file(dataset)
+    save_segments(entries, segments_file)
+
 
 def save_clusters(clusters: np.ndarray, filename: str):
     with open(filename, 'w') as f:
@@ -274,6 +339,7 @@ def load_annotations(dataset: str):
     with open(f"./data/{dataset}/annotations.json", 'r') as f:
         annotations = json.load(f)
         return annotations
+
 
 @app.get("/")
 def read_root():
