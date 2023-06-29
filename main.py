@@ -376,14 +376,28 @@ def get_positions(dataset: str, model: BERTopic = Depends(load_model), embedding
     positions_file = get_positions_file(dataset)
 
     if os.path.exists(positions_file):
-        positions_list = load_positions(positions_file)
-        logger.info(f"Loaded positions from file for dataset: {dataset}")
+        try:
+            positions_dict = load_positions(positions_file)
+            logger.info(f"Loaded positions from file for dataset: {dataset}")
+        except Exception as e:
+            logger.error(f"Error loading positions from file for dataset: {dataset}")
+            logger.error(str(e))
+            raise
     else:
-        positions_list = embeddings
-        save_positions(positions_list, positions_file)
+        # Convert index, data, embedding, and topic to JSON structure
+        positions_dict = {}
+        for index, (embedding, doc) in enumerate(zip(embeddings[:20], docs[:20])): 
+            position = {
+                "data": doc,
+                "position": embedding,
+                "topic_index": np.array(model.transform([str(embedding)]))[0].tolist()
+            }
+            positions_dict[str(index)] = position
+
+        save_positions(positions_dict, positions_file)
         logger.info(f"Saved positions to file for dataset: {dataset}")
 
-    positions = list(zip(docs, positions_list))
+    positions = list(zip(docs, positions_dict.values()))
 
     logger.info(f"Retrieved positions for dataset: {dataset}")
     return {"positions": positions}
