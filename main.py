@@ -309,19 +309,19 @@ def extract_segments(dataset:str):
               segment = ""
               cur_annotation = None
           pos = pos + 1
-          if word == ".":
-            for i in segment_list:
-              sentence = sentence.lstrip()
-              entry = {
+        else:
+          for i in segment_list:
+            sentence = sentence.lstrip()
+            entry = {
                    "sentence": sentence,
                    "segment": i[0],
                    "annotation": i[1],
                    "position": i[2]
                     }
-              entries.append(entry)
-            pos = 0
-            segment_list = []
-            sentence = ""
+            entries.append(entry)
+          pos = 0
+          segment_list = []
+          sentence = ""
     segments_file = get_segments_file(dataset)
     save_segments(entries, segments_file)
 
