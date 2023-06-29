@@ -63,11 +63,12 @@ class ConfigModel(BaseModel):
 
 # Environment variables
 env = {
-    'model_path': 'models',
-    'embeddings_path': 'embeddings',
-    'clusters_path': 'clusters',
-    'positions_path': 'positions',
-    'segments_path': 'segments',
+    'model_path': '../models',
+    'embeddings_path': '../embeddings',
+    'clusters_path': '../clusters',
+    'positions_path': '../positions',
+    'segments_path': '../segments',
+    'data_path': '../data',
     'host': '0.0.0.0',
     'port': 8000,
     'configs' : 'configs.json'
@@ -336,7 +337,7 @@ def load_clusters(filename: str) -> np.ndarray:
         return np.array(clusters_list)
 
 def load_annotations(dataset: str):
-    with open(f"./data/{dataset}/annotations.json", 'r') as f:
+    with open(os.path.join(env['data_path'], dataset, 'annotations.json'), 'r') as f:
         annotations = json.load(f)
         return annotations
 
