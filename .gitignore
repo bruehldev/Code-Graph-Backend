@@ -1,5 +1,6 @@
 # saved models / data / resulsts / embeddings
-#data/
+data/*/*
+!data/*/annotations.json
 models/
 embeddings/
 positions/

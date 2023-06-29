@@ -237,10 +237,10 @@ def extract_embeddings(model, docs):
     umap_model = umap.UMAP(**config.embedding_config.dict())
     return umap_model.fit_transform(embeddings)
 
-def extract_annotations():
+def extract_annotations(dataset: str):
     annotations = {}
 
-    with open("./data/train.txt", "r", encoding="utf-8") as f:
+    with open(f"./data/{dataset}/train.txt", "r", encoding="utf-8") as f:
         for line in f:
             fields = line.strip().split("\t")
             if len(fields) > 1:
@@ -257,7 +257,7 @@ def extract_annotations():
                     nested_obj = nested_obj.setdefault(category, {})
                 nested_obj.setdefault(last_categories[-1], {})
 
-    with open("./data/annotations.json", "w", encoding="utf-8") as f:
+    with open(f"./data/{dataset}/annotations.json", "w", encoding="utf-8") as f:
         json.dump(annotations, f, indent=4)
 
 
@@ -270,8 +270,8 @@ def load_clusters(filename: str) -> np.ndarray:
         clusters_list = json.load(f)
         return np.array(clusters_list)
 
-def load_annotations():
-    with open("./data/annotations.json", 'r') as f:
+def load_annotations(dataset: str):
+    with open(f"./data/{dataset}/annotations.json", 'r') as f:
         annotations = json.load(f)
         return annotations
 
@@ -344,10 +344,12 @@ def get_clusters(dataset: str, model: BERTopic = Depends(load_model), embeddings
 
     return {"clusters": list(clusters)}
 
-@app.get("/annotations/")
-def get_annotations():
-    all_annotations = load_annotations()
+@app.get("/annotations/{dataset}")
+def get_annotations(dataset : str):
+    # get only for few nerd
+    all_annotations = load_annotations(dataset)
     return all_annotations
+    
 
 
 if __name__ == "__main__":
