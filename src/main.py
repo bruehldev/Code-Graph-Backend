@@ -7,7 +7,7 @@ import requests
 import zipfile
 import io
 import numpy as np
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, APIRouter
 from bertopic import BERTopic
 from sklearn.datasets import fetch_20newsgroups
 from transformers import BertTokenizer, BertModel
@@ -16,8 +16,11 @@ import hdbscan
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
 import ast
+from data.service import *
+from data.router import router as data_router
 
 app = FastAPI()
+app.include_router(data_router)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 model = BertModel.from_pretrained('bert-base-uncased').to(device)
