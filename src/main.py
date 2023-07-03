@@ -174,20 +174,20 @@ def delete_config(name: str):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def get_docs(dataset: str) -> list:
-    if dataset == "fetch_20newsgroups":
+def get_docs(dataset_name: str) -> list:
+    if dataset_name == "fetch_20newsgroups":
         return fetch_20newsgroups(subset='all', remove=('headers', 'footers', 'quotes'))['data']
-    elif dataset == "few_nerd":
-        data_path = os.path.join(env['data_path'], dataset)
+    elif dataset_name == "few_nerd":
+        data_path = os.path.join(env['data_path'], dataset_name)
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
         with open(os.path.join(data_path, 'train.txt'), 'r', encoding='utf8') as f:
             return [doc.strip() for doc in f.readlines() if doc.strip()]
     return None
 
-def load_few_nerd_dataset(dataset: str):
+def load_few_nerd_dataset(dataset_name: str):
     url = "https://cloud.tsinghua.edu.cn/f/09265750ae6340429827/?dl=1"
     output_file = "supervised.zip"
-    output_folder = os.path.join(env['data_path'], dataset)
+    output_folder = os.path.join(env['data_path'], dataset_name)
     os.makedirs(os.path.dirname(output_folder), exist_ok=True)
     response = requests.get(url)
     with open(output_file, "wb") as file:
@@ -217,46 +217,46 @@ def save_segments(segments_data, segments_file: str):
     with open(segments_file, 'w') as file:
         json.dump(segments_data, file)
 
-def load_model(dataset: str, docs: list = Depends(get_docs)):
+def load_model(dataset_name: str, docs: list = Depends(get_docs)):
     global models
-    if dataset in models:
-        return models[dataset]
+    if dataset_name in models:
+        return models[dataset_name]
     
-    model_path = os.path.join(env['model_path'], dataset)
+    model_path = os.path.join(env['model_path'], dataset_name)
     os.makedirs(model_path, exist_ok=True)
     
     if not os.path.exists(os.path.join(model_path, 'BERTopic')):
         model = BERTopic(**config.model_config.dict())
         topics, probs = model.fit_transform(docs)
         model.save(os.path.join(model_path, 'BERTopic'))
-        models[dataset] = model
-        logger.info(f"Model trained and saved for dataset: {dataset}")
+        models[dataset_name] = model
+        logger.info(f"Model trained and saved for dataset: {dataset_name}")
         return model
     else:
         model = BERTopic.load(os.path.join(model_path, 'BERTopic'))
-        models[dataset] = model
-        logger.info(f"Loaded model from file for dataset: {dataset}")
+        models[dataset_name] = model
+        logger.info(f"Loaded model from file for dataset: {dataset_name}")
         return model
 
-def get_embeddings_file(dataset: str):
-    embeddings_directory = os.path.join(env['embeddings_path'], dataset)
+def get_embeddings_file(dataset_name: str):
+    embeddings_directory = os.path.join(env['embeddings_path'], dataset_name)
     os.makedirs(embeddings_directory, exist_ok=True)
-    return os.path.join(embeddings_directory, f"embeddings_{dataset}.json")
+    return os.path.join(embeddings_directory, f"embeddings_{dataset_name}.json")
 
-def get_positions_file(dataset: str):
-    positions_directory = os.path.join(env['positions_path'], dataset)
+def get_positions_file(dataset_name: str):
+    positions_directory = os.path.join(env['positions_path'], dataset_name)
     os.makedirs(positions_directory, exist_ok=True)
-    return os.path.join(positions_directory, f"positions_{dataset}.json")
+    return os.path.join(positions_directory, f"positions_{dataset_name}.json")
 
-def get_segments_file(dataset: str):
-    segments_directory = os.path.join(env['segments_path'], dataset)
+def get_segments_file(dataset_name: str):
+    segments_directory = os.path.join(env['segments_path'], dataset_name)
     os.makedirs(segments_directory, exist_ok=True)
-    return os.path.join(segments_directory, f"segments_{dataset}.json")
+    return os.path.join(segments_directory, f"segments_{dataset_name}.json")
 
-def get_clusters_file(dataset: str):
-    clusters_directory = os.path.join(env['clusters_path'], dataset)
+def get_clusters_file(dataset_name: str):
+    clusters_directory = os.path.join(env['clusters_path'], dataset_name)
     os.makedirs(clusters_directory, exist_ok=True)
-    return os.path.join(clusters_directory, f"clusters_{dataset}.json")
+    return os.path.join(clusters_directory, f"clusters_{dataset_name}.json")
 
 def extract_embeddings(model, docs):
     logger.info("Extracting embeddings for documents")
@@ -264,9 +264,9 @@ def extract_embeddings(model, docs):
     umap_model = umap.UMAP(**config.embedding_config.dict())
     return umap_model.fit_transform(embeddings)
 
-def extract_annotations(dataset: str):
+def extract_annotations(dataset_name: str):
     annotations = {}
-    output_folder = os.path.join(env['data_path'], dataset,'annotations', 'supervised' )
+    output_folder = os.path.join(env['data_path'], dataset_name,'annotations', 'supervised' )
     os.makedirs(output_folder, exist_ok=True)
     with open(os.path.join(output_folder, 'train.txt'), "r", encoding="utf-8") as f:
         for line in f:
@@ -285,13 +285,13 @@ def extract_annotations(dataset: str):
                     nested_obj = nested_obj.setdefault(category, {})
                 nested_obj.setdefault(last_categories[-1], {})
 
-    with open(os.path.join(env['data_path'], dataset, 'annotations.json'), "w", encoding="utf-8") as f:
+    with open(os.path.join(env['data_path'], dataset_name, 'annotations.json'), "w", encoding="utf-8") as f:
         json.dump(annotations, f, indent=4)
 
-def extract_segments(dataset:str):
-    output_folder = os.path.join(env['data_path'], dataset,'segments', 'supervised' )
+def extract_segments(dataset_name:str):
+    output_folder = os.path.join(env['data_path'], dataset_name,'segments', 'supervised' )
     os.makedirs(output_folder, exist_ok=True)
-    load_few_nerd_dataset(dataset)
+    load_few_nerd_dataset(dataset_name)
 
     with open(os.path.join(output_folder, 'train.txt'), 'r', encoding='utf8') as f:
       sentence = ""
@@ -330,7 +330,7 @@ def extract_segments(dataset:str):
           pos = 0
           segment_list = []
           sentence = ""
-    segments_file = get_segments_file(dataset)
+    segments_file = get_segments_file(dataset_name)
     save_segments(entries, segments_file)
 
 
@@ -343,8 +343,8 @@ def load_clusters(filename: str) -> np.ndarray:
         clusters_list = json.load(f)
         return np.array(clusters_list)
 
-def load_annotations(dataset: str):
-    with open(os.path.join(env['data_path'], dataset, 'annotations.json'), 'r') as f:
+def load_annotations(dataset_name: str):
+    with open(os.path.join(env['data_path'], dataset_name, 'annotations.json'), 'r') as f:
         annotations = json.load(f)
         return annotations
 
@@ -353,42 +353,42 @@ def load_annotations(dataset: str):
 def read_root():
     return {"Hello": "BERTopic API"}
 
-@app.get("/load_model/{dataset}")
-def load_model_endpoint(dataset: str, model: BERTopic = Depends(load_model)):
-    logger.info(f"Model loaded successfully for dataset: {dataset}")
-    return {"message": f"{dataset} dataset loaded successfully"}
+@app.get("/load_model/{dataset_name}")
+def load_model_endpoint(dataset_name: str, model: BERTopic = Depends(load_model)):
+    logger.info(f"Model loaded successfully for dataset: {dataset_name}")
+    return {"message": f"{dataset_name} dataset loaded successfully"}
 
-@app.get("/topicinfo/{dataset}")
-def get_topic_info(dataset: str, model: BERTopic = Depends(load_model)):
-    logger.info(f"Getting topic info for dataset: {dataset}")
+@app.get("/topicinfo/{dataset_name}")
+def get_topic_info(dataset_name: str, model: BERTopic = Depends(load_model)):
+    logger.info(f"Getting topic info for dataset: {dataset_name}")
     topic_info = model.get_topic_info()
     return {"topic_info": topic_info.to_dict()}
 
-@app.get("/embeddings/{dataset}")
-def get_embeddings(dataset: str, model: BERTopic = Depends(load_model), docs: list = Depends(get_docs)):
+@app.get("/embeddings/{dataset_name}")
+def get_embeddings(dataset_name: str, model: BERTopic = Depends(load_model), docs: list = Depends(get_docs)):
     global embeddings_2d_bert
-    embeddings_file = get_embeddings_file(dataset)
+    embeddings_file = get_embeddings_file(dataset_name)
 
     if os.path.exists(embeddings_file):
         embeddings_2d_bert = load_embeddings(embeddings_file)
-        logger.info(f"Loaded embeddings from file for dataset: {dataset}")
+        logger.info(f"Loaded embeddings from file for dataset: {dataset_name}")
     else:
         embeddings_2d_bert = extract_embeddings(model, docs)
         save_embeddings(embeddings_2d_bert, embeddings_file)
-        logger.info(f"Computed and saved embeddings for dataset: {dataset}")
+        logger.info(f"Computed and saved embeddings for dataset: {dataset_name}")
 
     return embeddings_2d_bert.tolist()
 
-@app.get("/positions/{dataset}")
-def get_positions(dataset: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings), docs: list = Depends(get_docs)):
-    positions_file = get_positions_file(dataset)
+@app.get("/positions/{dataset_name}")
+def get_positions(dataset_name: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings), docs: list = Depends(get_docs)):
+    positions_file = get_positions_file(dataset_name)
 
     if os.path.exists(positions_file):
         try:
             positions_dict = load_positions(positions_file)
-            logger.info(f"Loaded positions from file for dataset: {dataset}")
+            logger.info(f"Loaded positions from file for dataset: {dataset_name}")
         except Exception as e:
-            logger.error(f"Error loading positions from file for dataset: {dataset}")
+            logger.error(f"Error loading positions from file for dataset: {dataset_name}")
             logger.error(str(e))
             raise
     else:
@@ -403,22 +403,22 @@ def get_positions(dataset: str, model: BERTopic = Depends(load_model), embedding
             positions_dict[str(index)] = position
 
         save_positions(positions_dict, positions_file)
-        logger.info(f"Saved positions to file for dataset: {dataset}")
+        logger.info(f"Saved positions to file for dataset: {dataset_name}")
 
     positions = list(zip(docs, positions_dict.values()))
 
-    logger.info(f"Retrieved positions for dataset: {dataset}")
+    logger.info(f"Retrieved positions for dataset: {dataset_name}")
     return {"positions": positions}
 
-@app.get("/clusters/{dataset}")
-def get_clusters(dataset: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings)):
-    logger.info(f"Getting clusters for dataset: {dataset}")
-    clusters_file = get_clusters_file(dataset)
+@app.get("/clusters/{dataset_name}")
+def get_clusters(dataset_name: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings)):
+    logger.info(f"Getting clusters for dataset: {dataset_name}")
+    clusters_file = get_clusters_file(dataset_name)
 
     if os.path.exists(clusters_file):
         clusters = load_clusters(clusters_file)
         clusters = np.atleast_1d(clusters)
-        logger.info(f"Loaded clusters from file for dataset: {dataset}")
+        logger.info(f"Loaded clusters from file for dataset: {dataset_name}")
         # TODO Fix clusters not being a list but a string
     else:
         clusterer = hdbscan.HDBSCAN(**config.cluster_config.dict())
@@ -428,14 +428,14 @@ def get_clusters(dataset: str, model: BERTopic = Depends(load_model), embeddings
         # serialize the clusters to JSON
         json_clusters = json.dumps(clusters)
         save_clusters(json_clusters, clusters_file)
-        logger.info(f"Computed and saved clusters for dataset: {dataset}")
+        logger.info(f"Computed and saved clusters for dataset: {dataset_name}")
 
     return {"clusters": list(clusters)}
 
-@app.get("/annotations/{dataset}")
-def get_annotations(dataset : str):
+@app.get("/annotations/{dataset_name}")
+def get_annotations(dataset_name : str):
     # get only for few nerd
-    all_annotations = load_annotations(dataset)
+    all_annotations = load_annotations(dataset_name)
     return all_annotations
     
 
