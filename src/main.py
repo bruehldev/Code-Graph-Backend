@@ -178,14 +178,17 @@ def get_docs(dataset: str) -> list:
     if dataset == "fetch_20newsgroups":
         return fetch_20newsgroups(subset='all', remove=('headers', 'footers', 'quotes'))['data']
     elif dataset == "few_nerd":
-        with open('data/few_nerd/train.txt', 'r', encoding='utf8') as f:
+        data_path = os.path.join(env['data_path'], dataset)
+        os.makedirs(os.path.dirname(data_path), exist_ok=True)
+        with open(os.path.join(data_path, 'train.txt'), 'r', encoding='utf8') as f:
             return [doc.strip() for doc in f.readlines() if doc.strip()]
     return None
 
-def load_few_nerd_dataset():
+def load_few_nerd_dataset(dataset: str):
     url = "https://cloud.tsinghua.edu.cn/f/09265750ae6340429827/?dl=1"
     output_file = "supervised.zip"
-    output_folder = "data/few_nerd"
+    output_folder = os.path.join(env['data_path'], dataset)
+    os.makedirs(os.path.dirname(output_folder), exist_ok=True)
     response = requests.get(url)
     with open(output_file, "wb") as file:
         file.write(response.content)
@@ -263,8 +266,9 @@ def extract_embeddings(model, docs):
 
 def extract_annotations(dataset: str):
     annotations = {}
-
-    with open(f"./data/{dataset}/supervised/train.txt", "r", encoding="utf-8") as f:
+    output_folder = os.path.join(env['data_path'], dataset,'annotations', 'supervised' )
+    os.makedirs(output_folder, exist_ok=True)
+    with open(os.path.join(output_folder, 'train.txt'), "r", encoding="utf-8") as f:
         for line in f:
             fields = line.strip().split("\t")
             if len(fields) > 1:
@@ -281,12 +285,15 @@ def extract_annotations(dataset: str):
                     nested_obj = nested_obj.setdefault(category, {})
                 nested_obj.setdefault(last_categories[-1], {})
 
-    with open(f"./data/{dataset}/annotations.json", "w", encoding="utf-8") as f:
+    with open(os.path.join(env['data_path'], dataset, 'annotations.json'), "w", encoding="utf-8") as f:
         json.dump(annotations, f, indent=4)
 
 def extract_segments(dataset:str):
-    load_few_nerd_dataset()
-    with open(f"./data/{dataset}/supervised/train.txt", 'r', encoding='utf8') as f:
+    output_folder = os.path.join(env['data_path'], dataset,'segments', 'supervised' )
+    os.makedirs(output_folder, exist_ok=True)
+    load_few_nerd_dataset(dataset)
+
+    with open(os.path.join(output_folder, 'train.txt'), 'r', encoding='utf8') as f:
       sentence = ""
       segment = ""
       segment_list = []
