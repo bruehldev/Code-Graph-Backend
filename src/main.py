@@ -169,27 +169,6 @@ def delete_config(name: str):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def get_data(dataset_name: str) -> list:
-    if dataset_name == "fetch_20newsgroups":
-        return fetch_20newsgroups(subset='all', remove=('headers', 'footers', 'quotes'))['data']
-    elif dataset_name == "few_nerd":
-        data_path = os.path.join(env['data_path'], dataset_name)
-        os.makedirs(os.path.dirname(data_path), exist_ok=True)
-        with open(os.path.join(data_path, 'train.txt'), 'r', encoding='utf8') as f:
-            return [doc.strip() for doc in f.readlines() if doc.strip()]
-    return None
-
-def load_few_nerd_dataset(dataset_name: str):
-    url = "https://cloud.tsinghua.edu.cn/f/09265750ae6340429827/?dl=1"
-    output_file = "supervised.zip"
-    output_folder = os.path.join(env['data_path'], dataset_name)
-    os.makedirs(os.path.dirname(output_folder), exist_ok=True)
-    response = requests.get(url)
-    with open(output_file, "wb") as file:
-        file.write(response.content)
-    with zipfile.ZipFile(output_file, "r") as zip_ref:
-        zip_ref.extractall(output_folder)
-
 def save_embeddings(embeddings: np.ndarray, file_name: str):
     with open(file_name, 'w') as f:
         json.dump(embeddings.tolist(), f)
@@ -207,10 +186,6 @@ def load_positions(positions_file):
 def save_positions(positions_data, positions_file):
     with open(positions_file, 'w') as file:
         json.dump(positions_data, file)
-
-def save_segments(segments_data, segments_file: str):
-    with open(segments_file, 'w') as file:
-        json.dump(segments_data, file)
 
 def load_model(dataset_name: str, data: list = Depends(get_data)):
     global models
@@ -243,10 +218,7 @@ def get_positions_file(dataset_name: str):
     os.makedirs(positions_directory, exist_ok=True)
     return os.path.join(positions_directory, f"positions_{dataset_name}.json")
 
-def get_segments_file(dataset_name: str):
-    segments_directory = os.path.join(env['segments_path'], dataset_name)
-    os.makedirs(segments_directory, exist_ok=True)
-    return os.path.join(segments_directory, f"segments_{dataset_name}.json")
+
 
 def get_clusters_file(dataset_name: str):
     clusters_directory = os.path.join(env['clusters_path'], dataset_name)
@@ -259,76 +231,6 @@ def extract_embeddings(model, data):
     umap_model = umap.UMAP(**config.embedding_config.dict())
     return umap_model.fit_transform(embeddings)
 
-def extract_annotations(dataset_name: str):
-    annotations = {}
-    output_folder = os.path.join(env['data_path'], dataset_name,'annotations', 'supervised' )
-    os.makedirs(output_folder, exist_ok=True)
-    with open(os.path.join(output_folder, 'train.txt'), "r", encoding="utf-8") as f:
-        for line in f:
-            fields = line.strip().split("\t")
-            if len(fields) > 1:
-                annotation = fields[1]
-                categories = annotation.split("-")
-
-                nested_obj = annotations
-                for category in categories[:-1]:
-                    nested_obj = nested_obj.setdefault(category, {})
-
-                last_category = categories[-1]
-                last_categories = last_category.split("/")
-                for category in last_categories[:-1]:
-                    nested_obj = nested_obj.setdefault(category, {})
-                nested_obj.setdefault(last_categories[-1], {})
-
-    with open(os.path.join(env['data_path'], dataset_name, 'annotations.json'), "w", encoding="utf-8") as f:
-        json.dump(annotations, f, indent=4)
-
-def extract_segments(dataset_name:str):
-    output_folder = os.path.join(env['data_path'], dataset_name,'segments', 'supervised' )
-    os.makedirs(output_folder, exist_ok=True)
-    load_few_nerd_dataset(dataset_name)
-
-    with open(os.path.join(output_folder, 'train.txt'), 'r', encoding='utf8') as f:
-      sentence = ""
-      segment = ""
-      segment_list = []
-      cur_annotation = None
-      entries = []
-      pos = 0
-      for line in f:
-        line = line.strip()
-        if line:
-          word, annotation = line.split()
-          sentence += " " + word
-          if annotation != 'O':
-            segment += " " + word
-            if annotation != cur_annotation:
-              cur_annotation = annotation
-              position = pos
-          else:
-            if segment:
-              segment = segment.lstrip()
-              segment_list.append((segment, cur_annotation, position))
-              segment = ""
-              cur_annotation = None
-          pos = pos + 1
-        else:
-          for i in segment_list:
-            sentence = sentence.lstrip()
-            entry = {
-                   "sentence": sentence,
-                   "segment": i[0],
-                   "annotation": i[1],
-                   "position": i[2]
-                    }
-            entries.append(entry)
-          pos = 0
-          segment_list = []
-          sentence = ""
-    segments_file = get_segments_file(dataset_name)
-    save_segments(entries, segments_file)
-
-
 def save_clusters(clusters: np.ndarray, file_name: str):
     with open(file_name, 'w') as f:
         json.dump(clusters, f)
@@ -337,16 +239,6 @@ def load_clusters(file_name: str) -> np.ndarray:
     with open(file_name, 'r') as f:
         clusters_list = json.load(f)
         return np.array(clusters_list)
-
-def load_annotations(dataset_name: str):
-    with open(os.path.join(env['data_path'], dataset_name, 'annotations.json'), 'r') as f:
-        annotations = json.load(f)
-        return annotations
-
-
-@app.get("/")
-def read_root():
-    return {"Hello": "BERTopic API"}
 
 @app.get("/load_model/{dataset_name}")
 def load_model_endpoint(dataset_name: str, model: BERTopic = Depends(load_model)):
@@ -426,13 +318,7 @@ def get_clusters(dataset_name: str, model: BERTopic = Depends(load_model), embed
         logger.info(f"Computed and saved clusters for dataset: {dataset_name}")
 
     return {"clusters": list(clusters)}
-
-@app.get("/annotations/{dataset_name}")
-def get_annotations(dataset_name : str):
-    # get only for few nerd
-    all_annotations = load_annotations(dataset_name)
-    return all_annotations
-    
+   
 
 
 if __name__ == "__main__":
