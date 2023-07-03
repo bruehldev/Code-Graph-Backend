@@ -64,17 +64,10 @@ class ConfigModel(BaseModel):
 
 
 # Environment variables
-env = {
-    'model_path': '../models',
-    'embeddings_path': '../embeddings',
-    'clusters_path': '../clusters',
-    'positions_path': '../positions',
-    'segments_path': '../segments',
-    'data_path': '../data',
-    'host': '0.0.0.0',
-    'port': 8000,
-    'configs' : 'configs.json'
-}
+env = {}
+
+with open('../env.json') as f:
+    env = json.load(f)
 
 # Load configurations from file or use default if file does not exist
 if os.path.exists(env["configs"]):
