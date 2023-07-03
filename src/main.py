@@ -22,7 +22,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 model = BertModel.from_pretrained('bert-base-uncased').to(device)
 models = {}
-docs = None
 embeddings_2d_bert = None
 
 
@@ -174,7 +173,7 @@ def delete_config(name: str):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def get_docs(dataset_name: str) -> list:
+def get_data(dataset_name: str) -> list:
     if dataset_name == "fetch_20newsgroups":
         return fetch_20newsgroups(subset='all', remove=('headers', 'footers', 'quotes'))['data']
     elif dataset_name == "few_nerd":
@@ -195,12 +194,12 @@ def load_few_nerd_dataset(dataset_name: str):
     with zipfile.ZipFile(output_file, "r") as zip_ref:
         zip_ref.extractall(output_folder)
 
-def save_embeddings(embeddings: np.ndarray, filename: str):
-    with open(filename, 'w') as f:
+def save_embeddings(embeddings: np.ndarray, file_name: str):
+    with open(file_name, 'w') as f:
         json.dump(embeddings.tolist(), f)
 
-def load_embeddings(filename: str) -> np.ndarray:
-    with open(filename, 'r') as f:
+def load_embeddings(file_name: str) -> np.ndarray:
+    with open(file_name, 'r') as f:
         embeddings_list = json.load(f)
         return np.array(embeddings_list)
 
@@ -217,7 +216,7 @@ def save_segments(segments_data, segments_file: str):
     with open(segments_file, 'w') as file:
         json.dump(segments_data, file)
 
-def load_model(dataset_name: str, docs: list = Depends(get_docs)):
+def load_model(dataset_name: str, data: list = Depends(get_data)):
     global models
     if dataset_name in models:
         return models[dataset_name]
@@ -227,7 +226,7 @@ def load_model(dataset_name: str, docs: list = Depends(get_docs)):
     
     if not os.path.exists(os.path.join(model_path, 'BERTopic')):
         model = BERTopic(**config.model_config.dict())
-        topics, probs = model.fit_transform(docs)
+        topics, probs = model.fit_transform(data)
         model.save(os.path.join(model_path, 'BERTopic'))
         models[dataset_name] = model
         logger.info(f"Model trained and saved for dataset: {dataset_name}")
@@ -258,9 +257,9 @@ def get_clusters_file(dataset_name: str):
     os.makedirs(clusters_directory, exist_ok=True)
     return os.path.join(clusters_directory, f"clusters_{dataset_name}.json")
 
-def extract_embeddings(model, docs):
+def extract_embeddings(model, data):
     logger.info("Extracting embeddings for documents")
-    embeddings = model._extract_embeddings(docs)
+    embeddings = model._extract_embeddings(data)
     umap_model = umap.UMAP(**config.embedding_config.dict())
     return umap_model.fit_transform(embeddings)
 
@@ -334,12 +333,12 @@ def extract_segments(dataset_name:str):
     save_segments(entries, segments_file)
 
 
-def save_clusters(clusters: np.ndarray, filename: str):
-    with open(filename, 'w') as f:
+def save_clusters(clusters: np.ndarray, file_name: str):
+    with open(file_name, 'w') as f:
         json.dump(clusters, f)
 
-def load_clusters(filename: str) -> np.ndarray:
-    with open(filename, 'r') as f:
+def load_clusters(file_name: str) -> np.ndarray:
+    with open(file_name, 'r') as f:
         clusters_list = json.load(f)
         return np.array(clusters_list)
 
@@ -365,7 +364,7 @@ def get_topic_info(dataset_name: str, model: BERTopic = Depends(load_model)):
     return {"topic_info": topic_info.to_dict()}
 
 @app.get("/embeddings/{dataset_name}")
-def get_embeddings(dataset_name: str, model: BERTopic = Depends(load_model), docs: list = Depends(get_docs)):
+def get_embeddings(dataset_name: str, model: BERTopic = Depends(load_model), data: list = Depends(get_data)):
     global embeddings_2d_bert
     embeddings_file = get_embeddings_file(dataset_name)
 
@@ -373,14 +372,14 @@ def get_embeddings(dataset_name: str, model: BERTopic = Depends(load_model), doc
         embeddings_2d_bert = load_embeddings(embeddings_file)
         logger.info(f"Loaded embeddings from file for dataset: {dataset_name}")
     else:
-        embeddings_2d_bert = extract_embeddings(model, docs)
+        embeddings_2d_bert = extract_embeddings(model, data)
         save_embeddings(embeddings_2d_bert, embeddings_file)
         logger.info(f"Computed and saved embeddings for dataset: {dataset_name}")
 
     return embeddings_2d_bert.tolist()
 
 @app.get("/positions/{dataset_name}")
-def get_positions(dataset_name: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings), docs: list = Depends(get_docs)):
+def get_positions(dataset_name: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings), data: list = Depends(get_data)):
     positions_file = get_positions_file(dataset_name)
 
     if os.path.exists(positions_file):
@@ -394,7 +393,7 @@ def get_positions(dataset_name: str, model: BERTopic = Depends(load_model), embe
     else:
         # Convert index, data, embedding, and topic to JSON structure
         positions_dict = {}
-        for index, (embedding, doc) in enumerate(zip(embeddings[:20], docs[:20])): 
+        for index, (embedding, doc) in enumerate(zip(embeddings[:20], data[:20])): 
             position = {
                 "data": doc,
                 "position": embedding,
@@ -405,7 +404,7 @@ def get_positions(dataset_name: str, model: BERTopic = Depends(load_model), embe
         save_positions(positions_dict, positions_file)
         logger.info(f"Saved positions to file for dataset: {dataset_name}")
 
-    positions = list(zip(docs, positions_dict.values()))
+    positions = list(zip(data, positions_dict.values()))
 
     logger.info(f"Retrieved positions for dataset: {dataset_name}")
     return {"positions": positions}
