@@ -123,6 +123,9 @@ config = ConfigModel(
     )
 )
 
+@app.get("/")
+def read_root():
+    return {"Hello": "BERTopic API"}
 
 @app.post("/config", response_model=ConfigModel)
 def create_config(config: ConfigModel):
