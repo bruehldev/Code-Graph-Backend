@@ -14,15 +14,19 @@ env = {}
 with open('../env.json') as f:
     env = json.load(f)
 
-def get_data(dataset_name: str) -> list:
+def get_data(dataset_name: str, offset: int = 0, page_size: int = None) -> list:
     if dataset_name == "fetch_20newsgroups":
-        return fetch_20newsgroups(subset='all', remove=('headers', 'footers', 'quotes'))['data']
+        data = fetch_20newsgroups(subset='all', remove=('headers', 'footers', 'quotes'))['data']
     elif dataset_name == "few_nerd":
         data_path = os.path.join(env['data_path'], dataset_name)
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
         with open(os.path.join(data_path, 'train.txt'), 'r', encoding='utf8') as f:
-            return [doc.strip() for doc in f.readlines() if doc.strip()]
-    return None
+            data = [doc.strip() for doc in f.readlines() if doc.strip()]
+    else:
+        data = None
+    if page_size is not None:
+        data = data[offset:offset+page_size] # slice the data list according to offset and page_size
+    return data
 
 def load_few_nerd_dataset(dataset_name: str):
     url = "https://cloud.tsinghua.edu.cn/f/09265750ae6340429827/?dl=1"
@@ -150,7 +154,7 @@ def get_segments_file(dataset_name: str):
     return os.path.join(segments_directory, "segments.json")
 
 
-def get_segments(dataset_name: str):
+def get_segments(dataset_name: str, offset: int = 0, page_size: int = None):
     segments_file = get_segments_file(dataset_name)
     segments_data = None
 
@@ -159,8 +163,9 @@ def get_segments(dataset_name: str):
         logger.info(f"Loaded segments from file for dataset: {dataset_name}")
     else:
         segments_data = extract_segments(dataset_name)
-        save_segments(segments_data, segments_file)
-        logger.info(f"Extracted and saved segments for dataset: {dataset_name}")
+
+    if page_size is not None:
+        segments_data = segments_data[offset:offset+page_size] # slice the segments list according to offset and page_size
 
     return segments_data
 
