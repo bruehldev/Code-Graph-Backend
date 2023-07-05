@@ -30,14 +30,15 @@ def get_data(dataset_name: str, offset: int = 0, page_size: int = None) -> list:
 
 def load_few_nerd_dataset(dataset_name: str):
     url = "https://cloud.tsinghua.edu.cn/f/09265750ae6340429827/?dl=1"
-    output_file = "supervised.zip"
     output_folder = os.path.join(env['data_path'], dataset_name)
+    output_file = os.path.join(output_folder, "supervised.zip")
     os.makedirs(os.path.dirname(output_folder), exist_ok=True)
     response = requests.get(url)
     with open(output_file, "wb") as file:
         file.write(response.content)
     with zipfile.ZipFile(output_file, "r") as zip_ref:
         zip_ref.extractall(output_folder)
+    os.remove(output_file)
 
 def get_annotations(dataset_name : str):
     annotations_file = get_annotations_file(dataset_name)
