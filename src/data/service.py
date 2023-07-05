@@ -40,12 +40,10 @@ def get_annotations(dataset_name : str):
     annotations = None
 
     if os.path.exists(annotations_file):
-        annotations = load_annotations(annotations_file)
+        annotations = load_annotations(dataset_name)
         logger.info(f"Loaded annotations from file for dataset: {dataset_name}")
     else:
         annotations = extract_annotations(dataset_name)
-        save_annotations(annotations, annotations_file)
-        logger.info(f"Extracted and saved annotations for dataset: {dataset_name}")
 
     return annotations
 
@@ -55,20 +53,20 @@ def save_annotations(annotations: dict, annotations_file: str):
 
 
 def get_annotations_file(dataset_name: str):
-     if dataset_name == "few_nerd":
-        annotations_directory = os.path.join(env['annotations_path'], dataset_name, 'supervised' )
-        os.makedirs(annotations_directory, exist_ok=True)
-        return os.path.join(annotations_directory, "annotations.json")
+    annotations_directory = os.path.join(env['annotations_path'], dataset_name, 'supervised' )
+    os.makedirs(annotations_directory, exist_ok=True)
+    return os.path.join(annotations_directory, "annotations.json")
      
 def load_annotations(dataset_name: str):
-    with open(os.path.join(env['data_path'], dataset_name, 'annotations.json'), 'r') as f:
+    with open(os.path.join(env['annotations_path'], dataset_name,'supervised' , 'annotations.json'), 'r') as f:
         annotations = json.load(f)
         return annotations
 
 def extract_annotations(dataset_name: str):
+    annotations = {}
+
     if dataset_name == "few_nerd":
         data_folder = os.path.join(env["data_path"], dataset_name)
-        annotations = {}
         with open(os.path.join(data_folder, 'train.txt'), "r", encoding="utf-8") as f:
             for line in f:
                 fields = line.strip().split("\t")
@@ -86,12 +84,18 @@ def extract_annotations(dataset_name: str):
                         nested_obj = nested_obj.setdefault(category, {})
                     nested_obj.setdefault(last_categories[-1], {})
 
-        return annotations
+    annotations_file = get_annotations_file(dataset_name)
+    save_annotations(annotations, annotations_file)
+    logger.info(f"Extracted and saved annotations for dataset: {dataset_name}")
+    
+    return annotations
 
 
 
 
 def extract_segments(dataset_name: str):
+    entries = []
+
     if dataset_name == "few_nerd":
         segments_folder = os.path.join(env["segments_path"], dataset_name, "supervised")
         data_folder = os.path.join(env["data_path"], dataset_name)
@@ -102,7 +106,6 @@ def extract_segments(dataset_name: str):
             segment = ""
             segment_list = []
             cur_annotation = None
-            entries = []
             pos = 0
             for line in f:
                 line = line.strip()
@@ -134,7 +137,11 @@ def extract_segments(dataset_name: str):
                     pos = 0
                     segment_list = []
                     sentence = ""
-        return entries
+
+    save_segments(entries, get_segments_file(dataset_name))
+    logger.info(f"Extracted and saved segments for dataset: {dataset_name}")
+    
+    return entries
 
 
 def get_segments_file(dataset_name: str):
