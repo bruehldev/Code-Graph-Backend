@@ -23,10 +23,9 @@ uvicorn main:app --reload
 3. Once the server is running, you can access the API at `http://localhost:8000`.
 
 4. API Endpoints:
-- **GET /load_model/{dataset}**: Load a BERTopic model for the specified dataset. Replace `{dataset}` with the desired dataset name ("fetch_20newsgroups" or "few_nerd").
-- **GET /topicinfo/{dataset}**: Retrieve topic information for the specified dataset.
-- **GET /embeddings/{dataset}**: Compute or retrieve BERT embeddings for the specified dataset.
-- **GET /results/{dataset}**: Retrieve topic results (documents and their corresponding positions) for the specified dataset.
+To access the API documentation use:
+
+[http://localhost:8000/docs](http://localhost:8000/docs)
 
 
 ## Contributing
@@ -42,29 +41,21 @@ This project is licensed under the [MIT License](LICENSE).
 ```
 The project follows the following folder structure:
 project/
-├─ api/
-│ ├─ init.py
-│ ├─ endpoints.py
-│ └─ models.py
+├─ src/
+│ ├─ main.py
+│ ├─ module
+│ │ └─ routes.py
+│ │ └─ service.py
+│ │ └─ schema.py
+│ ├─ ...
+├─ exported/ 
 ├─ data/
-│ ├─ fetch_20newsgroups/
-│ │ └─ ... (dataset files)
-│ └─ few_nerd/
-│ └─ train.txt
-├─ embeddings/
-├─ models/
-├─ utils/
 ├─ .gitignore
 ├─ requirements.txt
-└─ main.py
 ```
 
-- `api/`: Contains the API-related code.
+- `exported/`: .Used to store generated data
 - `data/`: Stores the datasets.
-- `embeddings/`: Used to store generated embeddings.
-- `models/`: Used to save trained models.
-- `utils/`: Contains utility or helper functions.
 - `.gitignore`: Specifies files and folders to exclude from version control.
 - `requirements.txt`: Lists the project dependencies.
 - `main.py`: The main entry point of the application.
-
