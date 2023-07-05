@@ -11,26 +11,28 @@ logger = logging.getLogger(__name__)
 
 
 env = {}
-with open('../env.json') as f:
+with open("../env.json") as f:
     env = json.load(f)
+
 
 def get_data(dataset_name: str, offset: int = 0, page_size: int = None) -> list:
     if dataset_name == "fetch_20newsgroups":
-        data = fetch_20newsgroups(subset='all', remove=('headers', 'footers', 'quotes'))['data']
+        data = fetch_20newsgroups(subset="all", remove=("headers", "footers", "quotes"))["data"]
     elif dataset_name == "few_nerd":
-        data_path = os.path.join(env['data_path'], dataset_name)
+        data_path = os.path.join(env["data_path"], dataset_name)
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
-        with open(os.path.join(data_path, 'train.txt'), 'r', encoding='utf8') as f:
+        with open(os.path.join(data_path, "train.txt"), "r", encoding="utf8") as f:
             data = [doc.strip() for doc in f.readlines() if doc.strip()]
     else:
         data = None
     if page_size is not None:
-        data = data[offset:offset+page_size] # slice the data list according to offset and page_size
+        data = data[offset : offset + page_size]  # slice the data list according to offset and page_size
     return data
+
 
 def load_few_nerd_dataset(dataset_name: str):
     url = "https://cloud.tsinghua.edu.cn/f/09265750ae6340429827/?dl=1"
-    output_folder = os.path.join(env['data_path'], dataset_name)
+    output_folder = os.path.join(env["data_path"], dataset_name)
     output_file = os.path.join(output_folder, "supervised.zip")
     os.makedirs(os.path.dirname(output_folder), exist_ok=True)
     response = requests.get(url)
@@ -40,7 +42,8 @@ def load_few_nerd_dataset(dataset_name: str):
         zip_ref.extractall(output_folder)
     os.remove(output_file)
 
-def get_annotations(dataset_name : str):
+
+def get_annotations(dataset_name: str):
     annotations_file = get_annotations_file(dataset_name)
     annotations = None
 
@@ -52,27 +55,30 @@ def get_annotations(dataset_name : str):
 
     return annotations
 
+
 def save_annotations(annotations: dict, annotations_file: str):
     with open(annotations_file, "w", encoding="utf-8") as f:
         json.dump(annotations, f, indent=4)
 
 
 def get_annotations_file(dataset_name: str):
-    annotations_directory = os.path.join(env['annotations_path'], dataset_name, 'supervised' )
+    annotations_directory = os.path.join(env["annotations_path"], dataset_name, "supervised")
     os.makedirs(annotations_directory, exist_ok=True)
     return os.path.join(annotations_directory, "annotations.json")
-     
+
+
 def load_annotations(dataset_name: str):
-    with open(os.path.join(env['annotations_path'], dataset_name,'supervised' , 'annotations.json'), 'r') as f:
+    with open(os.path.join(env["annotations_path"], dataset_name, "supervised", "annotations.json"), "r") as f:
         annotations = json.load(f)
         return annotations
+
 
 def extract_annotations(dataset_name: str):
     annotations = {}
 
     if dataset_name == "few_nerd":
         data_folder = os.path.join(env["data_path"], dataset_name)
-        with open(os.path.join(data_folder, 'train.txt'), "r", encoding="utf-8") as f:
+        with open(os.path.join(data_folder, "train.txt"), "r", encoding="utf-8") as f:
             for line in f:
                 fields = line.strip().split("\t")
                 if len(fields) > 1:
@@ -92,10 +98,8 @@ def extract_annotations(dataset_name: str):
     annotations_file = get_annotations_file(dataset_name)
     save_annotations(annotations, annotations_file)
     logger.info(f"Extracted and saved annotations for dataset: {dataset_name}")
-    
+
     return annotations
-
-
 
 
 def extract_segments(dataset_name: str):
@@ -145,12 +149,12 @@ def extract_segments(dataset_name: str):
 
     save_segments(entries, get_segments_file(dataset_name))
     logger.info(f"Extracted and saved segments for dataset: {dataset_name}")
-    
+
     return entries
 
 
 def get_segments_file(dataset_name: str):
-    segments_directory = os.path.join(env['segments_path'], dataset_name, 'supervised' )
+    segments_directory = os.path.join(env["segments_path"], dataset_name, "supervised")
     os.makedirs(segments_directory, exist_ok=True)
     return os.path.join(segments_directory, "segments.json")
 
@@ -166,21 +170,23 @@ def get_segments(dataset_name: str, offset: int = 0, page_size: int = None):
         segments_data = extract_segments(dataset_name)
 
     if page_size is not None:
-        segments_data = segments_data[offset:offset+page_size] # slice the segments list according to offset and page_size
+        segments_data = segments_data[offset : offset + page_size]  # slice the segments list according to offset and page_size
 
     return segments_data
 
 
 def load_segments(segments_file):
-    with open(segments_file, 'r') as file:
+    with open(segments_file, "r") as file:
         segment_data = json.load(file)
     return segment_data
 
+
 def save_segments(segments_data, segments_file: str):
-    with open(segments_file, 'w') as file:
+    with open(segments_file, "w") as file:
         json.dump(segments_data, file)
 
-'''
+
+"""
 def extract_annotations(dataset: str):
     # Your implementation
 
@@ -192,4 +198,4 @@ def load_annotations(dataset: str):
 
 def get_annotations(dataset: str):
     # Your implementation
-'''
+"""

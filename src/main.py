@@ -21,9 +21,9 @@ from data.router import router as data_router
 
 app = FastAPI()
 app.include_router(data_router)
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-model = BertModel.from_pretrained('bert-base-uncased').to(device)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+model = BertModel.from_pretrained("bert-base-uncased").to(device)
 models = {}
 embeddings_2d_bert = None
 
@@ -45,16 +45,19 @@ class ModelConfig(BaseModel):
     representation_model: Optional[Any]
     verbose: bool
 
+
 class EmbeddingConfig(BaseModel):
     n_neighbors: int
     n_components: int
     metric: str
     random_state: int
 
+
 class ClusterConfig(BaseModel):
     min_cluster_size: int
     metric: str
     cluster_selection_method: str
+
 
 class ConfigModel(BaseModel):
     name: str = "default"
@@ -66,13 +69,14 @@ class ConfigModel(BaseModel):
 # Environment variables
 env = {}
 
-with open('../env.json') as f:
+with open("../env.json") as f:
     env = json.load(f)
 
 # Load configurations from file or use default if file does not exist
 if os.path.exists(env["configs"]):
-    with open(env["configs"], 'r') as f:
+    with open(env["configs"], "r") as f:
         config = json.load(f)
+
 
 class ConfigManager:
     def __init__(self, config_file):
@@ -82,12 +86,13 @@ class ConfigManager:
 
     def load_configs(self):
         if os.path.exists(self.config_file):
-            with open(self.config_file, 'r') as f:
+            with open(self.config_file, "r") as f:
                 self.configs = json.load(f)
 
     def save_configs(self):
-        with open(self.config_file, 'w') as f:
+        with open(self.config_file, "w") as f:
             json.dump(self.configs, f, indent=4)
+
 
 config_manager = ConfigManager(env["configs"])
 
@@ -108,24 +113,17 @@ config = ConfigModel(
         vectorizer_model=None,
         ctfidf_model=None,
         representation_model=None,
-        verbose=False
+        verbose=False,
     ),
-    embedding_config=EmbeddingConfig(
-        n_neighbors=15,
-        n_components=2,
-        metric="cosine",
-        random_state=42
-    ),
-    cluster_config=ClusterConfig(
-        min_cluster_size=15,
-        metric="euclidean",
-        cluster_selection_method="eom"
-    )
+    embedding_config=EmbeddingConfig(n_neighbors=15, n_components=2, metric="cosine", random_state=42),
+    cluster_config=ClusterConfig(min_cluster_size=15, metric="euclidean", cluster_selection_method="eom"),
 )
+
 
 @app.get("/")
 def read_root():
     return {"Hello": "BERTopic API"}
+
 
 @app.post("/config", response_model=ConfigModel)
 def create_config(config: ConfigModel):
@@ -141,9 +139,11 @@ def get_config(name: str):
     else:
         return {"message": f"Config '{name}' does not exist."}
 
+
 @app.get("/configs")
 def get_all_configs():
     return config_manager.configs
+
 
 @app.put("/config/{name}")
 def update_config(name: str, config: ConfigModel):
@@ -153,6 +153,7 @@ def update_config(name: str, config: ConfigModel):
         return {"message": f"Config '{name}' updated successfully."}
     else:
         return {"message": f"Config '{name}' does not exist."}
+
 
 @app.delete("/config/{name}")
 def delete_config(name: str):
@@ -172,61 +173,68 @@ def delete_config(name: str):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def save_embeddings(embeddings: np.ndarray, file_name: str):
-    with open(file_name, 'w') as f:
+    with open(file_name, "w") as f:
         json.dump(embeddings.tolist(), f)
 
+
 def load_embeddings(file_name: str) -> np.ndarray:
-    with open(file_name, 'r') as f:
+    with open(file_name, "r") as f:
         embeddings_list = json.load(f)
         return np.array(embeddings_list)
 
+
 def load_positions(positions_file):
-    with open(positions_file, 'r') as file:
+    with open(positions_file, "r") as file:
         positions_data = json.load(file)
     return positions_data
 
+
 def save_positions(positions_data, positions_file):
-    with open(positions_file, 'w') as file:
+    with open(positions_file, "w") as file:
         json.dump(positions_data, file)
+
 
 def load_model(dataset_name: str, data: list = Depends(get_data)):
     global models
     if dataset_name in models:
         return models[dataset_name]
-    
-    model_path = os.path.join(env['model_path'], dataset_name)
+
+    model_path = os.path.join(env["model_path"], dataset_name)
     os.makedirs(model_path, exist_ok=True)
-    
-    if not os.path.exists(os.path.join(model_path, 'BERTopic')):
+
+    if not os.path.exists(os.path.join(model_path, "BERTopic")):
         model = BERTopic(**config.model_config.dict())
         topics, probs = model.fit_transform(data)
-        model.save(os.path.join(model_path, 'BERTopic'))
+        model.save(os.path.join(model_path, "BERTopic"))
         models[dataset_name] = model
         logger.info(f"Model trained and saved for dataset: {dataset_name}")
         return model
     else:
-        model = BERTopic.load(os.path.join(model_path, 'BERTopic'))
+        model = BERTopic.load(os.path.join(model_path, "BERTopic"))
         models[dataset_name] = model
         logger.info(f"Loaded model from file for dataset: {dataset_name}")
         return model
 
+
 def get_embeddings_file(dataset_name: str):
-    embeddings_directory = os.path.join(env['embeddings_path'], dataset_name)
+    embeddings_directory = os.path.join(env["embeddings_path"], dataset_name)
     os.makedirs(embeddings_directory, exist_ok=True)
     return os.path.join(embeddings_directory, f"embeddings_{dataset_name}.json")
 
+
 def get_positions_file(dataset_name: str):
-    positions_directory = os.path.join(env['positions_path'], dataset_name)
+    positions_directory = os.path.join(env["positions_path"], dataset_name)
     os.makedirs(positions_directory, exist_ok=True)
     return os.path.join(positions_directory, f"positions_{dataset_name}.json")
 
 
-
 def get_clusters_file(dataset_name: str):
-    clusters_directory = os.path.join(env['clusters_path'], dataset_name)
+    clusters_directory = os.path.join(env["clusters_path"], dataset_name)
     os.makedirs(clusters_directory, exist_ok=True)
     return os.path.join(clusters_directory, f"clusters_{dataset_name}.json")
+
 
 def extract_embeddings(model, data):
     logger.info("Extracting embeddings for documents")
@@ -234,25 +242,30 @@ def extract_embeddings(model, data):
     umap_model = umap.UMAP(**config.embedding_config.dict())
     return umap_model.fit_transform(embeddings)
 
+
 def save_clusters(clusters: np.ndarray, file_name: str):
-    with open(file_name, 'w') as f:
+    with open(file_name, "w") as f:
         json.dump(clusters, f)
 
+
 def load_clusters(file_name: str) -> np.ndarray:
-    with open(file_name, 'r') as f:
+    with open(file_name, "r") as f:
         clusters_list = json.load(f)
         return np.array(clusters_list)
+
 
 @app.get("/load_model/{dataset_name}")
 def load_model_endpoint(dataset_name: str, model: BERTopic = Depends(load_model)):
     logger.info(f"Model loaded successfully for dataset: {dataset_name}")
     return {"message": f"{dataset_name} dataset loaded successfully"}
 
+
 @app.get("/topicinfo/{dataset_name}")
 def get_topic_info(dataset_name: str, model: BERTopic = Depends(load_model)):
     logger.info(f"Getting topic info for dataset: {dataset_name}")
     topic_info = model.get_topic_info()
     return {"topic_info": topic_info.to_dict()}
+
 
 @app.get("/embeddings/{dataset_name}")
 def get_embeddings(dataset_name: str, model: BERTopic = Depends(load_model), data: list = Depends(get_data)):
@@ -269,6 +282,7 @@ def get_embeddings(dataset_name: str, model: BERTopic = Depends(load_model), dat
 
     return embeddings_2d_bert.tolist()
 
+
 @app.get("/positions/{dataset_name}")
 def get_positions(dataset_name: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings), data: list = Depends(get_data)):
     positions_file = get_positions_file(dataset_name)
@@ -284,12 +298,8 @@ def get_positions(dataset_name: str, model: BERTopic = Depends(load_model), embe
     else:
         # Convert index, data, embedding, and topic to JSON structure
         positions_dict = {}
-        for index, (embedding, doc) in enumerate(zip(embeddings[:20], data[:20])): 
-            position = {
-                "data": doc,
-                "position": embedding,
-                "topic_index": np.array(model.transform([str(embedding)]))[0].tolist()
-            }
+        for index, (embedding, doc) in enumerate(zip(embeddings[:20], data[:20])):
+            position = {"data": doc, "position": embedding, "topic_index": np.array(model.transform([str(embedding)]))[0].tolist()}
             positions_dict[str(index)] = position
 
         save_positions(positions_dict, positions_file)
@@ -299,6 +309,7 @@ def get_positions(dataset_name: str, model: BERTopic = Depends(load_model), embe
 
     logger.info(f"Retrieved positions for dataset: {dataset_name}")
     return {"positions": positions}
+
 
 @app.get("/clusters/{dataset_name}")
 def get_clusters(dataset_name: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings)):
@@ -321,8 +332,7 @@ def get_clusters(dataset_name: str, model: BERTopic = Depends(load_model), embed
         logger.info(f"Computed and saved clusters for dataset: {dataset_name}")
 
     return {"clusters": list(clusters)}
-   
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=env['host'], port=env['port'])
+    uvicorn.run(app, host=env["host"], port=env["port"])
