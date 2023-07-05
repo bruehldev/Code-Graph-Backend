@@ -184,18 +184,3 @@ def load_segments(segments_file):
 def save_segments(segments_data, segments_file: str):
     with open(segments_file, "w") as file:
         json.dump(segments_data, file)
-
-
-"""
-def extract_annotations(dataset: str):
-    # Your implementation
-
-def extract_segments(dataset: str):
-    # Your implementation
-
-def load_annotations(dataset: str):
-    # Your implementation
-
-def get_annotations(dataset: str):
-    # Your implementation
-"""
