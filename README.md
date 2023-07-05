@@ -5,18 +5,14 @@ This is a FastAPI-based API that provides topic modeling and sentence embedding 
 ## Requirements
 
 - Python 3.10.11
-- Conda (or pip) for package management
+- Conda for package management
 
 ## Usage
 
 1. Install the required packages by running the following command:
    - Using conda:
      ```
-     conda create --name CodeGraph --file requirements.txt
-     ```
-   - Using pip:
-     ```
-     pip install -r requirements.txt
+     conda env create --name CodeGraph --file environment.yml
      ```
 
 2. Start the server using the following command:
