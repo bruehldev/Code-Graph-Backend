@@ -21,7 +21,7 @@ def get_data(dataset_name: str, offset: int = 0, page_size: int = None) -> list:
     elif dataset_name == "few_nerd":
         data_path = os.path.join(env["data_path"], dataset_name)
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
-        with open(os.path.join(data_path, "train.txt"), "r", encoding="utf8") as f:
+        with open(os.path.join(data_path, "supervised", "train.txt"), "r", encoding="utf8") as f:
             data = [doc.strip() for doc in f.readlines() if doc.strip()]
     else:
         data = None
@@ -31,7 +31,7 @@ def get_data(dataset_name: str, offset: int = 0, page_size: int = None) -> list:
 
 
 def load_few_nerd_dataset(dataset_name: str):
-    url = "https://cloud.tsinghua.edu.cn/f/09265750ae6340429827/?dl=1"
+    url = "https://huggingface.co/datasets/DFKI-SLT/few-nerd/resolve/main/data/supervised.zip"
     output_folder = os.path.join(env["data_path"], dataset_name)
     output_file = os.path.join(output_folder, "supervised.zip")
     os.makedirs(os.path.dirname(output_folder), exist_ok=True)
@@ -78,7 +78,7 @@ def extract_annotations(dataset_name: str):
 
     if dataset_name == "few_nerd":
         data_folder = os.path.join(env["data_path"], dataset_name)
-        with open(os.path.join(data_folder, "train.txt"), "r", encoding="utf-8") as f:
+        with open(os.path.join(data_folder, "supervised", "train.txt"), "r", encoding="utf-8") as f:
             for line in f:
                 fields = line.strip().split("\t")
                 if len(fields) > 1:
@@ -110,7 +110,7 @@ def extract_segments(dataset_name: str):
         data_folder = os.path.join(env["data_path"], dataset_name)
 
         os.makedirs(segments_folder, exist_ok=True)
-        with open(os.path.join(data_folder, "train.txt"), "r", encoding="utf8") as f:
+        with open(os.path.join(data_folder, "supervised", "train.txt"), "r", encoding="utf8") as f:
             sentence = ""
             segment = ""
             segment_list = []
