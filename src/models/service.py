@@ -6,6 +6,8 @@ from fastapi import Depends
 from typing import List
 from data.service import get_data
 import logging
+import torch
+from transformers import BertTokenizer, BertModel
 
 from configmanager.service import ConfigManager
 from bertopic import BERTopic
@@ -19,6 +21,10 @@ config_manager = ConfigManager(env["configs"])
 config = config_manager.get_default_model()
 
 models = {}
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+model = BertModel.from_pretrained("bert-base-uncased").to(device)
+embeddings_2d_bert = None
 
 
 def load_model(dataset_name: str, data: list = Depends(get_data)):
