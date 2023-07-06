@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 env = {}
 with open("../env.json") as f:
     env = json.load(f)
+
 config_manager = ConfigManager(env["configs"])
 config = config_manager.get_default_model()
 
