@@ -11,13 +11,20 @@ import logging
 import hdbscan
 
 from data.service import *
-from data.router import router as data_router
-from configmanager.service import ConfigManager
 from models.service import *
+from configmanager.service import ConfigManager
+from embeddings.service import *
 
+
+from data.router import router as data_router
+from models.router import router as model_router
+from configmanager.router import router as config_router
 
 app = FastAPI()
 app.include_router(data_router)
+app.include_router(model_router)
+app.include_router(config_router)
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 model = BertModel.from_pretrained("bert-base-uncased").to(device)
@@ -47,17 +54,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def save_embeddings(embeddings: np.ndarray, file_name: str):
-    with open(file_name, "w") as f:
-        json.dump(embeddings.tolist(), f)
-
-
-def load_embeddings(file_name: str) -> np.ndarray:
-    with open(file_name, "r") as f:
-        embeddings_list = json.load(f)
-        return np.array(embeddings_list)
-
-
 def load_positions(positions_file):
     with open(positions_file, "r") as file:
         positions_data = json.load(file)
@@ -67,12 +63,6 @@ def load_positions(positions_file):
 def save_positions(positions_data, positions_file):
     with open(positions_file, "w") as file:
         json.dump(positions_data, file)
-
-
-def get_embeddings_file(dataset_name: str):
-    embeddings_directory = os.path.join(env["embeddings_path"], dataset_name)
-    os.makedirs(embeddings_directory, exist_ok=True)
-    return os.path.join(embeddings_directory, f"embeddings_{dataset_name}.json")
 
 
 def get_positions_file(dataset_name: str):
@@ -85,13 +75,6 @@ def get_clusters_file(dataset_name: str):
     clusters_directory = os.path.join(env["clusters_path"], dataset_name)
     os.makedirs(clusters_directory, exist_ok=True)
     return os.path.join(clusters_directory, f"clusters_{dataset_name}.json")
-
-
-def extract_embeddings(model, data):
-    logger.info("Extracting embeddings for documents")
-    embeddings = model._extract_embeddings(data)
-    umap_model = umap.UMAP(**config.embedding_config.dict())
-    return umap_model.fit_transform(embeddings)
 
 
 def save_clusters(clusters: np.ndarray, file_name: str):
