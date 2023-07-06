@@ -1,7 +1,6 @@
 # saved models / data / resulsts / embeddings
 exported/
 data/
-models/
 embeddings/
 positions/
 clusters/

@@ -9,9 +9,12 @@ from bertopic import BERTopic
 from transformers import BertTokenizer, BertModel
 import logging
 import hdbscan
+
 from data.service import *
 from data.router import router as data_router
 from configmanager.service import ConfigManager
+from models.service import *
+
 
 app = FastAPI()
 app.include_router(data_router)
@@ -66,28 +69,6 @@ def save_positions(positions_data, positions_file):
         json.dump(positions_data, file)
 
 
-def load_model(dataset_name: str, data: list = Depends(get_data)):
-    global models
-    if dataset_name in models:
-        return models[dataset_name]
-
-    model_path = os.path.join(env["model_path"], dataset_name)
-    os.makedirs(model_path, exist_ok=True)
-
-    if not os.path.exists(os.path.join(model_path, "BERTopic")):
-        model = BERTopic(**config.model_config.dict())
-        topics, probs = model.fit_transform(data)
-        model.save(os.path.join(model_path, "BERTopic"))
-        models[dataset_name] = model
-        logger.info(f"Model trained and saved for dataset: {dataset_name}")
-        return model
-    else:
-        model = BERTopic.load(os.path.join(model_path, "BERTopic"))
-        models[dataset_name] = model
-        logger.info(f"Loaded model from file for dataset: {dataset_name}")
-        return model
-
-
 def get_embeddings_file(dataset_name: str):
     embeddings_directory = os.path.join(env["embeddings_path"], dataset_name)
     os.makedirs(embeddings_directory, exist_ok=True)
@@ -122,12 +103,6 @@ def load_clusters(file_name: str) -> np.ndarray:
     with open(file_name, "r") as f:
         clusters_list = json.load(f)
         return np.array(clusters_list)
-
-
-@app.get("/load_model/{dataset_name}")
-def load_model_endpoint(dataset_name: str, model: BERTopic = Depends(load_model)):
-    logger.info(f"Model loaded successfully for dataset: {dataset_name}")
-    return {"message": f"{dataset_name} dataset loaded successfully"}
 
 
 @app.get("/topicinfo/{dataset_name}")
