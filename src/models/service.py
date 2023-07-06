@@ -18,6 +18,8 @@ with open("../env.json") as f:
 config_manager = ConfigManager(env["configs"])
 config = config_manager.get_default_model()
 
+models = {}
+
 
 def load_model(dataset_name: str, data: list = Depends(get_data)):
     global models

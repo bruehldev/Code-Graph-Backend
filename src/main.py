@@ -1,9 +1,6 @@
 import json
-import torch
 import uvicorn
-import numpy as np
-from fastapi import Depends, FastAPI
-from transformers import BertTokenizer, BertModel
+from fastapi import FastAPI
 import logging
 
 from data.service import *
@@ -27,12 +24,6 @@ app.include_router(config_router)
 app.include_router(embeddings_router)
 app.include_router(clusters_router)
 app.include_router(plot_router)
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-model = BertModel.from_pretrained("bert-base-uncased").to(device)
-models = {}
-embeddings_2d_bert = None
 
 
 # Environment variables
