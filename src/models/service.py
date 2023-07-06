@@ -39,3 +39,9 @@ def load_model(dataset_name: str, data: list = Depends(get_data)):
         models[dataset_name] = model
         logger.info(f"Loaded model from file for dataset: {dataset_name}")
         return model
+
+
+def get_topic_info(dataset_name: str, model: BERTopic = Depends(load_model)):
+    logger.info(f"Getting topic info for dataset: {dataset_name}")
+    topic_info = model.get_topic_info()
+    return topic_info
