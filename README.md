@@ -17,6 +17,7 @@ This is a FastAPI-based API that provides topic modeling and sentence embedding 
 
 2. Start the server using the following command:
 ```
+cd src
 uvicorn main:app --reload
 ```
 
