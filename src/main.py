@@ -8,7 +8,6 @@ from fastapi import Depends, FastAPI
 from bertopic import BERTopic
 from transformers import BertTokenizer, BertModel
 import logging
-import hdbscan
 
 from data.service import *
 from models.service import *
@@ -19,11 +18,16 @@ from embeddings.service import *
 from data.router import router as data_router
 from models.router import router as model_router
 from configmanager.router import router as config_router
+from embeddings.router import router as embeddings_router
+from clusters.router import router as clusters_router
+
 
 app = FastAPI()
 app.include_router(data_router)
 app.include_router(model_router)
 app.include_router(config_router)
+app.include_router(embeddings_router)
+app.include_router(clusters_router)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
@@ -71,46 +75,6 @@ def get_positions_file(dataset_name: str):
     return os.path.join(positions_directory, f"positions_{dataset_name}.json")
 
 
-def get_clusters_file(dataset_name: str):
-    clusters_directory = os.path.join(env["clusters_path"], dataset_name)
-    os.makedirs(clusters_directory, exist_ok=True)
-    return os.path.join(clusters_directory, f"clusters_{dataset_name}.json")
-
-
-def save_clusters(clusters: np.ndarray, file_name: str):
-    with open(file_name, "w") as f:
-        json.dump(clusters, f)
-
-
-def load_clusters(file_name: str) -> np.ndarray:
-    with open(file_name, "r") as f:
-        clusters_list = json.load(f)
-        return np.array(clusters_list)
-
-
-@app.get("/topicinfo/{dataset_name}")
-def get_topic_info(dataset_name: str, model: BERTopic = Depends(load_model)):
-    logger.info(f"Getting topic info for dataset: {dataset_name}")
-    topic_info = model.get_topic_info()
-    return {"topic_info": topic_info.to_dict()}
-
-
-@app.get("/embeddings/{dataset_name}")
-def get_embeddings(dataset_name: str, model: BERTopic = Depends(load_model), data: list = Depends(get_data)):
-    global embeddings_2d_bert
-    embeddings_file = get_embeddings_file(dataset_name)
-
-    if os.path.exists(embeddings_file):
-        embeddings_2d_bert = load_embeddings(embeddings_file)
-        logger.info(f"Loaded embeddings from file for dataset: {dataset_name}")
-    else:
-        embeddings_2d_bert = extract_embeddings(model, data)
-        save_embeddings(embeddings_2d_bert, embeddings_file)
-        logger.info(f"Computed and saved embeddings for dataset: {dataset_name}")
-
-    return embeddings_2d_bert.tolist()
-
-
 @app.get("/positions/{dataset_name}")
 def get_positions(dataset_name: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings), data: list = Depends(get_data)):
     positions_file = get_positions_file(dataset_name)
@@ -137,29 +101,6 @@ def get_positions(dataset_name: str, model: BERTopic = Depends(load_model), embe
 
     logger.info(f"Retrieved positions for dataset: {dataset_name}")
     return {"positions": positions}
-
-
-@app.get("/clusters/{dataset_name}")
-def get_clusters(dataset_name: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings)):
-    logger.info(f"Getting clusters for dataset: {dataset_name}")
-    clusters_file = get_clusters_file(dataset_name)
-
-    if os.path.exists(clusters_file):
-        clusters = load_clusters(clusters_file)
-        clusters = np.atleast_1d(clusters)
-        logger.info(f"Loaded clusters from file for dataset: {dataset_name}")
-        # TODO Fix clusters not being a list but a string
-    else:
-        clusterer = hdbscan.HDBSCAN(**config.cluster_config.dict())
-        clusters = clusterer.fit_predict(embeddings)
-        # convert the clusters to a JSON serializable format
-        clusters = [int(c) for c in clusterer.labels_]
-        # serialize the clusters to JSON
-        json_clusters = json.dumps(clusters)
-        save_clusters(json_clusters, clusters_file)
-        logger.info(f"Computed and saved clusters for dataset: {dataset_name}")
-
-    return {"clusters": list(clusters)}
 
 
 if __name__ == "__main__":
