@@ -3,21 +3,15 @@ import json
 import torch
 import umap
 import uvicorn
-import requests
-import zipfile
-import io
 import numpy as np
-from fastapi import Depends, FastAPI, APIRouter
+from fastapi import Depends, FastAPI
 from bertopic import BERTopic
-from sklearn.datasets import fetch_20newsgroups
 from transformers import BertTokenizer, BertModel
 import logging
 import hdbscan
-from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional
-import ast
 from data.service import *
 from data.router import router as data_router
+from configmanager.service import ConfigManager
 
 app = FastAPI()
 app.include_router(data_router)
@@ -28,146 +22,22 @@ models = {}
 embeddings_2d_bert = None
 
 
-class ModelConfig(BaseModel):
-    language: str
-    top_n_words: int
-    n_gram_range: tuple[int, int]
-    min_topic_size: int
-    nr_topics: Optional[int]
-    low_memory: bool
-    calculate_probabilities: bool
-    seed_topic_list: Optional[Any]
-    embedding_model: Optional[Any]
-    umap_model: Optional[Any]
-    hdbscan_model: Optional[Any]
-    vectorizer_model: Optional[Any]
-    ctfidf_model: Optional[Any]
-    representation_model: Optional[Any]
-    verbose: bool
-
-
-class EmbeddingConfig(BaseModel):
-    n_neighbors: int
-    n_components: int
-    metric: str
-    random_state: int
-
-
-class ClusterConfig(BaseModel):
-    min_cluster_size: int
-    metric: str
-    cluster_selection_method: str
-
-
-class ConfigModel(BaseModel):
-    name: str = "default"
-    model_config: ModelConfig
-    embedding_config: EmbeddingConfig
-    cluster_config: ClusterConfig
-
-
 # Environment variables
 env = {}
 
 with open("../env.json") as f:
     env = json.load(f)
 
-# Load configurations from file or use default if file does not exist
-if os.path.exists(env["configs"]):
-    with open(env["configs"], "r") as f:
-        config = json.load(f)
-
-
-class ConfigManager:
-    def __init__(self, config_file):
-        self.config_file = config_file
-        self.configs = {}
-        self.load_configs()
-
-    def load_configs(self):
-        if os.path.exists(self.config_file):
-            with open(self.config_file, "r") as f:
-                self.configs = json.load(f)
-
-    def save_configs(self):
-        with open(self.config_file, "w") as f:
-            json.dump(self.configs, f, indent=4)
-
+from configmanager.service import ConfigManager
 
 config_manager = ConfigManager(env["configs"])
-
-config = ConfigModel(
-    name="default",
-    model_config=ModelConfig(
-        language="english",
-        top_n_words=10,
-        n_gram_range=(1, 1),
-        min_topic_size=10,
-        nr_topics=None,
-        low_memory=False,
-        calculate_probabilities=False,
-        seed_topic_list=None,
-        embedding_model=None,
-        umap_model=None,
-        hdbscan_model=None,
-        vectorizer_model=None,
-        ctfidf_model=None,
-        representation_model=None,
-        verbose=False,
-    ),
-    embedding_config=EmbeddingConfig(n_neighbors=15, n_components=2, metric="cosine", random_state=42),
-    cluster_config=ClusterConfig(min_cluster_size=15, metric="euclidean", cluster_selection_method="eom"),
-)
+config = config_manager.get_default_model()
 
 
 @app.get("/")
 def read_root():
     return {"Hello": "BERTopic API"}
 
-
-@app.post("/config", response_model=ConfigModel)
-def create_config(config: ConfigModel):
-    config_manager.configs[config.name] = config.dict()
-    config_manager.save_configs()
-    return config
-
-
-@app.get("/config/{name}")
-def get_config(name: str):
-    if name in config_manager.configs:
-        return config_manager.configs[name]
-    else:
-        return {"message": f"Config '{name}' does not exist."}
-
-
-@app.get("/configs")
-def get_all_configs():
-    return config_manager.configs
-
-
-@app.put("/config/{name}")
-def update_config(name: str, config: ConfigModel):
-    if name in config_manager.configs:
-        config_manager.configs[name] = config.dict()
-        config_manager.save_configs()
-        return {"message": f"Config '{name}' updated successfully."}
-    else:
-        return {"message": f"Config '{name}' does not exist."}
-
-
-@app.delete("/config/{name}")
-def delete_config(name: str):
-    if name in config_manager.configs:
-        del config_manager.configs[name]
-        config_manager.save_configs()
-        return {"message": f"Config '{name}' deleted successfully."}
-    else:
-        return {"message": f"Config '{name}' does not exist."}
-
-
-# model_config source: https://github.com/MaartenGr/BERTopic/blob/master/bertopic/_bertopic.py
-# embedding_config source: https://github.com/lmcinnes/umap/blob/master/umap/umap_.py
-# cluster_config source: https://github.com/scikit-learn-contrib/hdbscan/blob/master/hdbscan/hdbscan_.py
 
 # Add logging configuration
 logging.basicConfig(level=logging.INFO)
