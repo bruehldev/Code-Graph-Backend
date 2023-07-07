@@ -5,10 +5,10 @@ from sklearn.datasets import fetch_20newsgroups
 import os
 import json
 import logging
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 env = {}
 with open("../env.json") as f:
@@ -184,3 +184,95 @@ def load_segments(segments_file):
 def save_segments(segments_data, segments_file: str):
     with open(segments_file, "w") as file:
         json.dump(segments_data, file)
+
+
+def extract_sentences_and_annotations(dataset_name: str):
+    sentences = []
+    annotations = []
+
+    if dataset_name == "few_nerd":
+        data_folder = os.path.join(env["data_path"], dataset_name)
+        with open(os.path.join(data_folder, "supervised", "train.txt"), "r", encoding="utf-8") as f:
+            data = pd.read_csv(f, delimiter="\t", header=None, names=["sentence", "annotation"], skip_blank_lines=False)
+
+            current_sentence = []
+            current_annotation = []
+
+            for row in data.itertuples(index=False):
+                sentence, annotation = row.sentence, row.annotation
+                if pd.isna(sentence):
+                    if current_sentence:
+                        sentences.append(" ".join(current_sentence))
+                        annotations.append(" ".join(current_annotation))
+                        current_sentence = []
+                        current_annotation = []
+                else:
+                    current_sentence.append(sentence)
+                    current_annotation.append(annotation)
+
+            if current_sentence:
+                sentences.append(" ".join(current_sentence))
+                annotations.append(" ".join(current_annotation))
+
+    save_sentences(sentences, get_sentences_file(dataset_name))
+    save_annotations(annotations, get_annotations_file(dataset_name))
+
+    logger.info(f"Extracted and saved sentences and annotations for dataset: {dataset_name}")
+
+    return sentences, annotations
+
+
+def get_sentences_file(dataset_name: str):
+    sentences_directory = os.path.join(env["sentences_path"], dataset_name, "supervised")
+    os.makedirs(sentences_directory, exist_ok=True)
+    return os.path.join(sentences_directory, "sentences.json")
+
+
+def get_annotations_file(dataset_name: str):
+    annotations_directory = os.path.join(env["annotations_path"], dataset_name, "supervised")
+    os.makedirs(annotations_directory, exist_ok=True)
+    return os.path.join(annotations_directory, "annotations.json")
+
+
+def get_sentences(dataset_name: str, offset: int = 0, page_size: int = None):
+    sentences_file = get_sentences_file(dataset_name)
+    sentences_data = None
+
+    if os.path.exists(sentences_file):
+        with open(sentences_file, "r") as file:
+            sentences_data = json.load(file)
+        logger.info(f"Loaded sentences from file for dataset: {dataset_name}")
+    else:
+        sentences_data, _ = extract_sentences_and_annotations(dataset_name)
+
+    if page_size is not None:
+        sentences_data = sentences_data[offset : offset + page_size]
+
+    return sentences_data
+
+
+def get_annotations(dataset_name: str, offset: int = 0, page_size: int = None):
+    annotations_file = get_annotations_file(dataset_name)
+    annotations_data = None
+
+    if os.path.exists(annotations_file):
+        with open(annotations_file, "r") as file:
+            annotations_data = json.load(file)
+        logger.info(f"Loaded annotations from file for dataset: {dataset_name}")
+    else:
+        _, annotations_data = extract_sentences_and_annotations(dataset_name)
+
+    if page_size is not None:
+        annotations_data = annotations_data[offset : offset + page_size]
+
+    return annotations_data
+
+
+def save_sentences(sentences_data, sentences_file: str):
+    with open(sentences_file, "w") as file:
+        json.dump(sentences_data, file)
+
+
+def save_annotations(annotations_data, annotations_file: str):
+    with open(annotations_file, "w") as file:
+        json.dump(annotations_data, file)

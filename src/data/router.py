@@ -11,7 +11,10 @@ from data.service import (
     extract_annotations_keys,
     extract_segments,
     get_segments,
-    get_annotations_keys
+    get_annotations_keys,
+    get_sentences,
+    get_annotations,
+    extract_sentences_and_annotations,
 )
 
 from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
@@ -57,3 +60,25 @@ def get_segments_route(dataset_name: Dataset_names, offset: int = 0, page_size: 
 def get_annotations_keys_route(dataset_name: Dataset_names):
     annotations = get_annotations_keys(dataset_name)
     return {"annotations": annotations}
+
+
+@router.get("/sentences/{dataset_name}")
+def get_sentences_route(dataset_name: Dataset_names, offset: int = 0, page_size: int = None):
+    if page_size is None:
+        page_size = env.get("default_limit")
+    sentences = get_sentences(dataset_name, offset=offset, page_size=page_size)
+    return {"sentences": sentences}
+
+
+@router.get("/annotations/{dataset_name}")
+def get_annotations_route(dataset_name: Dataset_names, offset: int = 0, page_size: int = None):
+    if page_size is None:
+        page_size = env.get("default_limit")
+    annotations = get_annotations(dataset_name, offset=offset, page_size=page_size)
+    return {"annotations": annotations}
+
+
+@router.get("/extract-sentences-and-annotations/{dataset_name}")
+def extract_sentences_and_annotations_route(dataset_name: Dataset_names):
+    extract_sentences_and_annotations(dataset_name)
+    return {"message": "Sentences and annotations extracted successfully"}
