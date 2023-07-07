@@ -43,37 +43,37 @@ def load_few_nerd_dataset(dataset_name: str):
     os.remove(output_file)
 
 
-def get_annotations(dataset_name: str):
-    annotations_file = get_annotations_file(dataset_name)
+def get_annotations_keys(dataset_name: str):
+    annotations_file = get_annotations_keys_file(dataset_name)
     annotations = None
 
     if os.path.exists(annotations_file):
-        annotations = load_annotations(dataset_name)
+        annotations = load_annotations_keys(dataset_name)
         logger.info(f"Loaded annotations from file for dataset: {dataset_name}")
     else:
-        annotations = extract_annotations(dataset_name)
+        annotations = extract_annotations_keys(dataset_name)
 
     return annotations
 
 
-def save_annotations(annotations: dict, annotations_file: str):
+def save_annotations_keys(annotations: dict, annotations_file: str):
     with open(annotations_file, "w", encoding="utf-8") as f:
         json.dump(annotations, f, indent=4)
 
 
-def get_annotations_file(dataset_name: str):
-    annotations_directory = os.path.join(env["annotations_path"], dataset_name, "supervised")
+def get_annotations_keys_file(dataset_name: str):
+    annotations_directory = os.path.join(env["annotations_keys_path"], dataset_name, "supervised")
     os.makedirs(annotations_directory, exist_ok=True)
     return os.path.join(annotations_directory, "annotations.json")
 
 
-def load_annotations(dataset_name: str):
-    with open(os.path.join(env["annotations_path"], dataset_name, "supervised", "annotations.json"), "r") as f:
+def load_annotations_keys(dataset_name: str):
+    with open(os.path.join(env["annotations_keys_path"], dataset_name, "supervised", "annotations.json"), "r") as f:
         annotations = json.load(f)
         return annotations
 
 
-def extract_annotations(dataset_name: str):
+def extract_annotations_keys(dataset_name: str):
     annotations = {}
 
     if dataset_name == "few_nerd":
@@ -95,8 +95,8 @@ def extract_annotations(dataset_name: str):
                         nested_obj = nested_obj.setdefault(category, {})
                     nested_obj.setdefault(last_categories[-1], {})
 
-    annotations_file = get_annotations_file(dataset_name)
-    save_annotations(annotations, annotations_file)
+    annotations_file = get_annotations_keys_file(dataset_name)
+    save_annotations_keys(annotations, annotations_file)
     logger.info(f"Extracted and saved annotations for dataset: {dataset_name}")
 
     return annotations
@@ -170,7 +170,7 @@ def get_segments(dataset_name: str, offset: int = 0, page_size: int = None):
         segments_data = extract_segments(dataset_name)
 
     if page_size is not None:
-        segments_data = segments_data[offset : offset + page_size]  # slice the segments list according to offset and page_size
+        segments_data = segments_data[offset : offset + page_size]
 
     return segments_data
 
