@@ -79,78 +79,30 @@ def extract_annotations_keys(dataset_name: str):
     if dataset_name == "few_nerd":
         data_folder = os.path.join(env["data_path"], dataset_name)
         with open(os.path.join(data_folder, "supervised", "train.txt"), "r", encoding="utf-8") as f:
+            key_id = 1
             for line in f:
                 fields = line.strip().split("\t")
                 if len(fields) > 1:
                     annotation = fields[1]
                     categories = annotation.split("-")
 
-                    nested_obj = annotations
-                    for category in categories[:-1]:
-                        nested_obj = nested_obj.setdefault(category, {})
-
                     last_category = categories[-1]
-                    last_categories = last_category.split("/")
-                    for category in last_categories[:-1]:
-                        nested_obj = nested_obj.setdefault(category, {})
-                    nested_obj.setdefault(last_categories[-1], {})
+                    last_category_parts = last_category.split("/")
+                    categories = categories[:-1] + last_category_parts
+                    nested_obj = annotations
+                    for category in categories:
+                        subcategories = nested_obj.setdefault(category, {})
+                        subcategories.setdefault("id", key_id)
+                        subcategories.setdefault("name", category)
+                        subcategories.setdefault("subcategories", {})
+                        nested_obj = subcategories.setdefault("subcategories", {})
+                        key_id += 1
 
     annotations_file = get_annotations_keys_file(dataset_name)
     save_annotations_keys(annotations, annotations_file)
     logger.info(f"Extracted and saved annotations for dataset: {dataset_name}")
 
     return annotations
-
-
-def extract_segments(dataset_name: str):
-    entries = []
-
-    if dataset_name == "few_nerd":
-        segments_folder = os.path.join(env["segments_path"], dataset_name, "supervised")
-        data_folder = os.path.join(env["data_path"], dataset_name)
-
-        os.makedirs(segments_folder, exist_ok=True)
-        with open(os.path.join(data_folder, "supervised", "train.txt"), "r", encoding="utf8") as f:
-            sentence = ""
-            segment = ""
-            segment_list = []
-            cur_annotation = None
-            pos = 0
-            for line in f:
-                line = line.strip()
-                if line:
-                    word, annotation = line.split()
-                    sentence += " " + word
-                    if annotation != "O":
-                        segment += " " + word
-                        if annotation != cur_annotation:
-                            cur_annotation = annotation
-                            position = pos
-                    else:
-                        if segment:
-                            segment = segment.lstrip()
-                            segment_list.append((segment, cur_annotation, position))
-                            segment = ""
-                            cur_annotation = None
-                    pos = pos + 1
-                else:
-                    for i in segment_list:
-                        sentence = sentence.lstrip()
-                        entry = {
-                            "sentence": sentence,
-                            "segment": i[0],
-                            "annotation": i[1],
-                            "position": i[2],
-                        }
-                        entries.append(entry)
-                    pos = 0
-                    segment_list = []
-                    sentence = ""
-
-    save_segments(entries, get_segments_file(dataset_name))
-    logger.info(f"Extracted and saved segments for dataset: {dataset_name}")
-
-    return entries
 
 
 def get_segments_file(dataset_name: str):
@@ -185,6 +137,52 @@ def save_segments(segments_data, segments_file: str):
     with open(segments_file, "w") as file:
         json.dump(segments_data, file)
 
+def extract_segments(dataset_name: str):
+    entries = []
+
+    if dataset_name == "few_nerd":
+        segments_folder = os.path.join(env["segments_path"], dataset_name, "supervised")
+        data_folder = os.path.join(env["data_path"], dataset_name)
+
+        os.makedirs(segments_folder, exist_ok=True)
+        with open(os.path.join(data_folder, "supervised", "train.txt"), "r", encoding="utf8") as f:
+            sentence = ""
+            segment = ""
+            segment_list = []
+            cur_annotation = None
+            for line in f:
+                line = line.strip()
+                if line:
+                    word, annotation = line.split()
+                    sentence += " " + word
+                    if annotation != "O":
+                        segment += " " + word
+                        if annotation != cur_annotation:
+                            cur_annotation = annotation
+                            position = sentence.index(word)
+                    else:
+                        if segment:
+                            segment = segment.lstrip()
+                            segment_list.append((segment, cur_annotation, position))
+                            segment = ""
+                            cur_annotation = None
+                else:
+                    for i in segment_list:
+                        sentence = sentence.lstrip()
+                        entry = {
+                            "sentence": sentence,
+                            "segment": i[0],
+                            "annotation": i[1],
+                            "position": i[2],
+                        }
+                        entries.append(entry)
+                    segment_list = []
+                    sentence = ""
+
+    save_segments(entries, get_segments_file(dataset_name))
+    logger.info(f"Extracted and saved segments for dataset: {dataset_name}")
+
+    return entries
 
 def extract_sentences_and_annotations(dataset_name: str):
     sentences = []
