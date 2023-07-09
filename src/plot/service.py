@@ -5,7 +5,7 @@ import logging
 from fastapi import Depends
 from typing import List
 from data.service import get_data
-from models.service import load_model
+from models.service import ModelService
 import logging
 import numpy as np
 from embeddings.service import get_embeddings
@@ -20,7 +20,8 @@ with open("../env.json") as f:
     env = json.load(f)
 
 
-def get_plot(dataset_name: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings), data: list = Depends(get_data)):
+def get_plot(dataset_name: str, model_names, embeddings: list = Depends(get_embeddings), data: list = Depends(get_data)):
+    model_service = ModelService(dataset_name, model_names)
     plot_file = get_plot_file(dataset_name)
 
     if os.path.exists(plot_file):
@@ -35,7 +36,7 @@ def get_plot(dataset_name: str, model: BERTopic = Depends(load_model), embedding
         # Convert index, data, embedding, and topic to JSON structure
         plot_dict = {}
         for index, (embedding, doc) in enumerate(zip(embeddings[:20], data[:20])):
-            plot = {"data": doc, "plot": embedding, "topic_index": np.array(model.transform([str(embedding)]))[0].tolist()}
+            plot = {"data": doc, "plot": embedding, "topic_index": np.array(model_service.model.transform([str(embedding)]))[0].tolist()}
             plot_dict[str(index)] = plot
 
         save_plot(plot_dict, plot_file)

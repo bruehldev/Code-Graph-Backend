@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
 from bertopic import BERTopic
-from data.schemas import Dataset_names, Experimental_dataset_names
-from models.service import load_model
 from plot.service import get_plot
+from data.schemas import Experimental_dataset_names
+from models.schemas import Model_names
 
 router = APIRouter()
 
 
-@router.get("/plot/{dataset_name}")
-def get_plot_endpoint(dataset_name: Experimental_dataset_names, model: BERTopic = Depends(load_model)):
-    return {"data": get_plot(dataset_name)}
+@router.get("data/{dataset_name}/model/{model_name}/plot/")
+def get_plot_endpoint(dataset_name: Experimental_dataset_names, model_names: Model_names):
+    return {"data": get_plot(dataset_name, model_names)}
