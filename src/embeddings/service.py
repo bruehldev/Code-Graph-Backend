@@ -63,12 +63,6 @@ def extract_embeddings(dataset_name, model_name):
     logger.info("Extracting embeddings for documents")
     if dataset_name == "few_nerd":
         embeddings = model_service.process_data(get_segments(dataset_name))
-
-        umap_model = umap.UMAP(**config.embedding_config.dict())
-        embeddings_reduced = umap_model.fit_transform(embeddings)
-        embeddings_file = get_reduced_embeddings_file(dataset_name)
-        save_reduced_embeddings(embeddings_reduced, embeddings_file)
-
         return embeddings
     elif dataset_name == "fetch_20newsgroups":
         embeddings = model_service.model(get_data(dataset_name))
@@ -93,3 +87,21 @@ def get_embeddings(dataset_name: str, model_name: str):
         embeddings_2d_bert = embeddings_2d_bert.tolist()
 
     return len(embeddings_2d_bert)
+
+
+def get_reduced_embeddings(dataset_name: str, model_name: str):
+    embeddings_file = get_reduced_embeddings_file(dataset_name)
+    embeddings_reduced = None
+    if os.path.exists(embeddings_file):
+        embeddings_reduced = load_reduced_embeddings(embeddings_file)
+        logger.info(f"Loaded embeddings from file for dataset: {dataset_name}")
+    else:
+        embeddings = get_embeddings(dataset_name, model_name)
+        umap_model = umap.UMAP(**config.embedding_config.dict())
+        embeddings_reduced = umap_model.fit_transform(embeddings)
+        embeddings_file = get_reduced_embeddings_file(dataset_name)
+        save_reduced_embeddings(embeddings_reduced, embeddings_file)
+
+        logger.info(f"Computed and saved embeddings for dataset: {dataset_name}")
+
+    return embeddings_reduced
