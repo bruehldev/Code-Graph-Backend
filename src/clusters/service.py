@@ -4,7 +4,7 @@ import json
 import logging
 from fastapi import Depends
 from typing import List
-from embeddings.service import get_embeddings
+from embeddings.service import get_reduced_embeddings
 import logging
 import numpy as np
 import hdbscan
@@ -39,8 +39,9 @@ def load_clusters(file_name: str) -> np.ndarray:
         return np.array(clusters_list)
 
 
-def get_clusters(dataset_name: str, embeddings: list = Depends(get_embeddings)):
+def get_clusters(dataset_name: str, model_name: str):
     logger.info(f"Getting clusters for dataset: {dataset_name}")
+
     clusters_file = get_clusters_file(dataset_name)
 
     if os.path.exists(clusters_file):
@@ -50,7 +51,8 @@ def get_clusters(dataset_name: str, embeddings: list = Depends(get_embeddings)):
         # TODO Fix clusters not being a list but a string
     else:
         clusterer = hdbscan.HDBSCAN(**config.cluster_config.dict())
-        clusters = clusterer.fit_predict(embeddings)
+
+        clusters = clusterer.fit_predict(get_reduced_embeddings(dataset_name, model_name))
         # convert the clusters to a JSON serializable format
         clusters = [int(c) for c in clusterer.labels_]
         # serialize the clusters to JSON
@@ -58,4 +60,4 @@ def get_clusters(dataset_name: str, embeddings: list = Depends(get_embeddings)):
         save_clusters(json_clusters, clusters_file)
         logger.info(f"Computed and saved clusters for dataset: {dataset_name}")
 
-    return {"clusters": list(clusters)}
+    return list(clusters)
