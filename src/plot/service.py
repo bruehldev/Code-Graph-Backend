@@ -10,6 +10,7 @@ import logging
 import numpy as np
 from embeddings.service import get_reduced_embeddings, get_segments
 from clusters.service import get_clusters
+from data.few_nerd import FINE_NER_TAGS_DICT
 
 from bertopic import BERTopic
 
@@ -42,6 +43,7 @@ def get_plot(dataset_name: str, model_names: str):
         for segment, embedding, cluster in zip(segments, embeddings, clusters):
             segment["embedding"] = embedding
             segment["cluster"] = cluster
+            segment["annotation"] = FINE_NER_TAGS_DICT[segment["annotation"]]
 
         # logger.info(f"Saved plot to file for dataset: {dataset_name}: {segments}")
         save_plot(segments, plot_file)
