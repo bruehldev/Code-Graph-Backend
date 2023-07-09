@@ -4,7 +4,6 @@ import json
 import logging
 from fastapi import Depends
 from typing import List
-from models.service import load_model
 from embeddings.service import get_embeddings
 import logging
 import numpy as np
@@ -12,7 +11,6 @@ import hdbscan
 
 
 from configmanager.service import ConfigManager
-from bertopic import BERTopic
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,7 +39,7 @@ def load_clusters(file_name: str) -> np.ndarray:
         return np.array(clusters_list)
 
 
-def get_clusters(dataset_name: str, model: BERTopic = Depends(load_model), embeddings: list = Depends(get_embeddings)):
+def get_clusters(dataset_name: str, embeddings: list = Depends(get_embeddings)):
     logger.info(f"Getting clusters for dataset: {dataset_name}")
     clusters_file = get_clusters_file(dataset_name)
 
