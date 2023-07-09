@@ -1,18 +1,18 @@
 from fastapi import APIRouter, Depends
-import json
-from bertopic import BERTopic
-import logging
-from models.service import load_model, get_topic_info
+from models.service import ModelService
+from models.schemas import Model_names
 from data.schemas import Dataset_names, Experimental_dataset_names
 
 router = APIRouter()
 
 
-@router.get("/load_model/{dataset_name}")
-def load_model_endpoint(dataset_name: Experimental_dataset_names, model: BERTopic = Depends(load_model)):
-    return {"message": f"{dataset_name} dataset loaded successfully"}
+@router.get("/data/{dataset_name}/model/{model_name}")
+def load_model_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
+    model_service = ModelService(dataset_name, model_name)
+    return {"message": f"{dataset_name} dataset with {model_name} loaded successfully"}
 
 
-@router.get("/topicinfo/{dataset_name}")
-def get_topic_info_endpoint(dataset_name: Experimental_dataset_names, model: BERTopic = Depends(load_model)):
-    return {"topic_info": get_topic_info().to_dict()}
+@router.get("/data/{dataset_name}/model/{model_name}/topicinfo")
+def get_topic_info_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
+    model_service = ModelService(dataset_name, model_name)
+    return {"topic_info": model_service.get_topic_info().to_dict()}
