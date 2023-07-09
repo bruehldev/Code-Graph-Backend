@@ -159,10 +159,10 @@ def extract_segments(dataset_name: str):
                         segment += " " + word
                         if annotation != cur_annotation:
                             cur_annotation = annotation
-                            position = sentence.index(word)
                     else:
                         if segment:
                             segment = segment.lstrip()
+                            position = sentence.find(segment, position+1)
                             segment_list.append((segment, cur_annotation, position))
                             segment = ""
                             cur_annotation = None
@@ -178,6 +178,7 @@ def extract_segments(dataset_name: str):
                         entries.append(entry)
                     segment_list = []
                     sentence = ""
+                    position = 0
 
     save_segments(entries, get_segments_file(dataset_name))
     logger.info(f"Extracted and saved segments for dataset: {dataset_name}")
