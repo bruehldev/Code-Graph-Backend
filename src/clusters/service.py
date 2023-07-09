@@ -36,7 +36,7 @@ def save_clusters(clusters: np.ndarray, file_name: str):
 def load_clusters(file_name: str) -> np.ndarray:
     with open(file_name, "r") as f:
         clusters_list = json.load(f)
-        return np.array(clusters_list)
+        return clusters_list
 
 
 def get_clusters(dataset_name: str, model_name: str):
@@ -46,12 +46,11 @@ def get_clusters(dataset_name: str, model_name: str):
 
     if os.path.exists(clusters_file):
         clusters = load_clusters(clusters_file)
-        clusters = np.atleast_1d(clusters)
         logger.info(f"Loaded clusters from file for dataset: {dataset_name}")
+        clusters = eval(clusters)
         # TODO Fix clusters not being a list but a string
     else:
         clusterer = hdbscan.HDBSCAN(**config.cluster_config.dict())
-
         clusters = clusterer.fit_predict(get_reduced_embeddings(dataset_name, model_name))
         # convert the clusters to a JSON serializable format
         clusters = [int(c) for c in clusterer.labels_]
@@ -59,5 +58,6 @@ def get_clusters(dataset_name: str, model_name: str):
         json_clusters = json.dumps(clusters)
         save_clusters(json_clusters, clusters_file)
         logger.info(f"Computed and saved clusters for dataset: {dataset_name}")
+        clusters = list(clusters)
 
-    return list(clusters)
+    return clusters
