@@ -8,7 +8,8 @@ from data.service import get_data
 from models.service import ModelService
 import logging
 import numpy as np
-from embeddings.service import get_embeddings
+from embeddings.service import get_reduced_embeddings, get_segments
+from clusters.service import get_clusters
 
 from bertopic import BERTopic
 
@@ -20,13 +21,12 @@ with open("../env.json") as f:
     env = json.load(f)
 
 
-def get_plot(dataset_name: str, model_names, embeddings: list = Depends(get_embeddings), data: list = Depends(get_data)):
-    model_service = ModelService(dataset_name, model_names)
+def get_plot(dataset_name: str, model_names: str):
     plot_file = get_plot_file(dataset_name)
-
+    segments = []
     if os.path.exists(plot_file):
         try:
-            plot_dict = load_plot(plot_file)
+            segments = load_plot(plot_file)
             logger.info(f"Loaded plot from file for dataset: {dataset_name}")
         except Exception as e:
             logger.error(f"Error loading plot from file for dataset: {dataset_name}")
@@ -34,18 +34,20 @@ def get_plot(dataset_name: str, model_names, embeddings: list = Depends(get_embe
             raise
     else:
         # Convert index, data, embedding, and topic to JSON structure
-        plot_dict = {}
-        for index, (embedding, doc) in enumerate(zip(embeddings[:20], data[:20])):
-            plot = {"data": doc, "plot": embedding, "topic_index": np.array(model_service.model.transform([str(embedding)]))[0].tolist()}
-            plot_dict[str(index)] = plot
+        segments = get_segments(dataset_name, model_names)[:500]
+        embeddings = get_reduced_embeddings(dataset_name, model_names).tolist()[:500]
+        clusters = get_clusters(dataset_name, model_names)[:500]
 
-        save_plot(plot_dict, plot_file)
-        logger.info(f"Saved plot to file for dataset: {dataset_name}")
+        # inject embedding and cluster
+        for segment, embedding, cluster in zip(segments, embeddings, clusters):
+            segment["embedding"] = embedding
+            segment["cluster"] = cluster
 
-    plot = list(zip(data, plot_dict.values()))
+        # logger.info(f"Saved plot to file for dataset: {dataset_name}: {segments}")
+        save_plot(segments, plot_file)
 
     logger.info(f"Retrieved plot for dataset: {dataset_name}")
-    return plot
+    return segments
 
 
 def load_plot(plot_file):
