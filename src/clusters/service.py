@@ -50,19 +50,21 @@ def get_clusters(dataset_name: str, model_name: str, start: int = 0, end: int = 
         clusters = eval(clusters)
         # TODO Fix clusters not being a list but a string
     else:
-        clusterer = hdbscan.HDBSCAN(**config.cluster_config.dict())
-        clusters = clusterer.fit_predict(get_reduced_embeddings(dataset_name, model_name))
-        print(len(clusters))
-        # convert the clusters to a JSON serializable format
-        clusters = [int(c) for c in clusterer.labels_]
-        # serialize the clusters to JSON
-        json_clusters = json.dumps(clusters)
-        save_clusters(json_clusters, clusters_file)
-        logger.info(f"Computed and saved clusters for dataset: {dataset_name}")
-        clusters = list(clusters)
+        clusters = extract_clusters(dataset_name, model_name)
 
     return clusters[start:end]
 
 
-def extract_clusters(clusters: List[int]):
-    return list(set(clusters))
+def extract_clusters(dataset_name: str, model_name: str):
+    clusters_file = get_clusters_file(dataset_name)
+    clusterer = hdbscan.HDBSCAN(**config.cluster_config.dict())
+    clusters = clusterer.fit_predict(get_reduced_embeddings(dataset_name, model_name))
+    print(len(clusters))
+    # convert the clusters to a JSON serializable format
+    clusters = [int(c) for c in clusterer.labels_]
+    # serialize the clusters to JSON
+    json_clusters = json.dumps(clusters)
+    save_clusters(json_clusters, clusters_file)
+    logger.info(f"Computed and saved clusters for dataset: {dataset_name}")
+    clusters = list(clusters)
+    return clusters
