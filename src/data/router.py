@@ -1,13 +1,8 @@
 from fastapi import APIRouter, Depends
-import json
-
-env = {}
-with open("../env.json") as f:
-    env = json.load(f)
 
 from data.service import (
     get_data,
-    load_few_nerd_dataset,
+    download_few_nerd_dataset,
     extract_annotations_keys,
     extract_segments,
     get_segments,
@@ -23,16 +18,14 @@ router = APIRouter()
 
 
 @router.get("/{dataset_name}", response_model=DataResponse)
-def get_data_route(dataset_name: Experimental_dataset_names, offset: int = 0, page_size: int = None) -> list:
-    if page_size is None:
-        page_size = env.get("default_limit")
-    data = get_data(dataset_name, offset=offset, page_size=page_size)
+def get_data_route(dataset_name: Experimental_dataset_names, page: int = 1, page_size: int = 100) -> list:
+    data = get_data(dataset_name, start=(page - 1) * page_size, end=page * page_size)
     return DataResponse(data=data)
 
 
 @router.get("/{dataset_name}/download")
 def load_few_nerd_dataset_route(dataset_name: Dataset_names):
-    load_few_nerd_dataset(dataset_name)
+    download_few_nerd_dataset(dataset_name)
     return {"message": "Few NERD dataset loaded successfully"}
 
 
@@ -49,10 +42,8 @@ def extract_segments_route(dataset_name: Dataset_names):
 
 
 @router.get("/{dataset_name}/segments")
-def get_segments_route(dataset_name: Dataset_names, offset: int = 0, page_size: int = None):
-    if page_size is None:
-        page_size = env.get("default_limit")
-    segments = get_segments(dataset_name, offset=offset, page_size=page_size)
+def get_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100):
+    segments = get_segments(dataset_name, start=(page - 1) * page_size, end=page * page_size)
     return {"segments": segments}
 
 
@@ -63,18 +54,14 @@ def get_annotations_keys_route(dataset_name: Dataset_names):
 
 
 @router.get("/{dataset_name}/sentences")
-def get_sentences_route(dataset_name: Dataset_names, offset: int = 0, page_size: int = None):
-    if page_size is None:
-        page_size = env.get("default_limit")
-    sentences = get_sentences(dataset_name, offset=offset, page_size=page_size)
+def get_sentences_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100):
+    sentences = get_sentences(dataset_name, start=(page - 1) * page_size, end=page * page_size)
     return {"sentences": sentences}
 
 
 @router.get("/{dataset_name}/annotations")
-def get_annotations_route(dataset_name: Dataset_names, offset: int = 0, page_size: int = None):
-    if page_size is None:
-        page_size = env.get("default_limit")
-    annotations = get_annotations(dataset_name, offset=offset, page_size=page_size)
+def get_annotations_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100):
+    annotations = get_annotations(dataset_name, start=(page - 1) * page_size, end=page * page_size)
     return {"annotations": annotations}
 
 

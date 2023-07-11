@@ -15,7 +15,7 @@ with open("../env.json") as f:
     env = json.load(f)
 
 
-def get_data(dataset_name: str, offset: int = 0, page_size: int = None) -> list:
+def get_data(dataset_name: str, start: int = 0, end: int = None) -> list:
     if dataset_name == "fetch_20newsgroups":
         data = fetch_20newsgroups(subset="all", remove=("headers", "footers", "quotes"))["data"]
     elif dataset_name == "few_nerd":
@@ -23,20 +23,18 @@ def get_data(dataset_name: str, offset: int = 0, page_size: int = None) -> list:
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
 
         if not os.path.exists(os.path.join(data_path, "supervised", "train.txt")):
-            load_few_nerd_dataset(dataset_name)
+            download_few_nerd_dataset(dataset_name)
 
         with open(os.path.join(data_path, "supervised", "train.txt"), "r", encoding="utf8") as f:
             data = [doc.strip() for doc in f.readlines() if doc.strip()]
     else:
-        data = None
+        return None
+    print(len(data))
 
-    if page_size is not None:
-        data = data[offset : offset + page_size]  # slice the data list according to offset and page_size
-
-    return data
+    return data[start:end]
 
 
-def load_few_nerd_dataset(dataset_name: str):
+def download_few_nerd_dataset(dataset_name: str):
     url = "https://huggingface.co/datasets/DFKI-SLT/few-nerd/resolve/main/data/supervised.zip"
     output_folder = os.path.join(env["data_path"], dataset_name)
     output_file = os.path.join(output_folder, "supervised.zip")
@@ -116,26 +114,23 @@ def get_segments_file(dataset_name: str):
     return os.path.join(segments_directory, "segments.json")
 
 
-def get_segments(dataset_name: str, offset: int = 0, page_size: int = None):
+def get_segments(dataset_name: str, start: int = 0, end: int = None):
     segments_file = get_segments_file(dataset_name)
     segments_data = None
 
     if os.path.exists(segments_file):
-        segments_data = load_segments(segments_file)
+        segments_data = load_segments(segments_file, start, end)
         logger.info(f"Loaded segments from file for dataset: {dataset_name}")
     else:
         segments_data = extract_segments(dataset_name)
 
-    if page_size is not None:
-        segments_data = segments_data[offset : offset + page_size]
-
     return segments_data
 
 
-def load_segments(segments_file):
+def load_segments(segments_file, start=0, end=None):
     with open(segments_file, "r") as file:
         segment_data = json.load(file)
-    return segment_data
+    return segment_data[start:end]
 
 
 def save_segments(segments_data, segments_file: str):
@@ -242,7 +237,7 @@ def get_annotations_file(dataset_name: str):
     return os.path.join(annotations_directory, "annotations.json")
 
 
-def get_sentences(dataset_name: str, offset: int = 0, page_size: int = None):
+def get_sentences(dataset_name: str, start: int = 0, end: int = None):
     sentences_file = get_sentences_file(dataset_name)
     sentences_data = None
 
@@ -253,13 +248,10 @@ def get_sentences(dataset_name: str, offset: int = 0, page_size: int = None):
     else:
         sentences_data, _ = extract_sentences_and_annotations(dataset_name)
 
-    if page_size is not None:
-        sentences_data = sentences_data[offset : offset + page_size]
-
-    return sentences_data
+    return sentences_data[start:end]
 
 
-def get_annotations(dataset_name: str, offset: int = 0, page_size: int = None):
+def get_annotations(dataset_name: str, start: int = 0, end: int = None):
     annotations_file = get_annotations_file(dataset_name)
     annotations_data = None
 
@@ -270,10 +262,7 @@ def get_annotations(dataset_name: str, offset: int = 0, page_size: int = None):
     else:
         _, annotations_data = extract_sentences_and_annotations(dataset_name)
 
-    if page_size is not None:
-        annotations_data = annotations_data[offset : offset + page_size]
-
-    return annotations_data
+    return annotations_data[start:end]
 
 
 def save_sentences(sentences_data, sentences_file: str):
