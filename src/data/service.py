@@ -21,12 +21,18 @@ def get_data(dataset_name: str, offset: int = 0, page_size: int = None) -> list:
     elif dataset_name == "few_nerd":
         data_path = os.path.join(env["data_path"], dataset_name)
         os.makedirs(os.path.dirname(data_path), exist_ok=True)
+
+        if not os.path.exists(os.path.join(data_path, "supervised", "train.txt")):
+            load_few_nerd_dataset(dataset_name)
+
         with open(os.path.join(data_path, "supervised", "train.txt"), "r", encoding="utf8") as f:
             data = [doc.strip() for doc in f.readlines() if doc.strip()]
     else:
         data = None
+
     if page_size is not None:
         data = data[offset : offset + page_size]  # slice the data list according to offset and page_size
+
     return data
 
 
@@ -77,26 +83,25 @@ def extract_annotations_keys(dataset_name: str):
     annotations = {}
 
     if dataset_name == "few_nerd":
-        data_folder = os.path.join(env["data_path"], dataset_name)
-        with open(os.path.join(data_folder, "supervised", "train.txt"), "r", encoding="utf-8") as f:
-            key_id = 1
-            for line in f:
-                fields = line.strip().split("\t")
-                if len(fields) > 1:
-                    annotation = fields[1]
-                    categories = annotation.split("-")
+        data = get_data(dataset_name)
+        key_id = 1
+        for line in data:
+            fields = line.strip().split("\t")
+            if len(fields) > 1:
+                annotation = fields[1]
+                categories = annotation.split("-")
 
-                    last_category = categories[-1]
-                    last_category_parts = last_category.split("/")
-                    categories = categories[:-1] + last_category_parts
-                    nested_obj = annotations
-                    for category in categories:
-                        subcategories = nested_obj.setdefault(category, {})
-                        subcategories.setdefault("id", key_id)
-                        subcategories.setdefault("name", category)
-                        subcategories.setdefault("subcategories", {})
-                        nested_obj = subcategories.setdefault("subcategories", {})
-                        key_id += 1
+                last_category = categories[-1]
+                last_category_parts = last_category.split("/")
+                categories = categories[:-1] + last_category_parts
+                nested_obj = annotations
+                for category in categories:
+                    subcategories = nested_obj.setdefault(category, {})
+                    subcategories.setdefault("id", key_id)
+                    subcategories.setdefault("name", category)
+                    subcategories.setdefault("subcategories", {})
+                    nested_obj = subcategories.setdefault("subcategories", {})
+                    key_id += 1
 
     annotations_file = get_annotations_keys_file(dataset_name)
     save_annotations_keys(annotations, annotations_file)
@@ -137,6 +142,7 @@ def save_segments(segments_data, segments_file: str):
     with open(segments_file, "w") as file:
         json.dump(segments_data, file)
 
+
 def extract_segments(dataset_name: str):
     entries = []
 
@@ -145,11 +151,13 @@ def extract_segments(dataset_name: str):
         data_folder = os.path.join(env["data_path"], dataset_name)
 
         os.makedirs(segments_folder, exist_ok=True)
+        # TODO Use get_data function but be careful with different data formats!!!
         with open(os.path.join(data_folder, "supervised", "train.txt"), "r", encoding="utf8") as f:
             sentence = ""
             segment = ""
             segment_list = []
             cur_annotation = None
+            position = 0
             for line in f:
                 line = line.strip()
                 if line:
@@ -162,7 +170,7 @@ def extract_segments(dataset_name: str):
                     else:
                         if segment:
                             segment = segment.lstrip()
-                            position = sentence.find(segment, position+1)
+                            position = sentence.find(segment, position + 1)
                             segment_list.append((segment, cur_annotation, position))
                             segment = ""
                             cur_annotation = None
@@ -184,6 +192,7 @@ def extract_segments(dataset_name: str):
     logger.info(f"Extracted and saved segments for dataset: {dataset_name}")
 
     return entries
+
 
 def extract_sentences_and_annotations(dataset_name: str):
     sentences = []
