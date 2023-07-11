@@ -22,12 +22,12 @@ with open("../env.json") as f:
     env = json.load(f)
 
 
-def get_plot(dataset_name: str, model_names: str):
+def get_plot(dataset_name: str, model_names: str, start: int = 0, end: int = None):
     plot_file = get_plot_file(dataset_name)
     segments = []
     if os.path.exists(plot_file):
         try:
-            segments = load_plot(plot_file)
+            segments = load_plot(plot_file, start, end)
             logger.info(f"Loaded plot from file for dataset: {dataset_name}")
         except Exception as e:
             logger.error(f"Error loading plot from file for dataset: {dataset_name}")
@@ -35,9 +35,9 @@ def get_plot(dataset_name: str, model_names: str):
             raise
     else:
         # Convert index, data, embedding, and topic to JSON structure
-        segments = get_segments(dataset_name, model_names)[:500]
-        embeddings = get_reduced_embeddings(dataset_name, model_names).tolist()[:500]
-        clusters = get_clusters(dataset_name, model_names)[:500]
+        segments = get_segments(dataset_name)
+        embeddings = get_reduced_embeddings(dataset_name, model_names).tolist()
+        clusters = get_clusters(dataset_name, model_names)
 
         # inject embedding and cluster
         for segment, embedding, cluster in zip(segments, embeddings, clusters):
@@ -45,17 +45,18 @@ def get_plot(dataset_name: str, model_names: str):
             segment["cluster"] = cluster
             segment["annotation"] = FINE_NER_TAGS_DICT[segment["annotation"]]
 
-        # logger.info(f"Saved plot to file for dataset: {dataset_name}: {segments}")
+        logger.info(f"Saved plot to file for dataset: {dataset_name}: {segments}")
         save_plot(segments, plot_file)
+        segments = segments[start:end]
 
     logger.info(f"Retrieved plot for dataset: {dataset_name}")
     return segments
 
 
-def load_plot(plot_file):
+def load_plot(plot_file, start=0, end=None):
     with open(plot_file, "r") as file:
         plot_data = json.load(file)
-    return plot_data
+    return plot_data[start:end]
 
 
 def save_plot(plot_data, plot_file):

@@ -8,5 +8,11 @@ router = APIRouter()
 
 
 @router.get("/")
-def get_plot_endpoint(dataset_name: Experimental_dataset_names, model_names: Model_names):
-    return {"plot": get_plot(dataset_name, model_names)}
+def get_plot_endpoint(
+    dataset_name: Experimental_dataset_names,
+    model_names: Model_names,
+    page: int = 1,
+    page_size: int = 100,
+):
+    segments = get_plot(dataset_name, model_names, start=(page - 1) * page_size, end=page * page_size)
+    return {"plot": segments}
