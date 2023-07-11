@@ -80,28 +80,37 @@ def get_embeddings(dataset_name: str, model_name: str, start=0, end=None):
     else:
         embeddings_2d_bert = extract_embeddings(dataset_name, model_name)
         save_embeddings(embeddings_2d_bert, embeddings_file)
-
         logger.info(f"Computed and saved embeddings for dataset: {dataset_name}")
 
     if isinstance(embeddings_2d_bert, np.ndarray):
         embeddings_2d_bert = embeddings_2d_bert.tolist()
 
+    print("embeddings_2d_bert ", len(embeddings_2d_bert))
     return embeddings_2d_bert[start:end]
 
 
 def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None):
     embeddings_file = get_reduced_embeddings_file(dataset_name)
-    embeddings_reduced = None
+    embeddings_reduced = []
+
     if os.path.exists(embeddings_file):
         embeddings_reduced = load_reduced_embeddings(embeddings_file)
         logger.info(f"Loaded embeddings from file for dataset: {dataset_name}")
     else:
-        embeddings = get_embeddings(dataset_name, model_name)
-        umap_model = umap.UMAP(**config.embedding_config.dict())
-        embeddings_reduced = umap_model.fit_transform(embeddings)
-        embeddings_file = get_reduced_embeddings_file(dataset_name)
-        save_reduced_embeddings(embeddings_reduced, embeddings_file)
+        embeddings_reduced = extract_embeddings_reduced(dataset_name, model_name)
 
-        logger.info(f"Computed and saved embeddings for dataset: {dataset_name}")
+    print("embeddings_reduced ", len(embeddings_reduced))
+    if isinstance(embeddings_reduced, np.ndarray):
+        embeddings_reduced = embeddings_reduced.tolist()
 
     return embeddings_reduced[start:end]
+
+
+def extract_embeddings_reduced(dataset_name, model_name):
+    embeddings = get_embeddings(dataset_name, model_name)
+    umap_model = umap.UMAP(**config.embedding_config.dict())
+    embeddings_reduced = umap_model.fit_transform(embeddings)
+    embeddings_file = get_reduced_embeddings_file(dataset_name)
+    save_reduced_embeddings(embeddings_reduced, embeddings_file)
+    logger.info(f"Computed and saved embeddings for dataset: {dataset_name}")
+    return embeddings_reduced
