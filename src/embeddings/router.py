@@ -9,12 +9,12 @@ from embeddings.service import get_embeddings, get_reduced_embeddings
 router = APIRouter()
 
 
-@router.get("/data/{dataset_name}/model/{model_name}/embeddings")
+@router.get("/")
 def get_embeddings_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
     return {"embeddings": get_embeddings(dataset_name, model_name)}
 
 
 # reduced embeddings
-@router.get("/data/{dataset_name}/model/{model_name}/reduced_embeddings")
+@router.get("/reduced")
 def get_reduced_embeddings_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
     return {"reduced_embeddings": get_reduced_embeddings(dataset_name, model_name)}

@@ -7,6 +7,6 @@ from models.schemas import Model_names
 router = APIRouter()
 
 
-@router.get("/data/{dataset_name}/model/{model_name}/plot/")
+@router.get("/")
 def get_plot_endpoint(dataset_name: Experimental_dataset_names, model_names: Model_names):
     return {"plot": get_plot(dataset_name, model_names)}
