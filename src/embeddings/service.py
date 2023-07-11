@@ -70,7 +70,7 @@ def extract_embeddings(dataset_name, model_name):
         return umap_model.fit_transform(embeddings)
 
 
-def get_embeddings(dataset_name: str, model_name: str):
+def get_embeddings(dataset_name: str, model_name: str, start=0, end=None):
     global embeddings_2d_bert
     embeddings_file = get_embeddings_file(dataset_name)
 
@@ -86,10 +86,10 @@ def get_embeddings(dataset_name: str, model_name: str):
     if isinstance(embeddings_2d_bert, np.ndarray):
         embeddings_2d_bert = embeddings_2d_bert.tolist()
 
-    return len(embeddings_2d_bert)
+    return embeddings_2d_bert[start:end]
 
 
-def get_reduced_embeddings(dataset_name: str, model_name: str):
+def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None):
     embeddings_file = get_reduced_embeddings_file(dataset_name)
     embeddings_reduced = None
     if os.path.exists(embeddings_file):
@@ -104,4 +104,4 @@ def get_reduced_embeddings(dataset_name: str, model_name: str):
 
         logger.info(f"Computed and saved embeddings for dataset: {dataset_name}")
 
-    return embeddings_reduced
+    return embeddings_reduced[start:end]
