@@ -39,7 +39,7 @@ def load_clusters(file_name: str) -> np.ndarray:
         return clusters_list
 
 
-def get_clusters(dataset_name: str, model_name: str):
+def get_clusters(dataset_name: str, model_name: str, start: int = 0, end: int = None):
     logger.info(f"Getting clusters for dataset: {dataset_name}")
 
     clusters_file = get_clusters_file(dataset_name)
@@ -52,6 +52,7 @@ def get_clusters(dataset_name: str, model_name: str):
     else:
         clusterer = hdbscan.HDBSCAN(**config.cluster_config.dict())
         clusters = clusterer.fit_predict(get_reduced_embeddings(dataset_name, model_name))
+        print(len(clusters))
         # convert the clusters to a JSON serializable format
         clusters = [int(c) for c in clusterer.labels_]
         # serialize the clusters to JSON
@@ -60,4 +61,8 @@ def get_clusters(dataset_name: str, model_name: str):
         logger.info(f"Computed and saved clusters for dataset: {dataset_name}")
         clusters = list(clusters)
 
-    return clusters
+    return clusters[start:end]
+
+
+def extract_clusters(clusters: List[int]):
+    return list(set(clusters))

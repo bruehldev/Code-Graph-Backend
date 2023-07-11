@@ -8,5 +8,5 @@ router = APIRouter()
 
 
 @router.get("/")
-def get_clusters_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
-    return {"clusters": get_clusters(dataset_name, model_name)}
+def get_clusters_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100):
+    return {"clusters": get_clusters(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)}
