@@ -81,28 +81,12 @@ class ModelService:
         segments = data["segment"]
         start_indexes = data["position"].astype(int)
         embeddings = []
-
-        for sentence, segment, start_index in zip(sentences, segments, start_indexes):
-            start_index = start_index - 1  # tried because the other didnt work
-            end_index = start_index + len(segment)
-            # print(segment)
-            sentence_tokenized = self.tokenizer.encode_plus(sentence, return_offsets_mapping=True, return_tensors="pt")
-            with torch.no_grad():
-                outputs = self.model(sentence_tokenized["input_ids"].to(self.device), attention_mask=sentence_tokenized["attention_mask"].to(self.device))
-            token_embeddings = outputs.last_hidden_state
-            offsets = sentence_tokenized["offset_mapping"][0].tolist()
-            segment_embeddings = []
-            for i, offset in enumerate(offsets):
-                start, end = offset
-                if (start >= start_index and end <= end_index) or (start < start_index and end > end_index) or (start < end_index and end > end_index):
-                    word = sentence[start:end]
-                    # segment_words.append((self.tokenizer.decode(sentence_tokenized['input_ids'][0][i]), word))
-                    segment_embeddings.append(token_embeddings[0][i])
-                    # print(f"{word} : {start_index} : {end_index}")
-            if len(segment_embeddings) == 0:
-                print(f"ERROR: {sentence} : {segment} : {start_index} : {end_index} : {offsets}")
-            mean_embeddings = torch.mean(torch.stack(segment_embeddings), dim=0)
-            embeddings.append(mean_embeddings.detach().cpu().numpy().tolist())
+                if segment_embeddings:
+                    mean_embeddings = torch.mean(torch.stack(segment_embeddings), dim=0)
+                    embeddings.append(mean_embeddings.detach().cpu().numpy().tolist())
+                else:
+                    # Append np.nan as a placeholder value
+                    embeddings.append(np.nan)
         return embeddings  # return embedding of the sentence
 
     def get_topic_info(self, dataset_name: str):
