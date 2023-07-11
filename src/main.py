@@ -40,7 +40,7 @@ config = config_manager.get_default_model()
 
 @app.get("/")
 def read_root():
-    return {"Hello": "BERTopic API"}
+    return {"status": "online"}
 
 
 # Logging configuration
