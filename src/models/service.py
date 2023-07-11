@@ -42,7 +42,7 @@ class ModelService:
 
             if model_name == "bert-base-uncased":
                 if not os.path.exists(os.path.join(model_path, "BERTModel")):
-                    model = BertModel.from_pretrained(model_name)
+                    model = BertModel.from_pretrained(model_name.value)
                     torch.save(model, os.path.join(model_path, "BERTModel"))
                     logger.info(f"Model trained and saved for dataset: {dataset_name}")
                     self.model = model
