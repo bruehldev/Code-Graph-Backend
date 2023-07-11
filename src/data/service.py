@@ -151,7 +151,7 @@ def extract_segments(dataset_name: str):
         data_folder = os.path.join(env["data_path"], dataset_name)
 
         os.makedirs(segments_folder, exist_ok=True)
-        # TODO Use get_data function but be careful with different data formats!!!
+        # TODO Use get_data function but be careful with different data formats!!! It seems like that the second line is different when using get_data instead of the following code.
         with open(os.path.join(data_folder, "supervised", "train.txt"), "r", encoding="utf8") as f:
             sentence = ""
             segment = ""
