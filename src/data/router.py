@@ -29,13 +29,13 @@ def load_few_nerd_dataset_route(dataset_name: Dataset_names):
     return {"message": "Few NERD dataset loaded successfully"}
 
 
-@router.get("/{dataset_name}/extract-annotations-keys")
+@router.get("/{dataset_name}/annotations-keys/extract")
 def extract_annotations_route(dataset_name: Dataset_names):
     extract_annotations_keys(dataset_name)
     return {"message": "Annotations extracted successfully"}
 
 
-@router.get("/{dataset_name}/extract-segments")
+@router.get("/{dataset_name}/segments/extract")
 def extract_segments_route(dataset_name: Dataset_names):
     extract_segments(dataset_name)
     return {"message": "Segments extracted successfully"}
@@ -65,7 +65,7 @@ def get_annotations_route(dataset_name: Dataset_names, page: int = 1, page_size:
     return {"annotations": annotations}
 
 
-@router.get("/{dataset_name}/extract-sentences-and-annotations")
+@router.get("/{dataset_name}/sentences-and-annotations/extract")
 def extract_sentences_and_annotations_route(dataset_name: Dataset_names):
     extract_sentences_and_annotations(dataset_name)
     return {"message": "Sentences and annotations extracted successfully"}
