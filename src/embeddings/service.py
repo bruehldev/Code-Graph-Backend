@@ -107,8 +107,14 @@ def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None
 
 
 def extract_embeddings_reduced(dataset_name, model_name):
-    embeddings = get_embeddings(dataset_name, model_name)
+    embeddings = np.array(get_embeddings(dataset_name, model_name))
+    # embeddings = get_embeddings(dataset_name, model_name)
     umap_model = umap.UMAP(**config.embedding_config.dict())
+
+    # Check the shape of the embeddings array
+    if embeddings.ndim == 1:
+        embeddings = embeddings.reshape(-1, 1)  # Reshape to a column vector
+
     embeddings_reduced = umap_model.fit_transform(embeddings)
     embeddings_file = get_reduced_embeddings_file(dataset_name)
     save_reduced_embeddings(embeddings_reduced, embeddings_file)
