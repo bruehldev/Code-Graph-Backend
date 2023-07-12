@@ -12,6 +12,7 @@ from data.service import get_data, get_segments
 from configmanager.service import ConfigManager
 from tqdm import tqdm
 import numpy as np
+from urllib.parse import unquote
 
 
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +24,11 @@ config_manager = ConfigManager(env["configs"])
 config = config_manager.get_default_model()
 
 models = {}
+
+
+def decode_url_string(url_string):
+    decoded_string = unquote(url_string)
+    return decoded_string.replace("/", "")
 
 
 class ModelService:
@@ -40,14 +46,14 @@ class ModelService:
             model_path = os.path.join(env["model_path"], dataset_name)
             os.makedirs(model_path, exist_ok=True)
 
-            if model_name == "bert-base-uncased":
-                if not os.path.exists(os.path.join(model_path, "BERTModel")):
+            if model_name:
+                if not os.path.exists(os.path.join(model_path, decode_url_string(model_name.value))):
                     model = BertModel.from_pretrained(model_name.value)
-                    torch.save(model, os.path.join(model_path, "BERTModel"))
+                    torch.save(model, os.path.join(model_path, decode_url_string(model_name.value)))
                     logger.info(f"Model trained and saved for dataset: {dataset_name}")
                     self.model = model
                 else:
-                    model = torch.load(os.path.join(model_path, "BERTModel"))
+                    model = torch.load(os.path.join(model_path, decode_url_string(model_name.value)))
                     logger.info(f"Loaded model from file for dataset: {dataset_name}")
                     self.model = model
             elif model_name == "BERTopic":
