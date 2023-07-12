@@ -6,7 +6,7 @@ import torch
 from fastapi import Depends
 from typing import List
 from bertopic import BERTopic
-from transformers import BertModel, BertTokenizerFast, AutoTokenizer
+from transformers import BertModel, BertTokenizerFast
 import pandas as pd
 from data.service import get_data, get_segments
 from configmanager.service import ConfigManager
@@ -63,13 +63,12 @@ class ModelService:
                     self.model = model
 
             models[self.model_key] = self.model
-            # self.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-            self.tokenizer = BertTokenizerFast.from_pretrained(model_name.value)
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.model.to(self.device)
-            self.model_name = model_name
-            self.model.eval()
+        self.tokenizer = BertTokenizerFast.from_pretrained(model_name.value)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
+        self.model_name = model_name
+        self.model.eval()
 
     def process_data(self, data):
         def get_char_position(sentence, segment, annotation_position):
@@ -84,6 +83,7 @@ class ModelService:
 
         if default_limit:
             data = data[:default_limit]
+            logger.info(f"Limiting data to {default_limit} samples")
 
         sentences = data["sentence"]
         segments = data["segment"]
