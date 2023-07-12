@@ -34,9 +34,10 @@ def get_plot(dataset_name: str, model_names: str, start: int = 0, end: int = Non
             raise
     else:
         segments = extract_plot(dataset_name, model_names)
+        segments = segments[start:end]
 
     logger.info(f"Retrieved plot for dataset: {dataset_name}")
-    return segments[start:end]
+    return segments
 
 
 def extract_plot(dataset_name: str, model_names: str):
