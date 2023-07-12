@@ -7,7 +7,6 @@ from typing import List
 from data.service import get_data
 from models.service import ModelService
 import logging
-import numpy as np
 from embeddings.service import get_reduced_embeddings, get_segments
 from clusters.service import get_clusters
 from data.few_nerd import FINE_NER_TAGS_DICT
@@ -34,22 +33,25 @@ def get_plot(dataset_name: str, model_names: str, start: int = 0, end: int = Non
             logger.error(str(e))
             raise
     else:
-        # Convert index, data, embedding, and topic to JSON structure
-        segments = get_segments(dataset_name)
-        embeddings = get_reduced_embeddings(dataset_name, model_names).tolist()
-        clusters = get_clusters(dataset_name, model_names)
-
-        # inject embedding and cluster
-        for segment, embedding, cluster in zip(segments, embeddings, clusters):
-            segment["embedding"] = embedding
-            segment["cluster"] = cluster
-            segment["annotation"] = FINE_NER_TAGS_DICT[segment["annotation"]]
-
-        logger.info(f"Saved plot to file for dataset: {dataset_name}: {segments}")
-        save_plot(segments, plot_file)
-        segments = segments[start:end]
+        segments = extract_plot(dataset_name, model_names)
 
     logger.info(f"Retrieved plot for dataset: {dataset_name}")
+    return segments[start:end]
+
+
+def extract_plot(dataset_name: str, model_names: str):
+    # Convert index, data, embedding, and topic to JSON structure
+    plot_file = get_plot_file(dataset_name)
+    segments = get_segments(dataset_name)
+    embeddings = get_reduced_embeddings(dataset_name, model_names)
+    clusters = get_clusters(dataset_name, model_names)
+    # inject embedding and cluster
+    for segment, embedding, cluster in zip(segments, embeddings, clusters):
+        segment["embedding"] = embedding
+        segment["cluster"] = cluster
+        segment["annotation"] = FINE_NER_TAGS_DICT[segment["annotation"]]
+    logger.info(f"Extracted and saved plot to file for dataset: {dataset_name}")
+    save_plot(segments, plot_file)
     return segments
 
 
