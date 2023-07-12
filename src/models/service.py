@@ -78,8 +78,12 @@ class ModelService:
             return char_position
 
         data = pd.DataFrame.from_dict(data)
-        # change the amount of data[:500] is fast
-        data = data[:500]
+
+        # change the amount in config
+        default_limit = config.default_limit
+
+        if default_limit:
+            data = data[:default_limit]
 
         sentences = data["sentence"]
         segments = data["segment"]

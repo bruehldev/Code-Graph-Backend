@@ -40,6 +40,7 @@ class ConfigModel(BaseModel):
     model_config: ModelConfig
     embedding_config: EmbeddingConfig
     cluster_config: ClusterConfig
+    default_limit: Optional[int] = None
 
 
 # model_config source: https://github.com/MaartenGr/BERTopic/blob/master/bertopic/_bertopic.py
