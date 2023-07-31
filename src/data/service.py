@@ -119,18 +119,18 @@ def get_segments(dataset_name: str, start: int = 0, end: int = None):
     segments_data = None
 
     if os.path.exists(segments_file):
-        segments_data = load_segments(segments_file, start, end)
+        segments_data = load_segments(segments_file)
         logger.info(f"Loaded segments from file for dataset: {dataset_name}")
     else:
         segments_data = extract_segments(dataset_name)
 
-    return segments_data
+    return segments_data[start:end]
 
 
-def load_segments(segments_file, start=0, end=None):
+def load_segments(segments_file):
     with open(segments_file, "r") as file:
         segment_data = json.load(file)
-    return segment_data[start:end]
+    return segment_data
 
 
 def save_segments(segments_data, segments_file: str):
