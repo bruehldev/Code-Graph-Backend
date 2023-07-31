@@ -4,16 +4,23 @@ This is a FastAPI-based API that provides topic modeling and sentence embedding 
 
 ## Requirements
 
-- Python 3.10.11
 - Conda for package management
-
+- Ensure you have an NVIDIA GPU with the required drivers:
+  ```
+  nvidia-smi
+  ```
+- Install the build-essential packages:
+  ```
+  sudo apt update
+  sudo apt install build-essential
+  ```
 ## Usage
 
 1. Install the required packages by running the following command:
-   - Using conda:
-     ```
-     conda env create --name CodeGraph --file environment.yml
-     ```
+  - Using conda:
+    ```
+    conda env create --name CodeGraph --file environment.yml
+    ```
 
 2. Start the server using the following command:
 ```
@@ -58,5 +65,4 @@ project/
 - `exported/`: .Used to store generated data
 - `data/`: Stores the datasets.
 - `.gitignore`: Specifies files and folders to exclude from version control.
-- `requirements.txt`: Lists the project dependencies.
 - `main.py`: The main entry point of the application.
