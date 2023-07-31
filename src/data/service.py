@@ -38,7 +38,7 @@ def download_few_nerd_dataset(dataset_name: str):
     url = "https://huggingface.co/datasets/DFKI-SLT/few-nerd/resolve/main/data/supervised.zip"
     output_folder = os.path.join(env["data_path"], dataset_name)
     output_file = os.path.join(output_folder, "supervised.zip")
-    os.makedirs(os.path.dirname(output_folder), exist_ok=True)
+    os.makedirs(output_folder, exist_ok=True)
     response = requests.get(url)
     with open(output_file, "wb") as file:
         file.write(response.content)
@@ -144,6 +144,11 @@ def extract_segments(dataset_name: str):
     if dataset_name == "few_nerd":
         segments_folder = os.path.join(env["segments_path"], dataset_name, "supervised")
         data_folder = os.path.join(env["data_path"], dataset_name)
+
+        data_file_path = os.path.join(data_folder, "supervised", "train.txt")
+        if not os.path.exists(data_file_path):
+            # Download the data if it doesn't exist
+            download_few_nerd_dataset(dataset_name)
 
         os.makedirs(segments_folder, exist_ok=True)
         # TODO Use get_data function but be careful with different data formats!!! It seems like that the second line is different when using get_data instead of the following code.
