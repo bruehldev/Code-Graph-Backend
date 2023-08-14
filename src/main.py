@@ -19,13 +19,13 @@ from plot.router import router as plot_router
 
 from configmanager.service import ConfigManager
 
-app = FastAPI()
-app.include_router(data_router, prefix="/data")
-app.include_router(model_router, prefix="/data/{dataset_name}/model")
-app.include_router(embeddings_router, prefix="/data/{dataset_name}/model{model_name}/embeddings")
-app.include_router(clusters_router, prefix="/data/{dataset_name}/model/{model_name}/clusters")
-app.include_router(plot_router, prefix="/data/{dataset_name}/model/{model_name}/plot")
-app.include_router(config_router, prefix="/config")
+app = FastAPI(title="CodeGraph")
+app.include_router(data_router, prefix="/data", tags=["data"])
+app.include_router(model_router, prefix="/data/{dataset_name}/model", tags=["model"])
+app.include_router(embeddings_router, prefix="/data/{dataset_name}/model{model_name}/embeddings", tags=["embeddings"])
+app.include_router(clusters_router, prefix="/data/{dataset_name}/model/{model_name}/clusters", tags=["clusters"])
+app.include_router(plot_router, prefix="/data/{dataset_name}/model/{model_name}/plot", tags=["plot"])
+app.include_router(config_router, prefix="/config", tags=["config"])
 
 
 # Environment variables
