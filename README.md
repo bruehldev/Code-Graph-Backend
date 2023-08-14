@@ -14,6 +14,35 @@ This is a FastAPI-based API that provides topic modeling and sentence embedding 
   sudo apt update
   sudo apt install build-essential
   ```
+- PostgreSQL as database.
+  - Follow the official PostgreSQL download instructions [here](https://www.postgresql.org/download/).
+  - Use the following command to check if PostgreSQL is installed:
+    ```
+    which psql
+    ```
+- Setting Up PostgreSQL Database:
+  - Access the PostgreSQL prompt:
+    ```
+    sudo -u postgres psql
+    ```
+    Create a new user (replace password):
+    ```
+    CREATE USER admin WITH PASSWORD 'password';
+    ```
+    Create Database:
+    ```
+    CREATE DATABASE codegraph OWNER admin;
+    ```
+    Grant Privileges:
+    ```
+    GRANT ALL PRIVILEGES ON DATABASE codegraph TO admin;
+    ```
+    Exit Prompt:
+    ```
+    \q
+    ```
+- Adapt environment ([env.json](https://github.com/bruehldev/Code-Graph-Backend/blob/master/env.json)) if necessary    
+
 ## Usage
 
 1. Install the required packages by running the following command:
