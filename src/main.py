@@ -16,6 +16,7 @@ from configmanager.router import router as config_router
 from embeddings.router import router as embeddings_router
 from clusters.router import router as clusters_router
 from plot.router import router as plot_router
+from database.postgresql import start_engine, stop_engine
 
 from configmanager.service import ConfigManager
 
@@ -41,6 +42,16 @@ config = config_manager.get_default_model()
 @app.get("/")
 def read_root():
     return {"status": "online"}
+
+
+@app.on_event("startup")
+async def startup():
+    start_engine()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    stop_engine()
 
 
 # Logging configuration

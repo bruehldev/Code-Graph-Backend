@@ -6,6 +6,9 @@ import os
 import json
 import logging
 import pandas as pd
+from database.postgresql import insert_data
+from tqdm import tqdm
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -138,7 +141,7 @@ def save_segments(segments_data, segments_file: str):
         json.dump(segments_data, file)
 
 
-def extract_segments(dataset_name: str):
+def extract_segments(dataset_name: str, page=1, page_size=10):
     entries = []
 
     if dataset_name == "few_nerd":
@@ -158,35 +161,52 @@ def extract_segments(dataset_name: str):
             segment_list = []
             cur_annotation = None
             position = 0
-            for line in f:
-                line = line.strip()
-                if line:
-                    word, annotation = line.split()
-                    sentence += " " + word
-                    if annotation != "O":
-                        segment += " " + word
-                        if annotation != cur_annotation:
-                            cur_annotation = annotation
+            total_entries = 0 if page_size is None else page_size
+
+            # Calculate the total number of entries to process
+            if page_size is None:
+                for line in f:
+                    if not line.strip():
+                        total_entries += 1
+            print(f"Total entries: {total_entries}")
+
+            f.seek(0)  # Reset file pointer
+
+            with tqdm(total=total_entries, desc=f"Extracting {dataset_name}") as pbar:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        word, annotation = line.split()
+                        sentence += " " + word
+                        if annotation != "O":
+                            segment += " " + word
+                            if annotation != cur_annotation:
+                                cur_annotation = annotation
+                        else:
+                            if segment:
+                                segment = segment.lstrip()
+                                position = sentence.find(segment, position + 1)
+                                segment_list.append((segment, cur_annotation, position))
+                                segment = ""
+                                cur_annotation = None
                     else:
-                        if segment:
-                            segment = segment.lstrip()
-                            position = sentence.find(segment, position + 1)
-                            segment_list.append((segment, cur_annotation, position))
-                            segment = ""
-                            cur_annotation = None
-                else:
-                    for i in segment_list:
-                        sentence = sentence.lstrip()
-                        entry = {
-                            "sentence": sentence,
-                            "segment": i[0],
-                            "annotation": i[1],
-                            "position": i[2],
-                        }
-                        entries.append(entry)
-                    segment_list = []
-                    sentence = ""
-                    position = 0
+                        for i in segment_list:
+                            sentence = sentence.lstrip()
+                            entry = {
+                                "sentence": sentence,
+                                "segment": i[0],
+                                "annotation": i[1],
+                                "position": i[2],
+                            }
+                            entries.append(entry)
+                            insert_data(sentence, i[0], i[1], i[2])
+                            pbar.update(1)
+                        segment_list = []
+                        sentence = ""
+                        position = 0
+
+                    if page_size is not None and len(entries) >= page_size:
+                        break  # Stop processing if page_size is reached
 
     save_segments(entries, get_segments_file(dataset_name))
     logger.info(f"Extracted and saved segments for dataset: {dataset_name}")
