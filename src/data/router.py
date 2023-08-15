@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
-
+from typing import List
+from pydantic import BaseModel
 from data.service import (
     get_data,
     download_few_nerd_dataset,
@@ -17,10 +18,18 @@ from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
 router = APIRouter()
 
 
-@router.get("/{dataset_name}", response_model=DataResponse)
+class DataTableResponse(BaseModel):
+    id: int
+    sentence: str
+    segment: str
+    annotation: str
+    position: int
+
+
+@router.get("/{dataset_name}", response_model=List[DataTableResponse])
 def get_data_route(dataset_name: Experimental_dataset_names, page: int = 1, page_size: int = 100) -> list:
     data = get_data(dataset_name, start=(page - 1) * page_size, end=page * page_size)
-    return DataResponse(data=data)
+    return data
 
 
 @router.get("/{dataset_name}/download")

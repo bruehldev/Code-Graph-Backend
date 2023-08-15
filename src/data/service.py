@@ -6,9 +6,8 @@ import os
 import json
 import logging
 import pandas as pd
-from database.postgresql import insert_data
+from database.postgresql import insert_data, init_db, get_data_range, table_has_entries
 from tqdm import tqdm
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,19 +18,30 @@ with open("../env.json") as f:
 
 
 def get_data(dataset_name: str, start: int = 0, end: int = None) -> list:
+    data_path, data_path_key, data_file_path = get_data_paths(dataset_name)
+
     if dataset_name == "fetch_20newsgroups":
         data = fetch_20newsgroups(subset="all", remove=("headers", "footers", "quotes"))["data"]
     elif dataset_name == "few_nerd":
         data_path = os.path.join(env["data_path"], dataset_name)
-        os.makedirs(os.path.dirname(data_path), exist_ok=True)
+        os.makedirs(data_path, exist_ok=True)
 
-        if not os.path.exists(os.path.join(data_path, "supervised", "train.txt")):
+        # Download the data if it doesn't exist
+        if not os.path.exists(data_file_path):
             download_few_nerd_dataset(dataset_name)
 
-        with open(os.path.join(data_path, "supervised", "train.txt"), "r", encoding="utf8") as f:
+        # Return data from database if it exists
+        if table_has_entries(data_path_key):
+            data = get_data_range(data_path_key, start, end)
+            return [row.__dict__ for row in data]
+
+        # Return data from file if it exists
+        with open(data_file_path, "r", encoding="utf8") as f:
             data = [doc.strip() for doc in f.readlines() if doc.strip()]
+
     else:
         return None
+
     print(len(data))
 
     return data[start:end]
@@ -141,21 +151,30 @@ def save_segments(segments_data, segments_file: str):
         json.dump(segments_data, file)
 
 
+def get_data_paths(dataset_name: str):
+    data_path = os.path.join(env["data_path"], dataset_name, "supervised")
+    data_path_key = data_path.replace("/", "_")
+    data_file_path = os.path.join("..", data_path, "train.txt")
+
+    return data_path, data_path_key, data_file_path
+
+
 def extract_segments(dataset_name: str, page=1, page_size=10):
     entries = []
 
     if dataset_name == "few_nerd":
         segments_folder = os.path.join(env["segments_path"], dataset_name, "supervised")
-        data_folder = os.path.join(env["data_path"], dataset_name)
 
-        data_file_path = os.path.join(data_folder, "supervised", "train.txt")
+        _, data_path_key, data_file_path = get_data_paths(dataset_name)
+        init_db(data_path_key)
+
         if not os.path.exists(data_file_path):
             # Download the data if it doesn't exist
             download_few_nerd_dataset(dataset_name)
 
         os.makedirs(segments_folder, exist_ok=True)
         # TODO Use get_data function but be careful with different data formats!!! It seems like that the second line is different when using get_data instead of the following code.
-        with open(os.path.join(data_folder, "supervised", "train.txt"), "r", encoding="utf8") as f:
+        with open(data_file_path, "r", encoding="utf8") as f:
             sentence = ""
             segment = ""
             segment_list = []
@@ -199,7 +218,7 @@ def extract_segments(dataset_name: str, page=1, page_size=10):
                                 "position": i[2],
                             }
                             entries.append(entry)
-                            insert_data(sentence, i[0], i[1], i[2])
+                            insert_data(data_path_key, sentence, i[0], i[1], i[2])
                             pbar.update(1)
                         segment_list = []
                         sentence = ""

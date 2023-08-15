@@ -1,20 +1,26 @@
 from pydantic import BaseModel
 
 
-class PlotBase(BaseModel):
+class Data(BaseModel):
     sentence: str
     segment: str
-    annotation: int
+    annotation: str
     position: int
-    embedding: dict
-    cluster: int
 
 
-class PlotCreate(PlotBase):
+class DataTableResponse(BaseModel):
+    id: int
+    sentence: str
+    segment: str
+    annotation: str
+    position: int
+
+
+class PlotCreate(Data):
     pass
 
 
-class Plot(PlotBase):
+class Plot(Data):
     id: int
 
     class Config:
