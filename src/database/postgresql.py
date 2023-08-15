@@ -1,5 +1,5 @@
 import json
-from sqlalchemy import create_engine, Column, Integer, String, Text, ARRAY
+from sqlalchemy import create_engine, Column, Integer, String, Text, ARRAY, inspect, MetaData
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -32,16 +32,39 @@ def init_db(table_name):
     # delete_table("plot_table")
     DataTable.__table__.name = table_name
     table = DataTable()
-
     table.metadata.create_all(bind=engine)
 
 
-def delete_table(table_name):
-    metadata = Base.metadata
-    table = metadata.tables.get(table_name)
+def get_table_names():
+    inspector = inspect(engine)
+    table_names = inspector.get_table_names()
+    return table_names
+
+
+def get_table_info():
+    inspector = inspect(engine)
+    table_names = inspector.get_table_names()
+    table_info = {}
+
+    session = SessionLocal()
+
+    for table_name in table_names:
+        DataTable.__table__.name = table_name
+        row_count = session.query(DataTable).count()
+        table_info[table_name] = {"table_name": table_name, "row_count": row_count}
+
+    session.close()
+    return table_info
+
+
+def delete_table(table_name, engine=engine):
+    Base = declarative_base()
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
+    table = metadata.tables[table_name]
     if table is not None:
-        table.drop(engine)
-        logger.info(f"Table '{table_name}' deleted")
+        Base.metadata.drop_all(engine, [table], checkfirst=True)
+        logger.info(f"Table '{table_name}' dropped")
     else:
         raise ValueError(f"Table '{table_name}' does not exist")
 
@@ -164,6 +187,10 @@ def delete_data(table_name, data_id):
 
 
 def table_has_entries(table_name):
+    inspector = inspect(engine)
+    if table_name not in inspector.get_table_names():
+        return False
+
     DataTable.__table__.name = table_name
     session = SessionLocal()
     try:

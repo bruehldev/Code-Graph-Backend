@@ -2,20 +2,18 @@ from fastapi import APIRouter, Depends
 from typing import List
 from pydantic import BaseModel
 
-from database.postgresql import (
-    get_data_range,
-    get_data,
-    insert_data,
-    update_data,
-    delete_data,
-    table_has_entries,
-)
+from database.postgresql import get_data_range, get_data, insert_data, update_data, delete_data, table_has_entries, delete_table, get_table_info
 from data.service import get_path_key
 from database.schemas import Data, DataTableResponse
 
 from data.schemas import Dataset_names, Experimental_dataset_names
 
 router = APIRouter()
+
+
+@router.get("/tables")
+def get_table_names_route():
+    return get_table_info()
 
 
 @router.get("/{dataset_name}/has-entries")
@@ -80,3 +78,12 @@ def update_data_route(
 
     update_data(table_name, id, data.dict())
     return data
+
+
+@router.delete("/{dataset_name}")
+def delete_table_route(
+    dataset_name: Experimental_dataset_names,
+):
+    table_name = get_path_key("data", dataset_name)
+
+    return {"deleted": delete_table(table_name)}
