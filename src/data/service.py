@@ -18,13 +18,13 @@ with open("../env.json") as f:
 
 
 def get_data(dataset_name: str, start: int = 0, end: int = None) -> list:
-    data_path, data_path_key, data_file_path = get_data_paths(dataset_name)
+    data_path_key = get_path_key("data", dataset_name)
+    data_file_path = get_file_path("data", dataset_name, "train.txt")
 
     if dataset_name == "fetch_20newsgroups":
         data = fetch_20newsgroups(subset="all", remove=("headers", "footers", "quotes"))["data"]
     elif dataset_name == "few_nerd":
-        data_path = os.path.join(env["data_path"], dataset_name)
-        os.makedirs(data_path, exist_ok=True)
+        os.makedirs(get_root_path("data", dataset_name), exist_ok=True)
 
         # Download the data if it doesn't exist
         if not os.path.exists(data_file_path):
@@ -47,16 +47,34 @@ def get_data(dataset_name: str, start: int = 0, end: int = None) -> list:
     return data[start:end]
 
 
+def get_root_path(type: str, dataset_name: str):
+    return os.path.join(env["exported_folder"], type, dataset_name)
+
+
+def get_supervised_path(type: str, dataset_name: str):
+    return os.path.join(get_root_path(type, dataset_name), "supervised")
+
+
+def get_path_key(type: str, dataset_name: str):
+    return os.path.join(type, dataset_name, "supervised").replace("/", "_")
+
+
+def get_file_path(type: str, dataset_name: str, filename: str):
+    data_file_path = os.path.join(get_supervised_path(type, dataset_name), filename)
+    return data_file_path
+
+
 def download_few_nerd_dataset(dataset_name: str):
     url = "https://huggingface.co/datasets/DFKI-SLT/few-nerd/resolve/main/data/supervised.zip"
-    output_folder = os.path.join(env["data_path"], dataset_name)
-    output_file = os.path.join(output_folder, "supervised.zip")
-    os.makedirs(output_folder, exist_ok=True)
+    data_path = get_supervised_path("data", dataset_name)
+
+    output_file = data_path + ".zip"
+    os.makedirs(data_path, exist_ok=True)
     response = requests.get(url)
     with open(output_file, "wb") as file:
         file.write(response.content)
     with zipfile.ZipFile(output_file, "r") as zip_ref:
-        zip_ref.extractall(output_folder)
+        zip_ref.extractall(get_root_path("data", dataset_name))
     os.remove(output_file)
 
 
@@ -79,13 +97,12 @@ def save_annotations_keys(annotations: dict, annotations_file: str):
 
 
 def get_annotations_keys_file(dataset_name: str):
-    annotations_directory = os.path.join(env["annotations_keys_path"], dataset_name, "supervised")
-    os.makedirs(annotations_directory, exist_ok=True)
-    return os.path.join(annotations_directory, "annotations.json")
+    os.makedirs(get_supervised_path("annotations", dataset_name), exist_ok=True)
+    return get_file_path("annotations", dataset_name, "annotations.json")
 
 
 def load_annotations_keys(dataset_name: str):
-    with open(os.path.join(env["annotations_keys_path"], dataset_name, "supervised", "annotations.json"), "r") as f:
+    with open(get_file_path("annotations", dataset_name, "annotations.json"), "r") as f:
         annotations = json.load(f)
         return annotations
 
@@ -94,25 +111,29 @@ def extract_annotations_keys(dataset_name: str):
     annotations = {}
 
     if dataset_name == "few_nerd":
-        data = get_data(dataset_name)
+        data_file_path = get_file_path("data", dataset_name, "train.txt")
+        if not os.path.exists(data_file_path):
+            # Download the data if it doesn't exist
+            download_few_nerd_dataset(dataset_name)
         key_id = 1
-        for line in data:
-            fields = line.strip().split("\t")
-            if len(fields) > 1:
-                annotation = fields[1]
-                categories = annotation.split("-")
+        with open(data_file_path, "r", encoding="utf8") as f:
+            for line in f:
+                fields = line.strip().split("\t")
+                if len(fields) > 1:
+                    annotation = fields[1]
+                    categories = annotation.split("-")
 
-                last_category = categories[-1]
-                last_category_parts = last_category.split("/")
-                categories = categories[:-1] + last_category_parts
-                nested_obj = annotations
-                for category in categories:
-                    subcategories = nested_obj.setdefault(category, {})
-                    subcategories.setdefault("id", key_id)
-                    subcategories.setdefault("name", category)
-                    subcategories.setdefault("subcategories", {})
-                    nested_obj = subcategories.setdefault("subcategories", {})
-                    key_id += 1
+                    last_category = categories[-1]
+                    last_category_parts = last_category.split("/")
+                    categories = categories[:-1] + last_category_parts
+                    nested_obj = annotations
+                    for category in categories:
+                        subcategories = nested_obj.setdefault(category, {})
+                        subcategories.setdefault("id", key_id)
+                        subcategories.setdefault("name", category)
+                        subcategories.setdefault("subcategories", {})
+                        nested_obj = subcategories.setdefault("subcategories", {})
+                        key_id += 1
 
     annotations_file = get_annotations_keys_file(dataset_name)
     save_annotations_keys(annotations, annotations_file)
@@ -122,9 +143,8 @@ def extract_annotations_keys(dataset_name: str):
 
 
 def get_segments_file(dataset_name: str):
-    segments_directory = os.path.join(env["segments_path"], dataset_name, "supervised")
-    os.makedirs(segments_directory, exist_ok=True)
-    return os.path.join(segments_directory, "segments.json")
+    os.makedirs(get_supervised_path("segments", dataset_name), exist_ok=True)
+    return get_file_path("segments", dataset_name, "segments.json")
 
 
 def get_segments(dataset_name: str, start: int = 0, end: int = None):
@@ -151,28 +171,20 @@ def save_segments(segments_data, segments_file: str):
         json.dump(segments_data, file)
 
 
-def get_data_paths(dataset_name: str):
-    data_path = os.path.join(env["data_path"], dataset_name, "supervised")
-    data_path_key = data_path.replace("/", "_")
-    data_file_path = os.path.join("..", data_path, "train.txt")
-
-    return data_path, data_path_key, data_file_path
-
-
 def extract_segments(dataset_name: str, page=1, page_size=10):
     entries = []
 
     if dataset_name == "few_nerd":
-        segments_folder = os.path.join(env["segments_path"], dataset_name, "supervised")
+        data_path_key = get_path_key("data", dataset_name)
+        data_file_path = get_file_path("data", dataset_name, "train.txt")
 
-        _, data_path_key, data_file_path = get_data_paths(dataset_name)
         init_db(data_path_key)
 
         if not os.path.exists(data_file_path):
             # Download the data if it doesn't exist
             download_few_nerd_dataset(dataset_name)
 
-        os.makedirs(segments_folder, exist_ok=True)
+        os.makedirs(get_supervised_path("segments", dataset_name), exist_ok=True)
         # TODO Use get_data function but be careful with different data formats!!! It seems like that the second line is different when using get_data instead of the following code.
         with open(data_file_path, "r", encoding="utf8") as f:
             sentence = ""
@@ -238,8 +250,7 @@ def extract_sentences_and_annotations(dataset_name: str):
     annotations = []
 
     if dataset_name == "few_nerd":
-        data_folder = os.path.join(env["data_path"], dataset_name)
-        with open(os.path.join(data_folder, "supervised", "train.txt"), "r", encoding="utf-8") as f:
+        with open(get_file_path("data", dataset_name, "train.txt"), "r", encoding="utf-8") as f:
             data = pd.read_csv(f, delimiter="\t", header=None, names=["sentence", "annotation"], skip_blank_lines=False)
 
             current_sentence = []
@@ -270,15 +281,13 @@ def extract_sentences_and_annotations(dataset_name: str):
 
 
 def get_sentences_file(dataset_name: str):
-    sentences_directory = os.path.join(env["sentences_path"], dataset_name, "supervised")
-    os.makedirs(sentences_directory, exist_ok=True)
-    return os.path.join(sentences_directory, "sentences.json")
+    os.makedirs(get_supervised_path("sentences", dataset_name), exist_ok=True)
+    return get_file_path("sentences", dataset_name, "sentences.json")
 
 
 def get_annotations_file(dataset_name: str):
-    annotations_directory = os.path.join(env["annotations_path"], dataset_name, "supervised")
-    os.makedirs(annotations_directory, exist_ok=True)
-    return os.path.join(annotations_directory, "annotations.json")
+    os.makedirs(get_supervised_path("annotations", dataset_name), exist_ok=True)
+    return get_file_path("annotations", dataset_name, "annotations.json")
 
 
 def get_sentences(dataset_name: str, start: int = 0, end: int = None):

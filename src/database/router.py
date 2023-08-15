@@ -10,7 +10,7 @@ from database.postgresql import (
     delete_data,
     table_has_entries,
 )
-from data.service import get_data_paths
+from data.service import get_path_key
 from database.schemas import Data, DataTableResponse
 
 from data.schemas import Dataset_names, Experimental_dataset_names
@@ -20,7 +20,7 @@ router = APIRouter()
 
 @router.get("/{dataset_name}/has-entries")
 def table_has_entries_route(dataset_name: Dataset_names):
-    _, table_name, _ = get_data_paths(dataset_name)
+    table_name = get_path_key("data", dataset_name)
 
     has_entries = table_has_entries(table_name)
     return {"has_entries": has_entries}
@@ -32,7 +32,8 @@ def get_data_range_route(
     page: int = 1,
     page_size: int = 100,
 ) -> list:
-    _, table_name, _ = get_data_paths(dataset_name)
+    table_name = get_path_key("data", dataset_name)
+
     data_range = get_data_range(table_name, (page - 1) * page_size, page * page_size)
     return [row.__dict__ for row in data_range]
 
@@ -42,7 +43,8 @@ def get_data_route(
     dataset_name: Experimental_dataset_names,
     id: int,
 ):
-    _, table_name, _ = get_data_paths(dataset_name)
+    table_name = get_path_key("data", dataset_name)
+
     data = get_data(table_name, id)
     return data.__dict__
 
@@ -52,7 +54,8 @@ def insert_data_route(
     dataset_name: Experimental_dataset_names,
     data: Data = {"sentence": "test", "segment": "test", "annotation": "test", "position": 0},
 ):
-    _, table_name, _ = get_data_paths(dataset_name)
+    table_name = get_path_key("data", dataset_name)
+
     insert_data(table_name, sentence=data.sentence, segment=data.sentence, annotation=data.annotation, position=data.position)
     return data
 
@@ -62,7 +65,7 @@ def delete_data_route(
     dataset_name: Experimental_dataset_names,
     id: int = 0,
 ):
-    _, table_name, _ = get_data_paths(dataset_name)
+    table_name = get_path_key("data", dataset_name)
 
     return {"id": id, "deleted": delete_data(table_name, id)}
 
@@ -73,7 +76,7 @@ def update_data_route(
     id: int = 0,
     data: Data = {"sentence": "test", "segment": "test", "annotation": "test", "position": 0},
 ):
-    _, table_name, _ = get_data_paths(dataset_name)
+    table_name = get_path_key("data", dataset_name)
 
     update_data(table_name, id, data.dict())
     return data
