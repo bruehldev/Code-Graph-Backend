@@ -77,7 +77,7 @@ def get_embeddings(dataset_name: str, model_name: str, start=0, end=None):
 
     if os.path.exists(embeddings_file):
         embeddings_2d_bert = load_embeddings(embeddings_file)
-        logger.info(f"Loaded embeddings from file for dataset: {dataset_name}")
+        logger.info(f"Loaded embeddings from pickle file for dataset: {dataset_name}")
     else:
         embeddings_2d_bert = extract_embeddings(dataset_name, model_name)
         save_embeddings(embeddings_2d_bert, embeddings_file)
@@ -96,7 +96,7 @@ def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None
 
     if os.path.exists(embeddings_file):
         embeddings_reduced = load_reduced_embeddings(embeddings_file)
-        logger.info(f"Loaded embeddings from file for dataset: {dataset_name}")
+        logger.info(f"Loaded embeddings from pickle file for dataset: {dataset_name}")
     else:
         embeddings_reduced = extract_embeddings_reduced(dataset_name, model_name)
 

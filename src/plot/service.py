@@ -4,7 +4,6 @@ import json
 import logging
 from fastapi import Depends
 from typing import List
-from data.service import get_data
 from models.service import ModelService
 import logging
 from embeddings.service import get_reduced_embeddings, get_segments

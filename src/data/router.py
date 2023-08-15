@@ -26,7 +26,7 @@ class DataTableResponse(BaseModel):
     position: int
 
 
-@router.get("/{dataset_name}", response_model=List[DataTableResponse])
+@router.get("/{dataset_name}")
 def get_data_route(dataset_name: Experimental_dataset_names, page: int = 1, page_size: int = 100) -> list:
     data = get_data(dataset_name, start=(page - 1) * page_size, end=page * page_size)
     return data
@@ -45,8 +45,8 @@ def extract_annotations_route(dataset_name: Dataset_names):
 
 
 @router.get("/{dataset_name}/segments/extract")
-def extract_segments_route(dataset_name: Dataset_names):
-    extract_segments(dataset_name)
+def extract_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100):
+    extract_segments(dataset_name, page, page_size)
     return {"message": "Segments extracted successfully"}
 
 
