@@ -19,7 +19,6 @@ with open("../env.json") as f:
 
 
 def get_data(dataset_name: str, start: int = 0, end: int = None) -> list:
-    data_path_key = get_path_key("data", dataset_name)
     data_file_path = get_file_path("data", dataset_name, "train.txt")
 
     if dataset_name == "fetch_20newsgroups":
@@ -30,11 +29,6 @@ def get_data(dataset_name: str, start: int = 0, end: int = None) -> list:
         # Download the data if it doesn't exist
         if not os.path.exists(data_file_path):
             download_few_nerd_dataset(dataset_name)
-
-        # Return data from database if it exists
-        if table_has_entries(data_path_key):
-            data = get_data_range(data_path_key, start, end)
-            return [row.__dict__ for row in data]
 
         # Return data from file if it exists
         with open(data_file_path, "r", encoding="utf8") as f:
@@ -133,8 +127,14 @@ def get_segments_file(dataset_name: str):
 
 def get_segments(dataset_name: str, start: int = 0, end: int = None):
     segments_file = get_segments_file(dataset_name)
+    data_path_key = get_path_key("data", dataset_name)
+
     segments_data = None
 
+    # Return data from database if it exists
+    if table_has_entries(data_path_key):
+        data = get_data_range(data_path_key, start, end)
+        return [row.__dict__ for row in data]
     if os.path.exists(segments_file):
         segments_data = load_segments(segments_file)
         logger.info(f"Loaded segments from file for dataset: {dataset_name}")
