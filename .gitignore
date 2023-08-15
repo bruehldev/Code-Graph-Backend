@@ -1,6 +1,5 @@
 # saved models / data / resulsts / embeddings
 exported/
-data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

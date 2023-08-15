@@ -1,13 +1,14 @@
-import json
 import os
 import json
 import logging
+import pickle
 from typing import List
 from data.service import get_data, get_segments
 from models.service import ModelService
 import logging
 import numpy as np
 import umap
+from data.utils import get_path_key, get_file_path, get_root_path, get_supervised_path
 
 
 from configmanager.service import ConfigManager
@@ -25,37 +26,37 @@ config = config_manager.get_default_model()
 
 
 def save_embeddings(embeddings: np.ndarray, file_name: str):
-    with open(file_name, "w") as f:
-        json.dump(embeddings, f)
+    with open(file_name, "wb") as f:
+        pickle.dump(embeddings, f)
 
 
 def load_embeddings(file_name: str) -> np.ndarray:
-    with open(file_name, "r") as f:
-        embeddings_list = json.load(f)
-        return np.array(embeddings_list)
+    with open(file_name, "rb") as f:
+        embeddings = pickle.load(f)
+        return embeddings
 
 
 def get_embeddings_file(dataset_name: str):
-    embeddings_directory = os.path.join(env["embeddings_path"], dataset_name)
+    embeddings_directory = get_supervised_path("embeddings", dataset_name)
     os.makedirs(embeddings_directory, exist_ok=True)
-    return os.path.join(embeddings_directory, f"embeddings_{dataset_name}.json")
+    return get_file_path("embeddings", dataset_name, f"embeddings_{dataset_name}.pkl")
 
 
 def save_reduced_embeddings(reduced_embeddings: np.ndarray, file_name: str):
-    with open(file_name, "w") as f:
-        json.dump(reduced_embeddings.tolist(), f)
+    with open(file_name, "wb") as f:
+        pickle.dump(reduced_embeddings, f)
 
 
 def load_reduced_embeddings(file_name: str) -> np.ndarray:
-    with open(file_name, "r") as f:
-        reduced_embeddings_list = json.load(f)
-        return np.array(reduced_embeddings_list)
+    with open(file_name, "rb") as f:
+        reduced_embeddings = pickle.load(f)
+        return reduced_embeddings
 
 
 def get_reduced_embeddings_file(dataset_name: str):
-    embeddings_directory = os.path.join(env["embeddings_path"], dataset_name)
+    embeddings_directory = get_supervised_path("embeddings", dataset_name)
     os.makedirs(embeddings_directory, exist_ok=True)
-    return os.path.join(embeddings_directory, f"reduced_embeddings_{dataset_name}.json")
+    return get_file_path("embeddings", dataset_name, f"reduced_embeddings_{dataset_name}.pkl")
 
 
 def extract_embeddings(dataset_name, model_name):

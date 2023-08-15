@@ -8,6 +8,7 @@ import logging
 import pandas as pd
 from database.postgresql import insert_data, init_db, get_data_range, table_has_entries
 from tqdm import tqdm
+from data.utils import get_path_key, get_file_path, get_root_path, get_supervised_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,23 +46,6 @@ def get_data(dataset_name: str, start: int = 0, end: int = None) -> list:
     print(len(data))
 
     return data[start:end]
-
-
-def get_root_path(type: str, dataset_name: str):
-    return os.path.join(env["exported_folder"], type, dataset_name)
-
-
-def get_supervised_path(type: str, dataset_name: str):
-    return os.path.join(get_root_path(type, dataset_name), "supervised")
-
-
-def get_path_key(type: str, dataset_name: str):
-    return os.path.join(type, dataset_name, "supervised").replace("/", "_")
-
-
-def get_file_path(type: str, dataset_name: str, filename: str):
-    data_file_path = os.path.join(get_supervised_path(type, dataset_name), filename)
-    return data_file_path
 
 
 def download_few_nerd_dataset(dataset_name: str):
