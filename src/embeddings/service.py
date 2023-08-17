@@ -2,17 +2,15 @@ import os
 import json
 import logging
 import pickle
-from typing import List
-from data.service import get_data, get_segments
-from models.service import ModelService
 import logging
 import numpy as np
 import umap
-from data.utils import get_path_key, get_file_path, get_root_path, get_supervised_path
 
-
+from typing import List
+from data.service import get_data, get_segments
+from models.service import ModelService
+from data.utils import get_path_key, get_file_path, get_supervised_path
 from configmanager.service import ConfigManager
-from bertopic import BERTopic
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,58 +23,125 @@ config_manager = ConfigManager(env["configs"])
 config = config_manager.get_default_model()
 
 
-def save_embeddings(embeddings: np.ndarray, file_name: str):
-    with open(file_name, "wb") as f:
-        pickle.dump(embeddings, f)
+def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, index_provided: bool = False):
+    embeddings_file = get_embeddings_file(dataset_name, model_name)
+    num_embeddings = len(embeddings)  # Get the number of embeddings from the list
+
+    if not index_provided:
+        embeddings = [(index, embedding) for index, embedding in enumerate(embeddings)]
+
+    print(embeddings[0])
+
+    with open(embeddings_file, "wb") as f:
+        pickle.dump((num_embeddings, embeddings), f)
 
 
-def load_embeddings(file_name: str) -> np.ndarray:
-    with open(file_name, "rb") as f:
-        embeddings = pickle.load(f)
+def load_embeddings(dataset_name: str, model_name: str, with_index: bool = False) -> List:
+    embeddings_file = get_embeddings_file(dataset_name, model_name)
+
+    with open(embeddings_file, "rb") as f:
+        num_embeddings, indexed_embeddings = pickle.load(f)
+
+    if with_index:
+        return indexed_embeddings
+    else:
+        embeddings = [embedding for index, embedding in indexed_embeddings]
         return embeddings
 
 
-def get_embeddings_file(dataset_name: str):
-    embeddings_directory = get_supervised_path("embeddings", dataset_name)
+def create_embedding(embedding: list, dataset_name: str, model_name: str) -> List:
+    loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
+
+    # Get the index for the new embedding
+    last_index = loaded_embeddings[-1][0] if loaded_embeddings else -1
+    new_index = last_index + 1
+    print(new_index)
+
+    # Append the new embedding with its index
+    loaded_embeddings.append([new_index, embedding])
+    save_embeddings(embeddings=loaded_embeddings, dataset_name=dataset_name, model_name=model_name, index_provided=True)
+
+
+def read_embedding(index: int, dataset_name: str, model_name: str) -> np.ndarray:
+    loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
+
+    for loaded_index, embedding in loaded_embeddings:
+        if loaded_index == index:
+            print("aaa", type(loaded_index), type(embedding))
+            return embedding
+    return None
+
+
+def update_embedding(index: int, new_embedding: np.ndarray, dataset_name: str, model_name: str):
+    loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
+
+    for i, (loaded_index, embedding) in enumerate(loaded_embeddings):
+        if loaded_index == index:
+            loaded_embeddings[i] = [loaded_index, new_embedding]
+            save_embeddings(loaded_embeddings, dataset_name, model_name, index_provided=True)
+            return
+
+
+def delete_embedding(index: int, dataset_name: str, model_name: str):
+    loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
+
+    for i, (loaded_index, embedding) in enumerate(loaded_embeddings):
+        if loaded_index == index:
+            loaded_embeddings.pop(i)
+            save_embeddings(loaded_embeddings, dataset_name, model_name, index_provided=True)
+            return
+
+
+def get_embeddings_file(dataset_name: str, model_name: str):
+    embeddings_directory = get_supervised_path("embeddings", dataset_name, model_name)
     os.makedirs(embeddings_directory, exist_ok=True)
-    return get_file_path("embeddings", dataset_name, f"embeddings_{dataset_name}.pkl")
+    return get_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"embeddings_{dataset_name}.pkl")
 
 
-def save_reduced_embeddings(reduced_embeddings: np.ndarray, file_name: str):
-    with open(file_name, "wb") as f:
+def save_reduced_embeddings(reduced_embeddings: np.ndarray, dataset_name: str, model_name: str):
+    embeddings_file = get_reduced_embeddings_file(dataset_name, model_name)
+
+    with open(embeddings_file, "wb") as f:
         pickle.dump(reduced_embeddings, f)
 
 
-def load_reduced_embeddings(file_name: str) -> np.ndarray:
-    with open(file_name, "rb") as f:
+def load_reduced_embeddings(dataset_name: str, model_name: str) -> np.ndarray:
+    embeddings_file = get_reduced_embeddings_file(dataset_name, model_name)
+
+    with open(embeddings_file, "rb") as f:
         reduced_embeddings = pickle.load(f)
         return reduced_embeddings
 
 
-def get_reduced_embeddings_file(dataset_name: str):
-    embeddings_directory = get_supervised_path("embeddings", dataset_name)
+def get_reduced_embeddings_file(dataset_name: str, model_name: str):
+    embeddings_directory = get_supervised_path("embeddings", dataset_name, model_name)
     os.makedirs(embeddings_directory, exist_ok=True)
-    return get_file_path("embeddings", dataset_name, f"reduced_embeddings_{dataset_name}.pkl")
+    return get_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"reduced_embeddings_{dataset_name}.pkl")
 
 
 def extract_embeddings(dataset_name, model_name):
     model_service = ModelService(dataset_name, model_name)
     logger.info("Extracting embeddings for documents")
+
+    datatable_id = get_path_key("embeddings", dataset_name, model_name)
+
     if dataset_name == "few_nerd":
         embeddings = model_service.process_data(get_segments(dataset_name))
-        return embeddings
+        embeddings_2d_bert = embeddings
     elif dataset_name == "fetch_20newsgroups":
         embeddings = model_service.model(get_data(dataset_name))
         umap_model = umap.UMAP(**config.embedding_config.dict())
-        return umap_model.fit_transform(embeddings)
+        embeddings_2d_bert = umap_model.fit_transform(embeddings)
+
+    save_embeddings(embeddings_2d_bert, dataset_name, model_name)
 
 
 def get_embeddings(dataset_name: str, model_name: str, start=0, end=None):
     global embeddings_2d_bert
-    embeddings_file = get_embeddings_file(dataset_name)
+    embeddings_file = get_embeddings_file(dataset_name, model_name)
 
     if os.path.exists(embeddings_file):
-        embeddings_2d_bert = load_embeddings(embeddings_file)
+        embeddings_2d_bert = load_embeddings(dataset_name, model_name)
         logger.info(f"Loaded embeddings from pickle file for dataset: {dataset_name}")
     else:
         embeddings_2d_bert = extract_embeddings(dataset_name, model_name)

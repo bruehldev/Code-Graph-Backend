@@ -1,10 +1,17 @@
 from fastapi import APIRouter, Depends
-from bertopic import BERTopic
-
-from models.service import ModelService
-from data.schemas import Dataset_names, Experimental_dataset_names
+from typing import List
+from data.schemas import Experimental_dataset_names
 from models.schemas import Model_names
-from embeddings.service import get_embeddings, get_reduced_embeddings, extract_embeddings, extract_embeddings_reduced
+from embeddings.service import (
+    get_embeddings,
+    get_reduced_embeddings,
+    extract_embeddings,
+    extract_embeddings_reduced,
+    create_embedding,
+    read_embedding,
+    update_embedding,
+    delete_embedding,
+)
 
 router = APIRouter()
 
@@ -29,3 +36,30 @@ def extract_embeddings_endpoint(dataset_name: Experimental_dataset_names, model_
 def extract_embeddings_reduced_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
     extract_embeddings_reduced(dataset_name, model_name)
     return {"message": "Reduced embeddings extracted successfully"}
+
+
+@router.post("/create")
+def create_embedding_endpoint(embedding: List[float], dataset_name: Experimental_dataset_names, model_name: Model_names):
+    create_embedding(embedding, dataset_name, model_name)
+    return {"message": "Embedding created successfully"}
+
+
+@router.get("/read/{index}")
+def read_embedding_endpoint(index: int, dataset_name: Experimental_dataset_names, model_name: Model_names):
+    embedding = read_embedding(index, dataset_name, model_name)
+    if embedding is not None:
+        return {"embedding": embedding}
+    else:
+        return {"message": "Embedding not found"}
+
+
+@router.put("/update/{index}")
+def update_embedding_endpoint(index: int, new_embedding: List[float], dataset_name: Experimental_dataset_names, model_name: Model_names):
+    update_embedding(index, new_embedding, dataset_name, model_name)
+    return {"message": "Embedding updated successfully"}
+
+
+@router.delete("/delete/{index}")
+def delete_embedding_endpoint(index: int, dataset_name: Experimental_dataset_names, model_name: Model_names):
+    delete_embedding(index, dataset_name, model_name)
+    return {"message": "Embedding deleted successfully"}
