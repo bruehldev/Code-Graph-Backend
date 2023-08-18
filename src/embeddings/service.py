@@ -9,8 +9,11 @@ import umap
 from typing import List
 from data.service import get_data, get_segments
 from models.service import ModelService
-from data.utils import get_path_key, get_file_path, get_supervised_path
+from data.utils import get_model_file_path, get_supervised_path, get_path_key
 from configmanager.service import ConfigManager
+
+from database.postgresql import SessionLocal, DataTable, ReducedEmbeddingsTable, init_reduced_embeddings_table, insert_reduced_embedding
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -95,12 +98,20 @@ def delete_embedding(index: int, dataset_name: str, model_name: str):
 def get_embeddings_file(dataset_name: str, model_name: str):
     embeddings_directory = get_supervised_path("embeddings", dataset_name, model_name)
     os.makedirs(embeddings_directory, exist_ok=True)
-    return get_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"embeddings_{dataset_name}.pkl")
+    return get_model_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"embeddings_{dataset_name}.pkl")
 
 
 def save_reduced_embeddings(reduced_embeddings: np.ndarray, dataset_name: str, model_name: str):
-    embeddings_file = get_reduced_embeddings_file(dataset_name, model_name)
+    # Save the reduced_embeddings to the database
+    path_key = get_path_key(type="reduced_embedding", dataset_name=dataset_name, model_name=model_name)
+    init_reduced_embeddings_table(path_key)
 
+    for embedding in reduced_embeddings:
+        insert_reduced_embedding(path_key, embedding.tolist())
+
+
+def save_reduced_embeddings_pickle(reduced_embeddings: np.ndarray, dataset_name: str, model_name: str):
+    embeddings_file = get_reduced_embeddings_file(dataset_name, model_name)
     with open(embeddings_file, "wb") as f:
         pickle.dump(reduced_embeddings, f)
 
@@ -116,14 +127,12 @@ def load_reduced_embeddings(dataset_name: str, model_name: str) -> np.ndarray:
 def get_reduced_embeddings_file(dataset_name: str, model_name: str):
     embeddings_directory = get_supervised_path("embeddings", dataset_name, model_name)
     os.makedirs(embeddings_directory, exist_ok=True)
-    return get_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"reduced_embeddings_{dataset_name}.pkl")
+    return get_model_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"reduced_embeddings_{dataset_name}.pkl")
 
 
 def extract_embeddings(dataset_name, model_name):
     model_service = ModelService(dataset_name, model_name)
     logger.info("Extracting embeddings for documents")
-
-    datatable_id = get_path_key("embeddings", dataset_name, model_name)
 
     if dataset_name == "few_nerd":
         embeddings = model_service.process_data(get_segments(dataset_name))
@@ -156,11 +165,11 @@ def get_embeddings(dataset_name: str, model_name: str, start=0, end=None):
 
 
 def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None):
-    embeddings_file = get_reduced_embeddings_file(dataset_name)
+    embeddings_file = get_reduced_embeddings_file(dataset_name, model_name)
     embeddings_reduced = []
 
     if os.path.exists(embeddings_file):
-        embeddings_reduced = load_reduced_embeddings(embeddings_file)
+        embeddings_reduced = load_reduced_embeddings(dataset_name, model_name)
         logger.info(f"Loaded embeddings from pickle file for dataset: {dataset_name}")
     else:
         embeddings_reduced = extract_embeddings_reduced(dataset_name, model_name)
@@ -174,7 +183,6 @@ def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None
 
 def extract_embeddings_reduced(dataset_name, model_name):
     embeddings = np.array(get_embeddings(dataset_name, model_name))
-    # embeddings = get_embeddings(dataset_name, model_name)
     umap_model = umap.UMAP(**config.embedding_config.dict())
 
     # Check the shape of the embeddings array
@@ -182,7 +190,7 @@ def extract_embeddings_reduced(dataset_name, model_name):
         embeddings = embeddings.reshape(-1, 1)  # Reshape to a column vector
 
     embeddings_reduced = umap_model.fit_transform(embeddings)
-    embeddings_file = get_reduced_embeddings_file(dataset_name)
-    save_reduced_embeddings(embeddings_reduced, embeddings_file)
-    logger.info(f"Computed and saved embeddings for dataset: {dataset_name}")
+
+    save_reduced_embeddings(embeddings_reduced, dataset_name, model_name)
+    logger.info(f"Computed and saved embeddings for dataset: {dataset_name}  model: {model_name}")
     return embeddings_reduced
