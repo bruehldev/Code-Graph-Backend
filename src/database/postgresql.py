@@ -1,5 +1,6 @@
 import json
-from sqlalchemy import create_engine, Column, Integer, String, Text, ARRAY, inspect, MetaData
+from sqlalchemy import create_engine, Column, Integer, String, Text, ARRAY, inspect, MetaData, ForeignKey, Table
+from sqlalchemy.types import Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -17,22 +18,45 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
 Base = declarative_base()
+metadata = MetaData()
 
 
 class DataTable(Base):
-    __tablename__ = "default_data_name"
-    id = Column(Integer, primary_key=True, index=True)
-    sentence = Column(Text)
-    segment = Column(String)
-    annotation = Column(String)
-    position = Column(Integer)
+    __table__ = Table(
+        "default_data_name",
+        metadata,
+        Column("id", Integer, primary_key=True, index=True),
+        Column("sentence", Text),
+        Column("segment", String),
+        Column("annotation", String),
+        Column("position", Integer),
+    )
 
 
-def init_db(table_name):
-    # delete_table("plot_table")
-    DataTable.__table__.name = table_name
-    table = DataTable()
-    table.metadata.create_all(bind=engine)
+class ReducedEmbeddingsTable(Base):
+    __table__ = Table("default_reduced_embededdings", metadata, Column("id", Integer, primary_key=True, index=True), Column("reduced_embeddings", ARRAY(Float)))
+
+
+def init_data_table(table_name):
+    inspector = inspect(engine)
+    if table_name not in inspector.get_table_names():
+        data_table_class = DataTable
+        data_table_class.__table__.name = table_name  # Update the table name
+        data_table_class.__table__.create(bind=engine)
+        print(f"Initialized table: {table_name}")
+    else:
+        print(f"Table {table_name} already exists.")
+
+
+def init_reduced_embeddings_table(table_name):
+    inspector = inspect(engine)
+    if table_name not in inspector.get_table_names():
+        data_table_class = ReducedEmbeddingsTable
+        data_table_class.__table__.name = table_name  # Update the table name
+        data_table_class.__table__.create(bind=engine)
+        print(f"Initialized table: {table_name}")
+    else:
+        print(f"Table {table_name} already exists.")
 
 
 def get_table_names():
@@ -134,9 +158,19 @@ def get_data(table_name, data_id):
 
 def insert_data(table_name, sentence, segment, annotation, position):
     # Create an instance of the dynamic table class with the data
-    DataTable.__table__.name = table_name
-    plot_instance = DataTable(__tablename__=table_name, sentence=sentence, segment=segment, annotation=annotation, position=position)
+    data_table_class = DataTable
+    data_table_class.__table__.name = table_name  # Update the table name
+    plot_instance = data_table_class(sentence=sentence, segment=segment, annotation=annotation, position=position)
     # Add the instance to the session
+    SessionLocal.add(plot_instance)
+    SessionLocal.commit()
+
+
+def insert_reduced_embedding(table_name, reduced_embeddings):
+    data_table_class = ReducedEmbeddingsTable
+    data_table_class.__table__.name = table_name
+    plot_instance = data_table_class(reduced_embeddings=reduced_embeddings)
+
     SessionLocal.add(plot_instance)
     SessionLocal.commit()
 
