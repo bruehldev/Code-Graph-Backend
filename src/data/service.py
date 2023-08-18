@@ -8,7 +8,7 @@ import logging
 import pandas as pd
 from database.postgresql import insert_data, init_data_table, get_data_range, table_has_entries
 from tqdm import tqdm
-from data.utils import get_path_key, get_file_path, get_root_path, get_supervised_path
+from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ with open("../env.json") as f:
 
 
 def get_data(dataset_name: str, start: int = 0, end: int = None) -> list:
-    data_file_path = get_file_path(type="data", dataset_name=dataset_name, filename="train.txt")
+    data_file_path = get_data_file_path(type="data", dataset_name=dataset_name, filename="train.txt")
 
     if dataset_name == "fetch_20newsgroups":
         data = fetch_20newsgroups(subset="all", remove=("headers", "footers", "quotes"))["data"]
@@ -76,11 +76,11 @@ def save_annotations_keys(annotations: dict, annotations_file: str):
 
 def get_annotations_keys_file(dataset_name: str):
     os.makedirs(get_supervised_path("annotations", dataset_name), exist_ok=True)
-    return get_file_path(type="annotations", dataset_name=dataset_name, filename="annotations.json")
+    return get_data_file_path(type="annotations", dataset_name=dataset_name, filename="annotations.json")
 
 
 def load_annotations_keys(dataset_name: str):
-    with open(get_file_path(type="annotations", dataset_name=dataset_name, filename="annotations.json"), "r") as f:
+    with open(get_data_file_path(type="annotations", dataset_name=dataset_name, filename="annotations.json"), "r") as f:
         annotations = json.load(f)
         return annotations
 
@@ -89,7 +89,7 @@ def extract_annotations_keys(dataset_name: str):
     annotations = {}
 
     if dataset_name == "few_nerd":
-        data_file_path = get_file_path(type="data", dataset_name=dataset_name, filename="train.txt")
+        data_file_path = get_data_file_path(type="data", dataset_name=dataset_name, filename="train.txt")
         if not os.path.exists(data_file_path):
             # Download the data if it doesn't exist
             download_few_nerd_dataset(dataset_name)
@@ -122,7 +122,7 @@ def extract_annotations_keys(dataset_name: str):
 
 def get_segments_file(dataset_name: str):
     os.makedirs(get_supervised_path("segments", dataset_name), exist_ok=True)
-    return get_file_path(type="segments", dataset_name=dataset_name, model_name=None, filename="segments.json")
+    return get_data_file_path(type="segments", dataset_name=dataset_name, filename="segments.json")
 
 
 def get_segments(dataset_name: str, start: int = 0, end: int = None):
@@ -160,7 +160,7 @@ def extract_segments(dataset_name: str, page=1, page_size=10):
 
     if dataset_name == "few_nerd":
         data_path_key = get_path_key("data", dataset_name)
-        data_file_path = get_file_path(type="data", dataset_name=dataset_name, filename="train.txt")
+        data_file_path = get_data_file_path(type="data", dataset_name=dataset_name, filename="train.txt")
 
         init_data_table(data_path_key)
 
@@ -234,7 +234,7 @@ def extract_sentences_and_annotations(dataset_name: str):
     annotations = []
 
     if dataset_name == "few_nerd":
-        with open(get_file_path(type="data", dataset_name=dataset_name, filename="train.txt"), "r", encoding="utf-8") as f:
+        with open(get_data_file_path(type="data", dataset_name=dataset_name, filename="train.txt"), "r", encoding="utf-8") as f:
             data = pd.read_csv(f, delimiter="\t", header=None, names=["sentence", "annotation"], skip_blank_lines=False)
 
             current_sentence = []
@@ -266,12 +266,12 @@ def extract_sentences_and_annotations(dataset_name: str):
 
 def get_sentences_file(dataset_name: str):
     os.makedirs(get_supervised_path("sentences", dataset_name), exist_ok=True)
-    return get_file_path(type="sentences", dataset_name=dataset_name, filename="sentences.json")
+    return get_data_file_path(type="sentences", dataset_name=dataset_name, filename="sentences.json")
 
 
 def get_annotations_file(dataset_name: str):
     os.makedirs(get_supervised_path("annotations", dataset_name), exist_ok=True)
-    return get_file_path(type="annotations", dataset_name=dataset_name, filename="annotations.json")
+    return get_data_file_path(type="annotations", dataset_name=dataset_name, filename="annotations.json")
 
 
 def get_sentences(dataset_name: str, start: int = 0, end: int = None):

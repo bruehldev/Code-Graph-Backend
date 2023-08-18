@@ -24,5 +24,9 @@ def get_path_key(type: str, dataset_name: str, model_name=None):
         return os.path.join(type, dataset_name, "supervised", model_name[:12]).replace("/", "_")
 
 
-def get_file_path(type: str, dataset_name: str, model_name: str, filename: str):
+def get_data_file_path(type: str, dataset_name: str, filename: str):
+    return os.path.join(get_supervised_path(type, dataset_name), filename)
+
+
+def get_model_file_path(type: str, dataset_name: str, model_name, filename: str):
     return os.path.join(get_supervised_path(type, dataset_name, model_name), filename)
