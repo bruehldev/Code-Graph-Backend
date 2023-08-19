@@ -21,30 +21,30 @@ def get_embeddings_endpoint(dataset_name: Experimental_dataset_names, model_name
     return {"embeddings": get_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)}
 
 
-@router.get("/reduced")
-def get_reduced_embeddings_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100):
-    return {"reduced_embeddings": get_reduced_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)}
-
-
 @router.get("/extract")
 def extract_embeddings_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
     extract_embeddings(dataset_name, model_name)
     return {"message": "Embeddings extracted successfully"}
 
 
-@router.get("/extract/reduced")
+@router.get("/reduced")
+def get_reduced_embeddings_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100):
+    return {"reduced_embeddings": get_reduced_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)}
+
+
+@router.get("/reduced/extract")
 def extract_embeddings_reduced_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
     extract_embeddings_reduced(dataset_name, model_name)
     return {"message": "Reduced embeddings extracted successfully"}
 
 
-@router.post("/create")
+@router.post("/")
 def create_embedding_endpoint(embedding: List[float], dataset_name: Experimental_dataset_names, model_name: Model_names):
     create_embedding(embedding, dataset_name, model_name)
     return {"message": "Embedding created successfully"}
 
 
-@router.get("/read/{index}")
+@router.get("/{index}")
 def read_embedding_endpoint(index: int, dataset_name: Experimental_dataset_names, model_name: Model_names):
     embedding = read_embedding(index, dataset_name, model_name)
     if embedding is not None:
@@ -53,13 +53,13 @@ def read_embedding_endpoint(index: int, dataset_name: Experimental_dataset_names
         return {"message": "Embedding not found"}
 
 
-@router.put("/update/{index}")
+@router.put("/{index}")
 def update_embedding_endpoint(index: int, new_embedding: List[float], dataset_name: Experimental_dataset_names, model_name: Model_names):
     update_embedding(index, new_embedding, dataset_name, model_name)
     return {"message": "Embedding updated successfully"}
 
 
-@router.delete("/delete/{index}")
+@router.delete("/{index}")
 def delete_embedding_endpoint(index: int, dataset_name: Experimental_dataset_names, model_name: Model_names):
     delete_embedding(index, dataset_name, model_name)
     return {"message": "Embedding deleted successfully"}
