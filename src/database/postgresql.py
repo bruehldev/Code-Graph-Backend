@@ -37,26 +37,15 @@ class ReducedEmbeddingsTable(Base):
     __table__ = Table("default_reduced_embededdings", metadata, Column("id", Integer, primary_key=True, index=True), Column("reduced_embeddings", ARRAY(Float)))
 
 
-def init_data_table(table_name):
+def init_table(table_name, table_cls):
     inspector = inspect(engine)
     if table_name not in inspector.get_table_names():
-        data_table_class = DataTable
+        data_table_class = table_cls
         data_table_class.__table__.name = table_name  # Update the table name
         data_table_class.__table__.create(bind=engine)
-        print(f"Initialized table: {table_name}")
+        logger.info(f"Initialized table: {table_name}")
     else:
-        print(f"Table {table_name} already exists.")
-
-
-def init_reduced_embeddings_table(table_name):
-    inspector = inspect(engine)
-    if table_name not in inspector.get_table_names():
-        data_table_class = ReducedEmbeddingsTable
-        data_table_class.__table__.name = table_name  # Update the table name
-        data_table_class.__table__.create(bind=engine)
-        print(f"Initialized table: {table_name}")
-    else:
-        print(f"Table {table_name} already exists.")
+        logger.info(f"Using table {table_name}")
 
 
 def get_table_names():

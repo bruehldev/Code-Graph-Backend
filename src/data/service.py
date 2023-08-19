@@ -6,7 +6,7 @@ import os
 import json
 import logging
 import pandas as pd
-from database.postgresql import insert_data, init_data_table, get_data_range, table_has_entries
+from database.postgresql import insert_data, init_table, get_data_range, table_has_entries, DataTable
 from tqdm import tqdm
 from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
 
@@ -162,7 +162,7 @@ def extract_segments(dataset_name: str, page=1, page_size=10):
         data_path_key = get_path_key("data", dataset_name)
         data_file_path = get_data_file_path(type="data", dataset_name=dataset_name, filename="train.txt")
 
-        init_data_table(data_path_key)
+        init_table(data_path_key, DataTable)
 
         if not os.path.exists(data_file_path):
             # Download the data if it doesn't exist
