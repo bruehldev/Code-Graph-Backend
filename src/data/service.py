@@ -6,7 +6,7 @@ import os
 import json
 import logging
 import pandas as pd
-from database.postgresql import insert_data, init_table, get_data_range, table_has_entries, DataTable
+from database.postgresql import create, init_table, get_data, table_has_entries, DataTable
 from tqdm import tqdm
 from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
 
@@ -132,8 +132,8 @@ def get_segments(dataset_name: str, start: int = 0, end: int = None):
     segments_data = None
 
     # Return data from database if it exists
-    if table_has_entries(data_path_key):
-        data = get_data_range(data_path_key, start, end, DataTable)
+    if table_has_entries(data_path_key, DataTable):
+        data = get_data(data_path_key, start, end, DataTable)
         return [row.__dict__ for row in data]
     if os.path.exists(segments_file):
         segments_data = load_segments(segments_file)
@@ -214,7 +214,7 @@ def extract_segments(dataset_name: str, page=1, page_size=10):
                                 "position": i[2],
                             }
                             entries.append(entry)
-                            insert_data(data_path_key, sentence, i[0], i[1], i[2])
+                            create(data_path_key, DataTable, sentence, i[0], i[1], i[2])
                             pbar.update(1)
                         segment_list = []
                         sentence = ""

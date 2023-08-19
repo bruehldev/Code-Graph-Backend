@@ -37,10 +37,10 @@ class ReducedEmbeddingsTable(Base):
     __table__ = Table("default_reduced_embededdings", metadata, Column("id", Integer, primary_key=True, index=True), Column("reduced_embeddings", ARRAY(Float)))
 
 
-def init_table(table_name, table_cls):
+def init_table(table_name, table_class):
     inspector = inspect(engine)
     if table_name not in inspector.get_table_names():
-        data_table_class = table_cls
+        data_table_class = table_class
         data_table_class.__table__.name = table_name  # Update the table name
         data_table_class.__table__.create(bind=engine)
         logger.info(f"Initialized table: {table_name}")
@@ -54,7 +54,7 @@ def get_table_names():
     return table_names
 
 
-def get_table_info():
+def get_table_info(table_class):
     inspector = inspect(engine)
     table_names = inspector.get_table_names()
     table_info = {}
@@ -62,8 +62,8 @@ def get_table_info():
     session = SessionLocal()
 
     for table_name in table_names:
-        DataTable.__table__.name = table_name
-        row_count = session.query(DataTable).count()
+        table_class.__table__.name = table_name
+        row_count = session.query(table_class).count()
         table_info[table_name] = {"table_name": table_name, "row_count": row_count}
 
     session.close()
@@ -96,35 +96,18 @@ def get_session():
     return SessionLocal
 
 
-def get_all_data(table_name):
-    """
-    Get all data from the specified table.
-
-    :param table_name: Name of the table to fetch data from.
-    :return: List of all data rows from the table.
-    """
-
-    DataTable.__table__.name = table_name
+def get_data(table_name, start, end, table_class):
+    table_class.__table__.name = table_name
     session = SessionLocal()
     try:
-        data = session.query(DataTable).all()
-        return data
-    finally:
-        session.close()
-
-
-def get_data_range(table_name, start, end, table_cls):
-    table_cls.__table__.name = table_name
-    session = SessionLocal()
-    try:
-        data_range = session.query(table_cls).slice(start, end).all()
+        data_range = session.query(table_class).slice(start, end).all()
         logger.info(f"Loaded data from database: {table_name}")
         return data_range
     finally:
         session.close()
 
 
-def get_data(table_name, data_id):
+def get(table_name, table_class, data_id):
     """
     Get data from the specified table by ID.
 
@@ -132,10 +115,10 @@ def get_data(table_name, data_id):
     :param data_id: ID of the data to retrieve.
     :return: Data row with the specified ID.
     """
-    DataTable.__table__.name = table_name
+    table_class.__table__.name = table_name
     session = SessionLocal()
     try:
-        data = session.query(DataTable).filter_by(id=data_id).first()
+        data = session.query(table_class).filter_by(id=data_id).first()
         logger.info(f"Loaded data from database: {table_name}")
         if data:
             return data
@@ -145,36 +128,29 @@ def get_data(table_name, data_id):
         session.close()
 
 
-def insert_data(table_name, sentence, segment, annotation, position):
+# data: sentence, segment, annotation, position
+# reduced_embeddings: reduced_embeddings
+def create(table_name, table_class, **kwargs):
     # Create an instance of the dynamic table class with the data
-    data_table_class = DataTable
+    data_table_class = table_class
     data_table_class.__table__.name = table_name  # Update the table name
-    plot_instance = data_table_class(sentence=sentence, segment=segment, annotation=annotation, position=position)
+    plot_instance = data_table_class(**kwargs)
     # Add the instance to the session
     SessionLocal.add(plot_instance)
     SessionLocal.commit()
 
 
-def insert_reduced_embedding(table_name, reduced_embeddings):
-    data_table_class = ReducedEmbeddingsTable
-    data_table_class.__table__.name = table_name
-    plot_instance = data_table_class(reduced_embeddings=reduced_embeddings)
-
-    SessionLocal.add(plot_instance)
-    SessionLocal.commit()
-
-
-def update_data(table_name, data_id, new_values):
+def update(table_name, table_class, data_id, new_values):
     """
     Update data in the specified table.
 
     :param data_id: ID of the data to update.
     :param new_values: Dictionary containing the new values for the fields to update.
     """
-    DataTable.__table__.name = table_name
+    table_class.__table__.name = table_name
     session = SessionLocal()
     try:
-        data = session.query(DataTable).filter_by(id=data_id).first()
+        data = session.query(table_class).filter_by(id=data_id).first()
         if data:
             for key, value in new_values.items():
                 setattr(data, key, value)
@@ -185,17 +161,17 @@ def update_data(table_name, data_id, new_values):
         session.close()
 
 
-def delete_data(table_name, data_id):
+def delete(table_name, table_class, data_id):
     """
     Delete data from the specified table.
 
     :param data_id: ID of the data to delete.
     :return: True if data was deleted, False if data was not found.
     """
-    DataTable.__table__.name = table_name
+    table_class.__table__.name = table_name
     session = SessionLocal()
     try:
-        data_to_delete = session.query(DataTable).filter_by(id=data_id).first()
+        data_to_delete = session.query(table_class).filter_by(id=data_id).first()
         if data_to_delete:
             session.delete(data_to_delete)
             session.commit()
@@ -209,15 +185,15 @@ def delete_data(table_name, data_id):
         session.close()
 
 
-def table_has_entries(table_name):
+def table_has_entries(table_name, table_class):
     inspector = inspect(engine)
     if table_name not in inspector.get_table_names():
         return False
 
-    DataTable.__table__.name = table_name
+    table_class.__table__.name = table_name
     session = SessionLocal()
     try:
-        count = session.query(DataTable).count()
+        count = session.query(table_class).count()
         return count > 0
     finally:
         session.close()

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from typing import List
 from pydantic import BaseModel
 
-from database.postgresql import get_data_range, get_data, insert_data, update_data, delete_data, table_has_entries, delete_table, get_table_info
+from database.postgresql import get_data, get, create, update, delete, table_has_entries, delete_table, get_table_info
 from data.service import get_path_key, DataTable
 from database.schemas import Data, DataTableResponse
 
@@ -13,14 +13,14 @@ router = APIRouter()
 
 @router.get("/tables")
 def get_table_names_route():
-    return get_table_info()
+    return get_table_info(DataTable)
 
 
 @router.get("/{dataset_name}/has-entries")
 def table_has_entries_route(dataset_name: Dataset_names):
     table_name = get_path_key("data", dataset_name)
 
-    has_entries = table_has_entries(table_name)
+    has_entries = table_has_entries(table_name, DataTable)
     return {"has_entries": has_entries}
 
 
@@ -32,7 +32,7 @@ def get_data_range_route(
 ) -> list:
     table_name = get_path_key("data", dataset_name)
 
-    data_range = get_data_range(table_name, (page - 1) * page_size, page * page_size, DataTable)
+    data_range = get_data(table_name, (page - 1) * page_size, page * page_size, DataTable)
     return [row.__dict__ for row in data_range]
 
 
@@ -43,7 +43,7 @@ def get_data_route(
 ):
     table_name = get_path_key("data", dataset_name)
 
-    data = get_data(table_name, id)
+    data = get(table_name, DataTable, id)
     return data.__dict__
 
 
@@ -54,7 +54,7 @@ def insert_data_route(
 ):
     table_name = get_path_key("data", dataset_name)
 
-    insert_data(table_name, sentence=data.sentence, segment=data.sentence, annotation=data.annotation, position=data.position)
+    create(table_name, DataTable, sentence=data.sentence, segment=data.sentence, annotation=data.annotation, position=data.position)
     return data
 
 
@@ -65,7 +65,7 @@ def delete_data_route(
 ):
     table_name = get_path_key("data", dataset_name)
 
-    return {"id": id, "deleted": delete_data(table_name, id)}
+    return {"id": id, "deleted": delete(table_name, DataTable, id)}
 
 
 @router.put("/{dataset_name}/{id}", response_model=Data)
@@ -76,7 +76,7 @@ def update_data_route(
 ):
     table_name = get_path_key("data", dataset_name)
 
-    update_data(table_name, id, data.dict())
+    update(table_name, DataTable, id, data.dict())
     return data
 
 

@@ -16,9 +16,9 @@ from database.postgresql import (
     DataTable,
     ReducedEmbeddingsTable,
     init_table,
-    insert_reduced_embedding,
+    create,
     ReducedEmbeddingsTable,
-    get_data_range,
+    get_data,
 )
 
 
@@ -114,14 +114,14 @@ def save_reduced_embeddings(reduced_embeddings: np.ndarray, dataset_name: str, m
     init_table(path_key, ReducedEmbeddingsTable)
 
     for embedding in reduced_embeddings:
-        insert_reduced_embedding(path_key, embedding.tolist())
+        create(path_key, ReducedEmbeddingsTable, embedding.tolist())
 
 
 def load_reduced_embeddings(dataset_name: str, model_name: str, start, end) -> np.ndarray:
     # Load the reduced_embeddings from the database
     path_key = get_path_key(type="reduced_embedding", dataset_name=dataset_name, model_name=model_name)
     init_table(path_key, ReducedEmbeddingsTable)
-    reduced_embeddings = get_data_range(path_key, start, end, ReducedEmbeddingsTable)
+    reduced_embeddings = get_data(path_key, start, end, ReducedEmbeddingsTable)
 
     return reduced_embeddings
 
