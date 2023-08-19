@@ -61,5 +61,5 @@ class ConfigManager:
             ),
             embedding_config=EmbeddingConfig(n_neighbors=15, n_components=2, metric="cosine", random_state=42),
             cluster_config=ClusterConfig(min_cluster_size=2, metric="euclidean", cluster_selection_method="eom"),
-            default_limit=5000,
+            default_limit=100,
         )
