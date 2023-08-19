@@ -133,7 +133,7 @@ def get_segments(dataset_name: str, start: int = 0, end: int = None):
 
     # Return data from database if it exists
     if table_has_entries(data_path_key):
-        data = get_data_range(data_path_key, start, end)
+        data = get_data_range(data_path_key, start, end, DataTable)
         return [row.__dict__ for row in data]
     if os.path.exists(segments_file):
         segments_data = load_segments(segments_file)

@@ -3,7 +3,7 @@ from typing import List
 from pydantic import BaseModel
 
 from database.postgresql import get_data_range, get_data, insert_data, update_data, delete_data, table_has_entries, delete_table, get_table_info
-from data.service import get_path_key
+from data.service import get_path_key, DataTable
 from database.schemas import Data, DataTableResponse
 
 from data.schemas import Dataset_names, Experimental_dataset_names
@@ -32,7 +32,7 @@ def get_data_range_route(
 ) -> list:
     table_name = get_path_key("data", dataset_name)
 
-    data_range = get_data_range(table_name, (page - 1) * page_size, page * page_size)
+    data_range = get_data_range(table_name, (page - 1) * page_size, page * page_size, DataTable)
     return [row.__dict__ for row in data_range]
 
 

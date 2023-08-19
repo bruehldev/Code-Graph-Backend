@@ -113,22 +113,11 @@ def get_all_data(table_name):
         session.close()
 
 
-def get_data_range(table_name, start, end):
-    DataTable.__table__.name = table_name
+def get_data_range(table_name, start, end, table_cls):
+    table_cls.__table__.name = table_name
     session = SessionLocal()
     try:
-        data_range = session.query(DataTable).slice(start, end).all()
-        logger.info(f"Loaded data from database: {table_name}")
-        return data_range
-    finally:
-        session.close()
-
-
-def get_reduced_embeddings_range(table_name, start, end):
-    ReducedEmbeddingsTable.__table__.name = table_name
-    session = SessionLocal()
-    try:
-        data_range = session.query(ReducedEmbeddingsTable).slice(start, end).all()
+        data_range = session.query(table_cls).slice(start, end).all()
         logger.info(f"Loaded data from database: {table_name}")
         return data_range
     finally:

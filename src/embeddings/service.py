@@ -18,7 +18,7 @@ from database.postgresql import (
     init_table,
     insert_reduced_embedding,
     ReducedEmbeddingsTable,
-    get_reduced_embeddings_range,
+    get_data_range,
 )
 
 
@@ -121,7 +121,7 @@ def load_reduced_embeddings(dataset_name: str, model_name: str, start, end) -> n
     # Load the reduced_embeddings from the database
     path_key = get_path_key(type="reduced_embedding", dataset_name=dataset_name, model_name=model_name)
     init_table(path_key, ReducedEmbeddingsTable)
-    reduced_embeddings = get_reduced_embeddings_range(path_key, start, end)
+    reduced_embeddings = get_data_range(path_key, start, end, ReducedEmbeddingsTable)
 
     return reduced_embeddings
 
