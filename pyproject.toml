@@ -1,2 +1,4 @@
 [tool.black]
 line-length = 160
+use-tabs = false
+target-version = ["py310"]
