@@ -135,6 +135,17 @@ def get_data_range(table_name, start, end):
         session.close()
 
 
+def get_reduced_embeddings_range(table_name, start, end):
+    ReducedEmbeddingsTable.__table__.name = table_name
+    session = SessionLocal()
+    try:
+        data_range = session.query(ReducedEmbeddingsTable).slice(start, end).all()
+        logger.info(f"Loaded data from database: {table_name}")
+        return data_range
+    finally:
+        session.close()
+
+
 def get_data(table_name, data_id):
     """
     Get data from the specified table by ID.
