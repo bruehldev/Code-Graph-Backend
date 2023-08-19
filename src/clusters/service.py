@@ -59,7 +59,7 @@ def extract_clusters(dataset_name: str, model_name: str):
     clusters_file = get_clusters_file(dataset_name)
     clusterer = hdbscan.HDBSCAN(**config.cluster_config.dict())
     clusters = clusterer.fit_predict(get_reduced_embeddings(dataset_name, model_name))
-    print(len(clusters))
+    logger.info(f"Computed clusters for dataset: {dataset_name} with length: {len(clusters)}")
     # convert the clusters to a JSON serializable format
     clusters = [int(c) for c in clusterer.labels_]
     # serialize the clusters to JSON

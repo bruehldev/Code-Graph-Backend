@@ -33,7 +33,7 @@ def sanitize_url_string(url_string):
 
 class ModelService:
     def __init__(self, dataset_name, model_name="bert-base-uncased"):
-        print(f"ModelService: {dataset_name} : {model_name}")
+        logger.info(f"ModelService: {dataset_name} / {model_name}")
         global models
         self.model = None
         self.model_key = dataset_name + "~" + model_name
@@ -100,7 +100,7 @@ class ModelService:
             for sentence, segment, start_index in zip(sentences, segments, start_indexes):
                 start_index = start_index - 1  # tried because the other didnt work
                 end_index = start_index + len(segment)
-                # print(segment)
+                # logger.info(f"Processing sentence: {sentence} : {segment} : {start_index} : {end_index}")
                 sentence_tokenized = self.tokenizer.encode_plus(sentence, return_offsets_mapping=True, return_tensors="pt")
                 with torch.no_grad():
                     outputs = self.model(sentence_tokenized["input_ids"].to(self.device), attention_mask=sentence_tokenized["attention_mask"].to(self.device))
@@ -113,9 +113,9 @@ class ModelService:
                         word = sentence[start:end]
                         # segment_words.append((self.tokenizer.decode(sentence_tokenized['input_ids'][0][i]), word))
                         segment_embeddings.append(token_embeddings[0][i])
-                        # print(f"{word} : {start_index} : {end_index}")
+                        # logger.info(f"Processing word: {word} : {start} : {end}")
                 if len(segment_embeddings) == 0:
-                    print(f"ERROR: {sentence} : {segment} : {start_index} : {end_index} : {offsets}")
+                    logger.error(f"ERROR: {sentence} : {segment} : {start_index} : {end_index} : {offsets}")
 
                 if segment_embeddings:
                     mean_embeddings = torch.mean(torch.stack(segment_embeddings), dim=0)

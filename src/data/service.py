@@ -6,7 +6,7 @@ import os
 import json
 import logging
 import pandas as pd
-from database.postgresql import create, init_table, get_data, table_has_entries, DataTable
+from database.postgresql import create, init_table, get_data as get_data_from_db, table_has_entries, DataTable
 from tqdm import tqdm
 from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
 
@@ -37,8 +37,7 @@ def get_data(dataset_name: str, start: int = 0, end: int = None) -> list:
     else:
         return None
 
-    print(len(data))
-
+    logger.info(f"Loaded data from file for dataset: {dataset_name} with length: {len(data[start:end])}")
     return data[start:end]
 
 
@@ -133,7 +132,7 @@ def get_segments(dataset_name: str, start: int = 0, end: int = None):
 
     # Return data from database if it exists
     if table_has_entries(data_path_key, DataTable):
-        data = get_data(data_path_key, start, end, DataTable)
+        data = get_data_from_db(data_path_key, start, end, DataTable)
         return [row.__dict__ for row in data]
     if os.path.exists(segments_file):
         segments_data = load_segments(segments_file)
@@ -183,7 +182,7 @@ def extract_segments(dataset_name: str, page=1, page_size=10):
                 for line in f:
                     if not line.strip():
                         total_entries += 1
-            print(f"Total entries: {total_entries}")
+            logger.info(f"Extracting segments with length: {total_entries}")
 
             f.seek(0)  # Reset file pointer
 

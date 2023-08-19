@@ -18,7 +18,7 @@ from database.postgresql import (
     init_table,
     create,
     ReducedEmbeddingsTable,
-    get_data,
+    get_data as get_data_db,
 )
 
 
@@ -33,6 +33,24 @@ config_manager = ConfigManager(env["configs"])
 config = config_manager.get_default_model()
 
 
+### Embedding functions ###
+def get_embeddings(dataset_name: str, model_name: str, start=0, end=None):
+    global embeddings_2d_bert
+    embeddings_file = get_embeddings_file(dataset_name, model_name)
+
+    if os.path.exists(embeddings_file):
+        embeddings_2d_bert = load_embeddings(dataset_name, model_name)
+    else:
+        embeddings_2d_bert = extract_embeddings(dataset_name, model_name)
+        save_embeddings(embeddings_2d_bert, embeddings_file)
+
+    if isinstance(embeddings_2d_bert, np.ndarray):
+        embeddings_2d_bert = embeddings_2d_bert.tolist()
+
+    logger.info(f"Returning len {len(embeddings_2d_bert[start:end])} start {start} end {end}")
+    return embeddings_2d_bert[start:end]
+
+
 def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, index_provided: bool = False):
     embeddings_file = get_embeddings_file(dataset_name, model_name)
     num_embeddings = len(embeddings)  # Get the number of embeddings from the list
@@ -40,13 +58,14 @@ def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, 
     if not index_provided:
         embeddings = [(index, embedding) for index, embedding in enumerate(embeddings)]
 
-    print(embeddings[0])
+    logger.info(f"Save embeddings in db: {dataset_name} / {model_name}. Length: {num_embeddings}")
 
     with open(embeddings_file, "wb") as f:
         pickle.dump((num_embeddings, embeddings), f)
 
 
 def load_embeddings(dataset_name: str, model_name: str, with_index: bool = False) -> List:
+    logger.info(f"Loaded embeddings pickle {dataset_name} / {model_name} with index: {with_index}")
     embeddings_file = get_embeddings_file(dataset_name, model_name)
 
     with open(embeddings_file, "rb") as f:
@@ -60,12 +79,12 @@ def load_embeddings(dataset_name: str, model_name: str, with_index: bool = False
 
 
 def create_embedding(embedding: list, dataset_name: str, model_name: str) -> List:
+    logger.info(f"Creating embedding.  dataset: {dataset_name} modelname: {model_name} index: {new_index}")
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
     # Get the index for the new embedding
     last_index = loaded_embeddings[-1][0] if loaded_embeddings else -1
     new_index = last_index + 1
-    print(new_index)
 
     # Append the new embedding with its index
     loaded_embeddings.append([new_index, embedding])
@@ -73,16 +92,18 @@ def create_embedding(embedding: list, dataset_name: str, model_name: str) -> Lis
 
 
 def read_embedding(index: int, dataset_name: str, model_name: str) -> np.ndarray:
+    logger.info(f"reading embedding.  dataset: {dataset_name} modelname: {model_name} index: {index}")
+
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
     for loaded_index, embedding in loaded_embeddings:
         if loaded_index == index:
-            print("aaa", type(loaded_index), type(embedding))
             return embedding
     return None
 
 
 def update_embedding(index: int, new_embedding: np.ndarray, dataset_name: str, model_name: str):
+    logger.info(f"Updating embedding.  dataset: {dataset_name} modelname: {model_name} index: {index}")
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
     for i, (loaded_index, embedding) in enumerate(loaded_embeddings):
@@ -93,6 +114,7 @@ def update_embedding(index: int, new_embedding: np.ndarray, dataset_name: str, m
 
 
 def delete_embedding(index: int, dataset_name: str, model_name: str):
+    logger.info(f"Deleting embedding.  dataset: {dataset_name} modelname: {model_name} index: {index}")
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
     for i, (loaded_index, embedding) in enumerate(loaded_embeddings):
@@ -108,30 +130,6 @@ def get_embeddings_file(dataset_name: str, model_name: str):
     return get_model_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"embeddings_{dataset_name}.pkl")
 
 
-def save_reduced_embeddings(reduced_embeddings: np.ndarray, dataset_name: str, model_name: str):
-    # Save the reduced_embeddings to the database
-    path_key = get_path_key(type="reduced_embedding", dataset_name=dataset_name, model_name=model_name)
-    init_table(path_key, ReducedEmbeddingsTable)
-
-    for embedding in reduced_embeddings:
-        create(path_key, ReducedEmbeddingsTable, embedding.tolist())
-
-
-def load_reduced_embeddings(dataset_name: str, model_name: str, start, end) -> np.ndarray:
-    # Load the reduced_embeddings from the database
-    path_key = get_path_key(type="reduced_embedding", dataset_name=dataset_name, model_name=model_name)
-    init_table(path_key, ReducedEmbeddingsTable)
-    reduced_embeddings = get_data(path_key, start, end, ReducedEmbeddingsTable)
-
-    return reduced_embeddings
-
-
-def get_reduced_embeddings_file(dataset_name: str, model_name: str):
-    embeddings_directory = get_supervised_path("embeddings", dataset_name, model_name)
-    os.makedirs(embeddings_directory, exist_ok=True)
-    return get_model_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"reduced_embeddings_{dataset_name}.pkl")
-
-
 def extract_embeddings(dataset_name, model_name):
     model_service = ModelService(dataset_name, model_name)
     logger.info("Extracting embeddings for documents")
@@ -144,43 +142,48 @@ def extract_embeddings(dataset_name, model_name):
         umap_model = umap.UMAP(**config.embedding_config.dict())
         embeddings_2d_bert = umap_model.fit_transform(embeddings)
 
+    logger.info(f"Computed embeddings: {dataset_name} / {model_name}")
     save_embeddings(embeddings_2d_bert, dataset_name, model_name)
 
 
-def get_embeddings(dataset_name: str, model_name: str, start=0, end=None):
-    global embeddings_2d_bert
-    embeddings_file = get_embeddings_file(dataset_name, model_name)
-
-    if os.path.exists(embeddings_file):
-        embeddings_2d_bert = load_embeddings(dataset_name, model_name)
-        logger.info(f"Loaded embeddings from pickle file for dataset: {dataset_name}")
-    else:
-        embeddings_2d_bert = extract_embeddings(dataset_name, model_name)
-        save_embeddings(embeddings_2d_bert, embeddings_file)
-        logger.info(f"Computed and saved embeddings for dataset: {dataset_name}")
-
-    if isinstance(embeddings_2d_bert, np.ndarray):
-        embeddings_2d_bert = embeddings_2d_bert.tolist()
-
-    print("embeddings_2d_bert ", len(embeddings_2d_bert))
-    return embeddings_2d_bert[start:end]
-
-
+### Reduced Embedding functions ###
 def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None):
     embeddings_file = get_reduced_embeddings_file(dataset_name, model_name)
     embeddings_reduced = []
 
     if os.path.exists(embeddings_file):
         embeddings_reduced = load_reduced_embeddings(dataset_name, model_name, start, end)
-        logger.info(f"Loaded embeddings from pickle file for dataset: {dataset_name}")
     else:
         embeddings_reduced = extract_embeddings_reduced(dataset_name, model_name)
 
-    print("embeddings_reduced ", len(embeddings_reduced))
     if isinstance(embeddings_reduced, np.ndarray):
         embeddings_reduced = embeddings_reduced.tolist()
 
     return embeddings_reduced[start:end]
+
+
+def save_reduced_embeddings(reduced_embeddings: np.ndarray, dataset_name: str, model_name: str):
+    logger.info(f"Save reduced embeddings db: {dataset_name} / {model_name}. Length: {len(reduced_embeddings)}")
+    path_key = get_path_key(type="reduced_embedding", dataset_name=dataset_name, model_name=model_name)
+    init_table(path_key, ReducedEmbeddingsTable)
+
+    for embedding in reduced_embeddings:
+        create(path_key, ReducedEmbeddingsTable, embedding.tolist())
+
+
+def load_reduced_embeddings(dataset_name: str, model_name: str, start, end) -> np.ndarray:
+    logger.info(f"Loaded reduced embeddings db {dataset_name} / {model_name}")
+    path_key = get_path_key(type="reduced_embedding", dataset_name=dataset_name, model_name=model_name)
+    init_table(path_key, ReducedEmbeddingsTable)
+    reduced_embeddings = get_data_db(path_key, start, end, ReducedEmbeddingsTable)
+
+    return reduced_embeddings
+
+
+def get_reduced_embeddings_file(dataset_name: str, model_name: str):
+    embeddings_directory = get_supervised_path("embeddings", dataset_name, model_name)
+    os.makedirs(embeddings_directory, exist_ok=True)
+    return get_model_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"reduced_embeddings_{dataset_name}.pkl")
 
 
 def extract_embeddings_reduced(dataset_name, model_name):
@@ -194,11 +197,11 @@ def extract_embeddings_reduced(dataset_name, model_name):
     embeddings_reduced = umap_model.fit_transform(embeddings)
 
     save_reduced_embeddings(embeddings_reduced, dataset_name, model_name)
-    logger.info(f"Computed and saved embeddings for dataset: {dataset_name}  model: {model_name}")
+    logger.info(f"Computed reduced embeddings: {dataset_name} / {model_name}")
     return embeddings_reduced
 
 
-### Save load reduced embeddings from pickle file
+### Save load reduced embeddings from pickle file and not db ###
 def save_reduced_embeddings_pickle(reduced_embeddings: np.ndarray, dataset_name: str, model_name: str):
     embeddings_file = get_reduced_embeddings_file(dataset_name, model_name)
     with open(embeddings_file, "wb") as f:
