@@ -23,7 +23,7 @@ metadata = MetaData()
 
 class SegmentsTable(Base):
     __table__ = Table(
-        "default_segment_name",
+        "default_segments",
         metadata,
         Column("id", Integer, primary_key=True, index=True),
         Column("sentence", Text),
@@ -54,7 +54,7 @@ def get_table_names():
     return table_names
 
 
-def get_table_info(table_class):
+def get_table_info():
     inspector = inspect(engine)
     table_names = inspector.get_table_names()
     table_info = {}
@@ -62,8 +62,16 @@ def get_table_info(table_class):
     session = SessionLocal()
 
     for table_name in table_names:
-        table_class.__table__.name = table_name
-        row_count = session.query(table_class).count()
+        # Little bit hacky, but it works :D
+        if "data" in table_name:
+            table_class = SegmentsTable
+            table_class.__table__.name = table_name
+            row_count = session.query(table_class).count()
+        elif "reduced_embedding" in table_name:
+            table_class = ReducedEmbeddingsTable
+            table_class.__table__.name = table_name
+            row_count = session.query(ReducedEmbeddingsTable).count()
+
         table_info[table_name] = {"table_name": table_name, "row_count": row_count}
 
     session.close()
