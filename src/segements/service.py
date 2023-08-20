@@ -25,12 +25,12 @@ def get_segments(dataset_name: str, start: int = 0, end: int = None):
         data = get_data_db(data_path_key, start, end, SegmentsTable)
         return [row.__dict__ for row in data]
     else:
-        segments_data = extract_segments(dataset_name)
+        segments_data = extract_segments(dataset_name, start, end)
 
     return segments_data[start:end]
 
 
-def extract_segments(dataset_name: str, page=1, page_size=10, export_to_file=False):
+def extract_segments(dataset_name: str, page, page_size, export_to_file=False):
     entries = []
 
     if dataset_name == "few_nerd":
@@ -89,7 +89,7 @@ def extract_segments(dataset_name: str, page=1, page_size=10, export_to_file=Fal
                                 "position": i[2],
                             }
                             entries.append(entry)
-                            create(data_path_key, SegmentsTable, sentence, i[0], i[1], i[2])
+                            create(data_path_key, SegmentsTable, sentence=sentence, segment=i[0], annotation=i[1], position=i[2])
                             pbar.update(1)
                         segment_list = []
                         sentence = ""
