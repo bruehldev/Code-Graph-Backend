@@ -21,9 +21,9 @@ Base = declarative_base()
 metadata = MetaData()
 
 
-class DataTable(Base):
+class SegmentsTable(Base):
     __table__ = Table(
-        "default_data_name",
+        "default_segment_name",
         metadata,
         Column("id", Integer, primary_key=True, index=True),
         Column("sentence", Text),

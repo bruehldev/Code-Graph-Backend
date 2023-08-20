@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from segements.service import get_segments, extract_segments
 from database.schemas import Data, DataTableResponse
 from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
-from database.postgresql import get_data as get_data_db, get, create, update, delete, DataTable
+from database.postgresql import get_data as get_data_db, get, create, update, delete, SegmentsTable
 from data.utils import get_path_key
 
 
@@ -39,7 +39,7 @@ def get_data_range_route(
 ) -> list:
     table_name = get_path_key("data", dataset_name)
 
-    data_range = get_data_db(table_name, (page - 1) * page_size, page * page_size, DataTable)
+    data_range = get_data_db(table_name, (page - 1) * page_size, page * page_size, SegmentsTable)
     return [row.__dict__ for row in data_range]
 
 
@@ -50,7 +50,7 @@ def get_data_route(
 ):
     table_name = get_path_key("data", dataset_name)
 
-    data = get(table_name, DataTable, id)
+    data = get(table_name, SegmentsTable, id)
     return data.__dict__
 
 
@@ -61,7 +61,7 @@ def insert_data_route(
 ):
     table_name = get_path_key("data", dataset_name)
 
-    create(table_name, DataTable, sentence=data.sentence, segment=data.sentence, annotation=data.annotation, position=data.position)
+    create(table_name, SegmentsTable, sentence=data.sentence, segment=data.sentence, annotation=data.annotation, position=data.position)
     return data
 
 
@@ -72,7 +72,7 @@ def delete_data_route(
 ):
     table_name = get_path_key("data", dataset_name)
 
-    return {"id": id, "deleted": delete(table_name, DataTable, id)}
+    return {"id": id, "deleted": delete(table_name, SegmentsTable, id)}
 
 
 @router.put("/{id}", response_model=Data)
@@ -83,5 +83,5 @@ def update_data_route(
 ):
     table_name = get_path_key("data", dataset_name)
 
-    update(table_name, DataTable, id, data.dict())
+    update(table_name, SegmentsTable, id, data.dict())
     return data

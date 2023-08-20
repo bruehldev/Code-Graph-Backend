@@ -2,16 +2,14 @@ import json
 import os
 import json
 import logging
-from fastapi import Depends
+
 from typing import List
-from models.service import ModelService
-import logging
-from embeddings.service import get_reduced_embeddings
+
+from reduced_embeddings.service import get_reduced_embeddings
 from segements.service import get_segments
 from clusters.service import get_clusters
 from data.few_nerd import FINE_NER_TAGS_DICT
 
-from bertopic import BERTopic
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

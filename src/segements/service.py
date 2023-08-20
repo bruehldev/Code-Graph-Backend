@@ -2,7 +2,7 @@ import json
 import os
 import json
 import logging
-from database.postgresql import create, init_table, get_data as get_data_db, table_has_entries, DataTable
+from database.postgresql import create, init_table, get_data as get_data_db, table_has_entries, SegmentsTable
 from tqdm import tqdm
 from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
 from data.file_operations import download_few_nerd_dataset, save_segments, get_segments_file
@@ -21,8 +21,8 @@ def get_segments(dataset_name: str, start: int = 0, end: int = None):
     segments_data = None
 
     # Return data from database if it exists
-    if table_has_entries(data_path_key, DataTable):
-        data = get_data_db(data_path_key, start, end, DataTable)
+    if table_has_entries(data_path_key, SegmentsTable):
+        data = get_data_db(data_path_key, start, end, SegmentsTable)
         return [row.__dict__ for row in data]
     else:
         segments_data = extract_segments(dataset_name)
@@ -37,7 +37,7 @@ def extract_segments(dataset_name: str, page=1, page_size=10, export_to_file=Fal
         data_path_key = get_path_key("data", dataset_name)
         data_file_path = get_data_file_path(type="data", dataset_name=dataset_name, filename="train.txt")
 
-        init_table(data_path_key, DataTable)
+        init_table(data_path_key, SegmentsTable)
 
         if not os.path.exists(data_file_path):
             # Download the data if it doesn't exist
@@ -89,7 +89,7 @@ def extract_segments(dataset_name: str, page=1, page_size=10, export_to_file=Fal
                                 "position": i[2],
                             }
                             entries.append(entry)
-                            create(data_path_key, DataTable, sentence, i[0], i[1], i[2])
+                            create(data_path_key, SegmentsTable, sentence, i[0], i[1], i[2])
                             pbar.update(1)
                         segment_list = []
                         sentence = ""

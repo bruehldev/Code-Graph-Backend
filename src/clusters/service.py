@@ -4,7 +4,8 @@ import json
 import logging
 from fastapi import Depends
 from typing import List
-from embeddings.service import get_reduced_embeddings
+from reduced_embeddings.service import get_reduced_embeddings
+
 import logging
 import numpy as np
 import hdbscan
