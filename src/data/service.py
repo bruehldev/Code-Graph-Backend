@@ -1,15 +1,10 @@
-import requests
-import zipfile
 import json
 from sklearn.datasets import fetch_20newsgroups
 import os
 import json
 import logging
-import pandas as pd
-from database.postgresql import create, init_table, get_data as get_data_db, table_has_entries, SegmentsTable
-from tqdm import tqdm
-from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
-from data.file_operations import download_few_nerd_dataset, save_segments, get_segments_file
+from data.utils import get_data_file_path, get_root_path, get_supervised_path
+from data.file_operations import download_few_nerd_dataset
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

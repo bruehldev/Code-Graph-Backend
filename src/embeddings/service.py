@@ -12,17 +12,6 @@ from segements.service import get_segments
 from models.service import ModelService
 from data.utils import get_model_file_path, get_supervised_path, get_path_key
 from configmanager.service import ConfigManager
-from database.postgresql import (
-    SessionLocal,
-    SegmentsTable,
-    ReducedEmbeddingsTable,
-    init_table,
-    create,
-    ReducedEmbeddingsTable,
-    get_data as get_data_db,
-    table_has_entries,
-)
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
