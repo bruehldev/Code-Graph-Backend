@@ -62,6 +62,63 @@ def get_annotations_keys_route(dataset_name: Dataset_names):
     return {"annotations": annotations}
 
 
+@router.get("/{dataset_name}", response_model=List[DataTableResponse])
+def get_data_range_route(
+    dataset_name: Experimental_dataset_names,
+    page: int = 1,
+    page_size: int = 100,
+) -> list:
+    table_name = get_path_key("data", dataset_name)
+
+    data_range = get_data(table_name, (page - 1) * page_size, page * page_size, DataTable)
+    return [row.__dict__ for row in data_range]
+
+
+@router.get("/{dataset_name}/{id}", response_model=DataTableResponse)
+def get_data_route(
+    dataset_name: Experimental_dataset_names,
+    id: int,
+):
+    table_name = get_path_key("data", dataset_name)
+
+    data = get(table_name, DataTable, id)
+    return data.__dict__
+
+
+@router.post("/{dataset_name}", response_model=Data)
+def insert_data_route(
+    dataset_name: Experimental_dataset_names,
+    data: Data = {"sentence": "test", "segment": "test", "annotation": "test", "position": 0},
+):
+    table_name = get_path_key("data", dataset_name)
+
+    create(table_name, DataTable, sentence=data.sentence, segment=data.sentence, annotation=data.annotation, position=data.position)
+    return data
+
+
+@router.delete("/{dataset_name}/{id}")
+def delete_data_route(
+    dataset_name: Experimental_dataset_names,
+    id: int = 0,
+):
+    table_name = get_path_key("data", dataset_name)
+
+    return {"id": id, "deleted": delete(table_name, DataTable, id)}
+
+
+@router.put("/{dataset_name}/{id}", response_model=Data)
+def update_data_route(
+    dataset_name: Experimental_dataset_names,
+    id: int = 0,
+    data: Data = {"sentence": "test", "segment": "test", "annotation": "test", "position": 0},
+):
+    table_name = get_path_key("data", dataset_name)
+
+    update(table_name, DataTable, id, data.dict())
+    return data
+
+
+"""
 @router.get("/{dataset_name}/sentences")
 def get_sentences_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100):
     sentences = get_sentences(dataset_name, start=(page - 1) * page_size, end=page * page_size)
@@ -78,3 +135,4 @@ def get_annotations_route(dataset_name: Dataset_names, page: int = 1, page_size:
 def extract_sentences_and_annotations_route(dataset_name: Dataset_names):
     extract_sentences_and_annotations(dataset_name)
     return {"message": "Sentences and annotations extracted successfully"}
+    """
