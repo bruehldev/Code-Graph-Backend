@@ -8,7 +8,7 @@ from typing import List
 from bertopic import BERTopic
 from transformers import BertModel, BertTokenizerFast
 import pandas as pd
-from data.service import get_data, get_segments
+from data.service import get_data
 from configmanager.service import ConfigManager
 from tqdm import tqdm
 import numpy as np

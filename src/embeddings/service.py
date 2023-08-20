@@ -7,7 +7,8 @@ import numpy as np
 import umap
 
 from typing import List
-from data.service import get_data, get_segments
+from data.service import get_data
+from segements.service import get_segments
 from models.service import ModelService
 from data.utils import get_model_file_path, get_supervised_path, get_path_key
 from configmanager.service import ConfigManager
@@ -18,7 +19,8 @@ from database.postgresql import (
     init_table,
     create,
     ReducedEmbeddingsTable,
-    get_data as get_segments_db,
+    get_data as get_data_db,
+    table_has_entries,
 )
 
 
@@ -148,18 +150,20 @@ def extract_embeddings(dataset_name, model_name):
 
 ### Reduced Embedding functions ###
 def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None):
-    embeddings_file = get_reduced_embeddings_file(dataset_name, model_name)
+    path_key = get_path_key(type="reduced_embedding", dataset_name=dataset_name, model_name=model_name)
     embeddings_reduced = []
 
-    if os.path.exists(embeddings_file):
-        embeddings_reduced = load_reduced_embeddings(dataset_name, model_name, start, end)
+    if table_has_entries(path_key, ReducedEmbeddingsTable):
+        embeddings_reduced = get_data_db(path_key, start, end, ReducedEmbeddingsTable)
+        return embeddings_reduced
+        # return [row.__dict__ for row in data]
+        # embeddings_reduced = load_reduced_embeddings(dataset_name, model_name, start, end)
     else:
         embeddings_reduced = extract_embeddings_reduced(dataset_name, model_name)
 
-    if isinstance(embeddings_reduced, np.ndarray):
-        embeddings_reduced = embeddings_reduced.tolist()
-
-    return embeddings_reduced[start:end]
+        if isinstance(embeddings_reduced, np.ndarray):
+            embeddings_reduced = embeddings_reduced.tolist()
+        return embeddings_reduced[start:end]
 
 
 def save_reduced_embeddings(reduced_embeddings: np.ndarray, dataset_name: str, model_name: str):
@@ -169,15 +173,6 @@ def save_reduced_embeddings(reduced_embeddings: np.ndarray, dataset_name: str, m
 
     for embedding in reduced_embeddings:
         create(path_key, ReducedEmbeddingsTable, embedding.tolist())
-
-
-def load_reduced_embeddings(dataset_name: str, model_name: str, start, end) -> np.ndarray:
-    logger.info(f"Loaded reduced embeddings db {dataset_name} / {model_name}")
-    path_key = get_path_key(type="reduced_embedding", dataset_name=dataset_name, model_name=model_name)
-    init_table(path_key, ReducedEmbeddingsTable)
-    reduced_embeddings = get_segments_db(path_key, start, end, ReducedEmbeddingsTable)
-
-    return reduced_embeddings
 
 
 def get_reduced_embeddings_file(dataset_name: str, model_name: str):
