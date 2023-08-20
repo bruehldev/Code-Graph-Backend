@@ -3,17 +3,17 @@ from typing import List
 from pydantic import BaseModel
 from data.service import (
     get_data,
-    download_few_nerd_dataset,
     extract_annotations_keys,
     extract_segments,
     get_segments,
     get_annotations_keys,
-    get_sentences,
-    get_annotations,
-    extract_sentences_and_annotations,
 )
-
+from data.file_operations import download_few_nerd_dataset
+from database.schemas import Data, DataTableResponse
 from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
+from database.postgresql import get_data, get, create, update, delete, table_has_entries, delete_table, get_table_info, DataTable
+from data.utils import get_path_key
+
 
 router = APIRouter()
 
@@ -45,8 +45,8 @@ def extract_annotations_route(dataset_name: Dataset_names):
 
 
 @router.get("/{dataset_name}/segments/extract")
-def extract_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100):
-    extract_segments(dataset_name, page, page_size)
+def extract_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100, export_to_file: bool = False):
+    extract_segments(dataset_name, page, page_size, export_to_file)
     return {"message": "Segments extracted successfully"}
 
 

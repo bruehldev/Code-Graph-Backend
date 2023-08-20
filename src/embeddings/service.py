@@ -18,7 +18,7 @@ from database.postgresql import (
     init_table,
     create,
     ReducedEmbeddingsTable,
-    get_data as get_data_db,
+    get_data as get_segments_db,
 )
 
 
@@ -175,7 +175,7 @@ def load_reduced_embeddings(dataset_name: str, model_name: str, start, end) -> n
     logger.info(f"Loaded reduced embeddings db {dataset_name} / {model_name}")
     path_key = get_path_key(type="reduced_embedding", dataset_name=dataset_name, model_name=model_name)
     init_table(path_key, ReducedEmbeddingsTable)
-    reduced_embeddings = get_data_db(path_key, start, end, ReducedEmbeddingsTable)
+    reduced_embeddings = get_segments_db(path_key, start, end, ReducedEmbeddingsTable)
 
     return reduced_embeddings
 
