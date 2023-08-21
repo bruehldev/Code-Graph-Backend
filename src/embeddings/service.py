@@ -74,7 +74,7 @@ def create_embedding(embedding: list, dataset_name: str, model_name: str) -> Lis
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
     # Get the index for the new embedding
-    last_index = loaded_embeddings[-1][0] if loaded_embeddings else -1
+    last_index = loaded_embeddings[-1][0] if loaded_embeddings else 0
     new_index = last_index + 1
 
     # Append the new embedding with its index
