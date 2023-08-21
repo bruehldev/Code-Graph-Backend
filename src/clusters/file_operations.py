@@ -4,6 +4,7 @@ import json
 import logging
 from typing import List
 from reduced_embeddings.service import get_reduced_embeddings
+from data.utils import get_supervised_path, get_data_file_path
 
 import logging
 import numpy as np
@@ -22,10 +23,9 @@ config_manager = ConfigManager(env["configs"])
 config = config_manager.get_default_model()
 
 
-def get_clusters_file(dataset_name: str):
-    clusters_directory = os.path.join(env["clusters_path"], dataset_name)
-    os.makedirs(clusters_directory, exist_ok=True)
-    return os.path.join(clusters_directory, f"clusters_{dataset_name}.json")
+def get_clusters_file(dataset_name: str, model_name: str):
+    os.makedirs(get_supervised_path("clusters", dataset_name, model_name), exist_ok=True)
+    return get_data_file_path(type="annotations", dataset_name=dataset_name, filename=f"clusters_{dataset_name}.json")
 
 
 def save_clusters(clusters: np.ndarray, file_name: str):
@@ -42,7 +42,7 @@ def load_clusters(file_name: str) -> np.ndarray:
 def get_clusters(dataset_name: str, model_name: str, start: int = 0, end: int = None):
     logger.info(f"Getting clusters for dataset: {dataset_name}")
 
-    clusters_file = get_clusters_file(dataset_name)
+    clusters_file = get_clusters_file(dataset_name, model_name)
 
     if os.path.exists(clusters_file):
         clusters = load_clusters(clusters_file)

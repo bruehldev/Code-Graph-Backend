@@ -26,11 +26,6 @@ def get_reduced_embeddings_endpoint(dataset_name: Experimental_dataset_names, mo
     return {"reduced_embeddings": get_reduced_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)}
 
 
-@router.get("/extract")
-def extract_embeddings_reduced_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
-    extract_embeddings_reduced(dataset_name, model_name)
-    return {"message": "Reduced embeddings extracted successfully"}
-
 
 @router.get("/{id}", response_model=ReducedEmbeddingTableResponse)
 def get_data_route(
@@ -75,3 +70,9 @@ def update_data_route(
 
     update(table_name, ReducedEmbeddingsTable, id, data.dict())
     return data
+
+
+@router.get("/extract")
+def extract_embeddings_reduced_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
+    extract_embeddings_reduced(dataset_name, model_name)
+    return {"message": "Reduced embeddings extracted successfully"}

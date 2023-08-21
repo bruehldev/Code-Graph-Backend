@@ -32,7 +32,7 @@ with open("../env.json") as f:
 config_manager = ConfigManager(env["configs"])
 config = config_manager.get_default_model()
 
-
+# Keeping file operations for now
 ### Reduced Embedding functions ###
 def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None):
     path_key = get_path_key(type="reduced_embedding", dataset_name=dataset_name, model_name=model_name)
