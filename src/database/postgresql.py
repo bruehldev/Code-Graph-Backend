@@ -37,6 +37,10 @@ class ReducedEmbeddingsTable(Base):
     __table__ = Table("default_reduced_embededdings", metadata, Column("id", Integer, primary_key=True, index=True), Column("reduced_embeddings", ARRAY(Float)))
 
 
+class ClustersTable(Base):
+    __table__ = Table("default_clusters", metadata, Column("id", Integer, primary_key=True, index=True), Column("cluster", Integer))
+
+
 def init_table(table_name, table_class):
     inspector = inspect(engine)
     if table_name not in inspector.get_table_names():
@@ -71,6 +75,10 @@ def get_table_info():
             table_class = ReducedEmbeddingsTable
             table_class.__table__.name = table_name
             row_count = session.query(ReducedEmbeddingsTable).count()
+        elif "clusters" in table_name:
+            table_class = ClustersTable
+            table_class.__table__.name = table_name
+            row_count = session.query(ClustersTable).count()
 
         table_info[table_name] = {"table_name": table_name, "row_count": row_count}
 
@@ -131,7 +139,8 @@ def get(table_name, table_class, data_id):
         if data:
             return data
         else:
-            raise ValueError(f"Data with ID {data_id} not found.")
+            logger.error(f"Data with ID {data_id} not found.")
+            # raise ValueError(f"Data with ID {data_id} not found.")
     finally:
         session.close()
 
