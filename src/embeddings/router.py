@@ -33,9 +33,9 @@ def create_embedding_endpoint(embedding: List[float], dataset_name: Experimental
 
 @router.get("/{index}")
 def read_embedding_endpoint(index: int, dataset_name: Experimental_dataset_names, model_name: Model_names):
-    embedding = read_embedding(index, dataset_name, model_name)
+    index, embedding = read_embedding(index, dataset_name, model_name)
     if embedding is not None:
-        return {"embedding": embedding}
+        return {"index": index, "embedding": embedding}
     else:
         return {"message": "Embedding not found"}
 

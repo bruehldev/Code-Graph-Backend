@@ -89,7 +89,7 @@ def read_embedding(index: int, dataset_name: str, model_name: str) -> np.ndarray
 
     for loaded_index, embedding in loaded_embeddings:
         if loaded_index == index:
-            return embedding
+            return loaded_index, embedding
     return None
 
 
