@@ -25,15 +25,14 @@ config = config_manager.get_default_model()
 
 
 ### Embedding functions ###
-def get_embeddings(dataset_name: str, model_name: str, start=0, end=None):
+def get_embeddings(dataset_name: str, model_name: str, start=0, end=None, with_index: bool = False):
     global embeddings_2d_bert
     embeddings_file = get_embeddings_file(dataset_name, model_name)
-
     if os.path.exists(embeddings_file):
-        embeddings_2d_bert = load_embeddings(dataset_name, model_name)
+        embeddings_2d_bert = load_embeddings(dataset_name, model_name, with_index)
     else:
-        embeddings_2d_bert = extract_embeddings(dataset_name, model_name)
-        save_embeddings(embeddings_2d_bert, embeddings_file)
+        embeddings_2d_bert = extract_embeddings(dataset_name, model_name, start, end)
+        save_embeddings(embeddings_2d_bert, dataset_name, model_name, False, start, end)
 
     if isinstance(embeddings_2d_bert, np.ndarray):
         embeddings_2d_bert = embeddings_2d_bert.tolist()
@@ -42,17 +41,21 @@ def get_embeddings(dataset_name: str, model_name: str, start=0, end=None):
     return embeddings_2d_bert[start:end]
 
 
-def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, index_provided: bool = False):
+def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, index_provided: bool = False, start=0, end=None):
     embeddings_file = get_embeddings_file(dataset_name, model_name)
     num_embeddings = len(embeddings)  # Get the number of embeddings from the list
 
     if not index_provided:
-        embeddings = [(index, embedding) for index, embedding in enumerate(embeddings)]
+        embeddings = [(index + 1, embedding) for index, embedding in enumerate(embeddings)]
 
     logger.info(f"Save embeddings in db: {dataset_name} / {model_name}. Length: {num_embeddings}")
 
+    if end is None:
+        end = num_embeddings
+
     with open(embeddings_file, "wb") as f:
-        pickle.dump((num_embeddings, embeddings), f)
+        # Only save embeddings within the specified range
+        pickle.dump((num_embeddings, embeddings[start:end]), f)
 
 
 def load_embeddings(dataset_name: str, model_name: str, with_index: bool = False) -> List:
@@ -121,17 +124,16 @@ def get_embeddings_file(dataset_name: str, model_name: str):
     return get_model_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"embeddings_{dataset_name}.pkl")
 
 
-def extract_embeddings(dataset_name, model_name):
+def extract_embeddings(dataset_name, model_name, start=0, end=None):
     model_service = ModelService(dataset_name, model_name)
-    logger.info("Extracting embeddings for documents")
-
+    logger.info(f"Extract embeddings: {dataset_name} / {model_name} start: {start} end: {end}")
     if dataset_name == "few_nerd":
         embeddings = model_service.process_data(get_segments(dataset_name))
         embeddings_2d_bert = embeddings
     elif dataset_name == "fetch_20newsgroups":
-        embeddings = model_service.model(get_data(dataset_name))
+        embeddings = model_service.model(get_data(dataset_name, start, end))
         umap_model = umap.UMAP(**config.embedding_config.dict())
         embeddings_2d_bert = umap_model.fit_transform(embeddings)
 
     logger.info(f"Computed embeddings: {dataset_name} / {model_name}")
-    save_embeddings(embeddings_2d_bert, dataset_name, model_name)
+    save_embeddings(embeddings_2d_bert, dataset_name, model_name, False, start, end)
