@@ -3,17 +3,9 @@ from typing import List
 from pydantic import BaseModel
 
 from database.postgresql import (
-    get_data,
-    get,
-    create,
-    update,
-    delete,
-    table_has_entries,
     delete_table,
     get_table_info,
     get_table_names,
-    SegmentsTable,
-    ReducedEmbeddingsTable,
 )
 
 

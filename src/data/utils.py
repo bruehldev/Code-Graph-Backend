@@ -1,5 +1,7 @@
 import os
 import json
+from urllib.parse import unquote
+from models.schemas import Model_names
 
 env = {}
 with open("../env.json") as f:
@@ -21,7 +23,7 @@ def get_path_key(type: str, dataset_name: str, model_name=None):
     if model_name is None:
         return os.path.join(type, dataset_name, "supervised").replace("/", "_")
     else:
-        return os.path.join(type, dataset_name, "supervised", model_name[:12]).replace("/", "_")
+        return os.path.join(type, dataset_name, "supervised", unquote(model_name[:12])).replace("/", "_")
 
 
 def get_data_file_path(type: str, dataset_name: str, filename: str):

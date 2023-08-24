@@ -43,7 +43,7 @@ def load_segments(segments_file):
     return segment_data
 
 
-def save_segments(segments_data, segments_file: str):
+def save_segments_file(segments_data, segments_file: str):
     with open(segments_file, "w") as file:
         json.dump(segments_data, file)
 

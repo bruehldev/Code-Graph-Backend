@@ -1,12 +1,12 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 from typing import List
 from pydantic import BaseModel
 from segements.service import get_segments, extract_segments
 from database.schemas import Data, DataTableResponse
 from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
-from database.postgresql import get_data as get_data_db, get, create, update, delete, SegmentsTable
+from database.postgresql import get_data as get_data_db, get, create, update, delete, get_segment_table
 from data.utils import get_path_key
-
+from embeddings.service import delete_embedding
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ class DataTableResponse(BaseModel):
 
 @router.get("/extract")
 def extract_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100, export_to_file: bool = False):
-    extract_segments(dataset_name, page, page_size, export_to_file)
+    extract_segments(dataset_name, start=(page - 1) * page_size, end=page * page_size, export_to_file=export_to_file)
     return {"message": "Segments extracted successfully"}
 
 
@@ -38,8 +38,9 @@ def get_data_range_route(
     page_size: int = 100,
 ) -> list:
     table_name = get_path_key("data", dataset_name)
+    segment_table = get_segment_table(table_name)
 
-    data_range = get_data_db(table_name, (page - 1) * page_size, page * page_size, SegmentsTable)
+    data_range = get_data_db(table_name, (page - 1) * page_size, page * page_size, segment_table)
     return [row.__dict__ for row in data_range]
 
 
@@ -49,9 +50,16 @@ def get_data_route(
     id: int,
 ):
     table_name = get_path_key("data", dataset_name)
+    segment_table = get_segment_table(table_name)
 
-    data = get(table_name, SegmentsTable, id)
-    return data.__dict__
+    data = None
+    try:
+        data = get(table_name, segment_table, id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"{str(e)}")
+    if data is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
+    return data
 
 
 @router.post("/", response_model=Data)
@@ -60,8 +68,9 @@ def insert_data_route(
     data: Data = {"sentence": "test", "segment": "test", "annotation": "test", "position": 0},
 ):
     table_name = get_path_key("data", dataset_name)
+    segment_table = get_segment_table(table_name)
 
-    create(table_name, SegmentsTable, sentence=data.sentence, segment=data.sentence, annotation=data.annotation, position=data.position)
+    create(table_name, segment_table, sentence=data.sentence, segment=data.sentence, annotation=data.annotation, position=data.position)
     return data
 
 
@@ -71,8 +80,17 @@ def delete_data_route(
     id: int = 0,
 ):
     table_name = get_path_key("data", dataset_name)
+    segment_table = get_segment_table(table_name)
 
-    return {"id": id, "deleted": delete(table_name, SegmentsTable, id)}
+    try:
+        deleted = delete(table_name, segment_table, id)
+        if deleted:
+            print("TODO: delete embedding")
+            # delete_embedding(id, dataset_name)
+        return {"id": id, "deleted": deleted}
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"{str(e)}")
 
 
 @router.put("/{id}", response_model=Data)
@@ -82,6 +100,7 @@ def update_data_route(
     data: Data = {"sentence": "test", "segment": "test", "annotation": "test", "position": 0},
 ):
     table_name = get_path_key("data", dataset_name)
+    segment_table = get_segment_table(table_name)
 
-    update(table_name, SegmentsTable, id, data.dict())
+    update(table_name, segment_table, id, data.dict())
     return data

@@ -17,15 +17,13 @@ with open("../env.json") as f:
 
 def get_segments(dataset_name: str, start: int = 0, end: int = None):
     data_path_key = get_path_key("data", dataset_name)
-
+    segment_table = get_segment_table(data_path_key)
     segments_data = None
 
     # Return data from database if it exists
-    print("data_path_key", data_path_key)
-    segment_table = get_segment_table(data_path_key)
     if table_has_entries(data_path_key, segment_table):
         data = get_data_db(data_path_key, start, end, segment_table)
-        return [row.__dict__ for row in data]
+        return data
     else:
         segments_data = extract_segments(dataset_name, start, end)
 

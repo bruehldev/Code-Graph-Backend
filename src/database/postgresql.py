@@ -1,8 +1,24 @@
 import json
-from sqlalchemy import create_engine, Column, Integer, String, Text, ARRAY, inspect, MetaData, ForeignKey, Table
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    Text,
+    ARRAY,
+    inspect,
+    MetaData,
+    ForeignKey,
+    Table,
+    text,
+    insert as insert_sql,
+    delete as delete_sql,
+    update as update_sql,
+    select as select_sql,
+)
 from sqlalchemy.types import Float
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry
 from sqlalchemy.dialects.postgresql import ARRAY
 import logging
 
@@ -18,38 +34,95 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 
 Base = declarative_base()
+mapper_registry = registry()
 metadata = MetaData()
 
 
-class SegmentsTable(Base):
-    __table__ = Table(
-        "default_segments",
+def get_segment_table(table_name):
+    return Table(
+        table_name,
         metadata,
         Column("id", Integer, primary_key=True, index=True),
         Column("sentence", Text),
         Column("segment", String),
         Column("annotation", String),
         Column("position", Integer),
+        extend_existing=True,
     )
 
 
-class ReducedEmbeddingsTable(Base):
-    __table__ = Table("default_reduced_embededdings", metadata, Column("id", Integer, primary_key=True, index=True), Column("reduced_embeddings", ARRAY(Float)))
+def get_reduced_embedding_table(table_name, segment_table_name):
+    return Table(
+        table_name,
+        metadata,
+        Column("id", Integer, primary_key=True, index=True),
+        Column("reduced_embeddings", ARRAY(Float)),
+        Column("segment_id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE")),
+        extend_existing=True,
+    )
 
 
-class ClustersTable(Base):
-    __table__ = Table("default_clusters", metadata, Column("id", Integer, primary_key=True, index=True), Column("cluster", Integer))
+def get_cluster_table(table_name, segment_table_name):
+    return Table(
+        table_name,
+        metadata,
+        Column("id", Integer, primary_key=True, index=True),
+        Column("cluster", Integer),
+        Column("segment_id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE")),
+        extend_existing=True,
+    )
 
 
-def init_table(table_name, table_class):
+class SegmentsTable:
+    pass
+
+
+class ReducedEmbeddingsTable:
+    pass
+
+
+def init_table(table_name, table_class, parent_table_class=None):
     inspector = inspect(engine)
     if table_name not in inspector.get_table_names():
-        data_table_class = table_class
-        data_table_class.__table__.name = table_name  # Update the table name
-        data_table_class.__table__.create(bind=engine)
+        # remove index from relationship if it exists
+        drop_index(table_name)
+
+        # set relationships
+        if parent_table_class is not None and hasattr(parent_table_class, "name"):
+            mapper_registry.map_imperatively(
+                SegmentsTable, parent_table_class, properties={"reduced_embeddings": relationship(table_class, cascade="all,delete")}
+            )
+            mapper_registry.map_imperatively(
+                ReducedEmbeddingsTable, table_class, properties={"segment": relationship(parent_table_class, cascade="all,delete")}
+            )
+
+        # create table
+        table_class.create(bind=engine)
         logger.info(f"Initialized table: {table_name}")
     else:
         logger.info(f"Using table {table_name}")
+
+
+def drop_index(table_name):
+    logger.info(f"Dropping index: {table_name}")
+
+    # log all existing first
+    inspector = inspect(engine)
+    for name in inspector.get_table_names():
+        for index in inspector.get_indexes(name):
+            logger.info("Existing index: ", index)
+
+    session = SessionLocal()
+    stmt = text(f"DROP INDEX IF EXISTS {table_name} CASCADE")
+    session.execute(stmt)
+    session.commit()
+
+    ix_name = f"ix_{table_name}"
+    stmt = text(f"DROP INDEX IF EXISTS {ix_name} CASCADE")
+    session.execute(stmt)
+    session.commit()
+
+    session.close()
 
 
 def get_table_names():
@@ -68,17 +141,14 @@ def get_table_info():
     for table_name in table_names:
         # Little bit hacky, but it works :D
         if "data" in table_name:
-            table_class = SegmentsTable
-            table_class.__table__.name = table_name
+            table_class = get_segment_table(table_name)
             row_count = session.query(table_class).count()
         elif "reduced_embedding" in table_name:
-            table_class = ReducedEmbeddingsTable
-            table_class.__table__.name = table_name
-            row_count = session.query(ReducedEmbeddingsTable).count()
+            table_class = get_reduced_embedding_table(table_name, "data")
+            row_count = session.query(table_class).count()
         elif "clusters" in table_name:
-            table_class = ClustersTable
-            table_class.__table__.name = table_name
-            row_count = session.query(ClustersTable).count()
+            table_class = get_cluster_table(table_name, "data")
+            row_count = session.query(table_class).count()
 
         table_info[table_name] = {"table_name": table_name, "row_count": row_count}
 
@@ -112,35 +182,38 @@ def get_session():
     return SessionLocal
 
 
-def get_data(table_name, start, end, table_class):
-    table_class.__table__.name = table_name
+def table_has_entries(table_name, table_class):
     session = SessionLocal()
     try:
-        data_range = session.query(table_class).slice(start, end).all()
-        logger.info(f"Loaded data from database: {table_name}")
-        return data_range
+        stmt = select_sql(table_class)
+        result = session.execute(stmt)
+        row_count = result.rowcount
+        return row_count > 0
     finally:
         session.close()
 
 
-def get(table_name, table_class, data_id):
-    """
-    Get data from the specified table by ID.
-
-    :param table_name: Name of the table to fetch data from.
-    :param data_id: ID of the data to retrieve.
-    :return: Data row with the specified ID.
-    """
-    table_class.__table__.name = table_name
+def get_data(table_name, start, end, table_class, as_dict=True):
     session = SessionLocal()
     try:
-        data = session.query(table_class).filter_by(id=data_id).first()
+        query = session.query(table_class).slice(start, end)
+        if as_dict:
+            return [row._asdict() for row in query.all()]
+        return query
+    finally:
+        session.close()
+
+
+def get(table_name, table_class: Table, id):
+    stmt = table_class.select().where(table_class.c.id == id)
+    session = SessionLocal()
+    try:
+        data = session.execute(stmt).first()
         logger.info(f"Loaded data from database: {table_name}")
-        if data:
-            return data
+        if data is not None:
+            return data._asdict()
         else:
-            logger.error(f"Data with ID {data_id} not found.")
-            # raise ValueError(f"Data with ID {data_id} not found.")
+            return None
     finally:
         session.close()
 
@@ -148,12 +221,8 @@ def get(table_name, table_class, data_id):
 # data: sentence, segment, annotation, position
 # reduced_embeddings: reduced_embeddings
 def create(table_name, table_class, **kwargs):
-    # Create an instance of the dynamic table class with the data
-    data_table_class = table_class
-    data_table_class.__table__.name = table_name  # Update the table name
-    plot_instance = data_table_class(**kwargs)
-    # Add the instance to the session
-    SessionLocal.add(plot_instance)
+    stmt = insert_sql(table_class).values(**kwargs)
+    SessionLocal.execute(stmt)
     SessionLocal.commit()
 
 
@@ -164,37 +233,27 @@ def update(table_name, table_class, data_id, new_values):
     :param data_id: ID of the data to update.
     :param new_values: Dictionary containing the new values for the fields to update.
     """
-    table_class.__table__.name = table_name
+    stmt = update_sql(table_class).where(table_class.c.id == data_id).values(**new_values)
     session = SessionLocal()
     try:
-        data = session.query(table_class).filter_by(id=data_id).first()
-        if data:
-            for key, value in new_values.items():
-                setattr(data, key, value)
-            session.commit()
-        else:
-            raise ValueError(f"Data with ID {data_id} not found.")
+        session.execute(stmt)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
     finally:
         session.close()
 
 
 def delete(table_name, table_class, data_id):
-    """
-    Delete data from the specified table.
-
-    :param data_id: ID of the data to delete.
-    :return: True if data was deleted, False if data was not found.
-    """
-    table_class.__table__.name = table_name
+    stmt = delete_sql(table_class).where(table_class.c.id == data_id)
     session = SessionLocal()
     try:
-        data_to_delete = session.query(table_class).filter_by(id=data_id).first()
-        if data_to_delete:
-            session.delete(data_to_delete)
-            session.commit()
-            return True
-        else:
-            return False
+        result = session.execute(stmt)
+        deleted_count = result.rowcount
+        session.commit()
+        logger.info(f"Deleted data from database: {table_name}")
+        return deleted_count > 0
     except Exception as e:
         session.rollback()
         raise e
@@ -203,14 +262,11 @@ def delete(table_name, table_class, data_id):
 
 
 def table_has_entries(table_name, table_class):
-    inspector = inspect(engine)
-    if table_name not in inspector.get_table_names():
-        return False
-
-    table_class.__table__.name = table_name
     session = SessionLocal()
     try:
-        count = session.query(table_class).count()
-        return count > 0
+        stmt = select_sql(table_class)
+        result = session.execute(stmt)
+        row_count = result.rowcount
+        return row_count > 0
     finally:
         session.close()
