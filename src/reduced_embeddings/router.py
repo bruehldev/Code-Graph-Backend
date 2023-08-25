@@ -28,8 +28,8 @@ def get_reduced_embeddings_endpoint(dataset_name: Experimental_dataset_names, mo
 
 
 @router.get("/extract")
-def extract_embeddings_reduced_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
-    extract_embeddings_reduced(dataset_name, model_name)
+def extract_embeddings_reduced_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100):
+    extract_embeddings_reduced(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
     return {"message": "Reduced embeddings extracted successfully"}
 
 

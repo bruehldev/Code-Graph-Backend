@@ -46,7 +46,7 @@ def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None
         # return [row.__dict__ for row in data]
         # embeddings_reduced = load_reduced_embeddings(dataset_name, model_name, start, end)
     else:
-        embeddings_reduced = extract_embeddings_reduced(dataset_name, model_name)
+        embeddings_reduced = extract_embeddings_reduced(dataset_name, model_name, start, end)
 
         if isinstance(embeddings_reduced, np.ndarray):
             embeddings_reduced = embeddings_reduced.tolist()
@@ -72,9 +72,9 @@ def get_reduced_embeddings_file(dataset_name: str, model_name: str):
     return get_model_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"reduced_embeddings_{dataset_name}.pkl")
 
 
-def extract_embeddings_reduced(dataset_name, model_name):
+def extract_embeddings_reduced(dataset_name, model_name, start=0, end=None):
     # embeddings with index
-    embeddings_with_index = get_embeddings(dataset_name, model_name, with_index=True)
+    embeddings_with_index = get_embeddings(dataset_name, model_name, start, end, with_index=True)
     # get embeddings without index
     embeddings = [embedding for index, embedding in embeddings_with_index]
     index_list = [index for index, embedding in embeddings_with_index]
