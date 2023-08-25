@@ -94,7 +94,7 @@ def init_table(table_name, table_class, parent_table_class=None):
     inspector = inspect(engine)
     if table_name not in inspector.get_table_names():
         # remove index from relationship if it exists
-        drop_index(table_name)
+        table_class.indexes.clear()
 
         # set relationships
         if parent_table_class is not None and hasattr(parent_table_class, "name"):
@@ -110,28 +110,6 @@ def init_table(table_name, table_class, parent_table_class=None):
         logger.info(f"Initialized table: {table_name}")
     else:
         logger.info(f"Using table {table_name}")
-
-
-def drop_index(table_name):
-    logger.info(f"Dropping index: {table_name}")
-
-    # log all existing first
-    inspector = inspect(engine)
-    for name in inspector.get_table_names():
-        for index in inspector.get_indexes(name):
-            logger.info("Existing index: ", index)
-
-    session = SessionLocal()
-    stmt = text(f"DROP INDEX IF EXISTS {table_name} CASCADE")
-    session.execute(stmt)
-    session.commit()
-
-    ix_name = f"ix_{table_name}"
-    stmt = text(f"DROP INDEX IF EXISTS {ix_name} CASCADE")
-    session.execute(stmt)
-    session.commit()
-
-    session.close()
 
 
 def get_table_names():
