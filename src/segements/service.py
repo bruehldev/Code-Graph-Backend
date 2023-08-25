@@ -22,12 +22,11 @@ def get_segments(dataset_name: str, start: int = 0, end: int = None):
 
     # Return data from database if it exists
     if table_has_entries(segment_table):
-        data = get_all_db(segment_table, start, end, True)
-        return data
+        segments_data = get_all_db(segment_table, start, end, True)
     else:
         segments_data = extract_segments(dataset_name, start, end)
 
-    return segments_data[start:end]
+    return segments_data
 
 
 def extract_segments(dataset_name: str, start: int = 0, end: int = None, export_to_file: bool = False):
