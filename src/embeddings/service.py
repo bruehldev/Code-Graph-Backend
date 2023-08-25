@@ -30,16 +30,15 @@ def get_embeddings(dataset_name: str, model_name: str, start=0, end=None, with_i
     global embeddings_2d_bert
     embeddings_file = get_embeddings_file(dataset_name, model_name)
     if os.path.exists(embeddings_file):
-        embeddings_2d_bert = load_embeddings(dataset_name, model_name, with_index)
+        embeddings_2d_bert = load_embeddings(dataset_name, model_name, with_index)[start:end]
     else:
-        embeddings_2d_bert = extract_embeddings(dataset_name, model_name, start, end)
-        save_embeddings(embeddings_2d_bert, dataset_name, model_name, False, start, end)
+        embeddings_2d_bert = extract_embeddings(dataset_name=dataset_name, model_name=model_name, start=start, end=end, id=None, return_with_index=with_index)
 
     if isinstance(embeddings_2d_bert, np.ndarray):
         embeddings_2d_bert = embeddings_2d_bert.tolist()
 
-    logger.info(f"Returning len {len(embeddings_2d_bert[start:end])} start {start} end {end}")
-    return embeddings_2d_bert[start:end]
+    logger.info(f"Returning len {len(embeddings_2d_bert)} start {start} end {end}")
+    return embeddings_2d_bert
 
 
 def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, index_provided: bool = False, start=0, end=None):
@@ -49,7 +48,7 @@ def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, 
     if not index_provided:
         embeddings = [(index + 1, embedding) for index, embedding in enumerate(embeddings)]
 
-    logger.info(f"Save embeddings in db: {dataset_name} / {model_name}. Length: {num_embeddings}")
+    logger.info(f"Save embeddings as pickle: {dataset_name} / {model_name}. Length: {num_embeddings}")
 
     if end is None:
         end = num_embeddings
@@ -127,7 +126,7 @@ def get_embeddings_file(dataset_name: str, model_name: str):
     return get_model_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"embeddings_{dataset_name}.pkl")
 
 
-def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None):
+def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None, return_with_index=None):
     model_service = ModelService(dataset_name, model_name)
     logger.info(f"Extract embeddings: {dataset_name} / {model_name} start: {start} end: {end}")
     segments = []
@@ -137,8 +136,7 @@ def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None):
         segment_table = get_segment_table(table_name)
         segments.append(get_in_db(segment_table, id))
     elif start is not None and end is not None:
-        segments.append(get_segments(dataset_name, start, end))
-    print("segments:", segments)
+        segments.extend(get_segments(dataset_name, start, end))
     if dataset_name == "few_nerd":
         embeddings = model_service.process_data(segments)
         embeddings_2d_bert = embeddings
@@ -162,3 +160,5 @@ def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None):
                 create_embedding(id, embedding, dataset_name, model_name)
     else:
         save_embeddings(embeddings_2d_bert, dataset_name, model_name, False, start, end)
+
+    return load_embeddings(dataset_name, model_name, return_with_index)
