@@ -209,7 +209,7 @@ def create(table_class, **kwargs):
     try:
         session.execute(stmt)
         session.commit()
-        logger.info(f"Created data in database: {table_class.name}")
+        # logger.info(f"Created data in database: {table_class.name}")
     except Exception as e:
         session.rollback()
         raise e
@@ -262,6 +262,6 @@ def table_has_entries(table_class):
         return row_count > 0
     except Exception as e:
         session.rollback()
-        raise e
+        return False
     finally:
         session.close()
