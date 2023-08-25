@@ -8,7 +8,7 @@ from reduced_embeddings.service import (
 )
 from pydantic import BaseModel
 from database.schemas import Data
-from database.postgresql import get, create, update, delete, get_reduced_embedding_table
+from database.postgresql import get as get_in_db, create as create_in_db, update as update_in_db, delete as delete_in_db, get_reduced_embedding_table
 from data.utils import get_path_key
 from reduced_embeddings.schemas import Reduced_Embedding
 
@@ -44,7 +44,7 @@ def get_data_route(
     reduced_embeddings_table = get_reduced_embedding_table(reduced_embedding_table_name, segment_table_name)
     data = None
     try:
-        data = get(reduced_embedding_table_name, reduced_embeddings_table, id)
+        data = get_in_db(reduced_embeddings_table, id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"{str(e)}")
     if data is None:
@@ -62,7 +62,7 @@ def insert_data_route(
     segment_table_name = get_path_key("data", dataset_name)
     reduced_embeddings_table = get_reduced_embedding_table(reduced_embedding_table_name, segment_table_name)
 
-    create(reduced_embedding_table_name, reduced_embeddings_table, reduced_embeddings=data.reduced_embeddings)
+    create_in_db(reduced_embeddings_table, reduced_embeddings=data.reduced_embeddings)
     return data.__dict__
 
 
@@ -77,7 +77,7 @@ def delete_data_route(
     reduced_embeddings_table = get_reduced_embedding_table(reduced_embedding_table_name, segment_table_name)
 
     try:
-        return {"id": id, "deleted": delete(segment_table_name, reduced_embeddings_table, id)}
+        return {"id": id, "deleted": delete_in_db(reduced_embeddings_table, id)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"{str(e)}")
 
@@ -90,5 +90,5 @@ def update_data_route(
     segment_table_name = get_path_key("data", dataset_name)
     reduced_embeddings_table = get_reduced_embedding_table(reduced_embedding_table_name, segment_table_name)
 
-    update(segment_table_name, reduced_embeddings_table, id, data.dict())
+    update_in_db(reduced_embeddings_table, id, data.dict())
     return data

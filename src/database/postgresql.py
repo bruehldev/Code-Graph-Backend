@@ -1,4 +1,6 @@
 import json
+import logging
+
 from sqlalchemy import (
     create_engine,
     Column,
@@ -20,9 +22,7 @@ from sqlalchemy.types import Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry
 from sqlalchemy.dialects.postgresql import ARRAY
-import logging
 
-logger = logging.getLogger(__name__)
 
 env = {}
 with open("../env.json") as f:
@@ -30,14 +30,15 @@ with open("../env.json") as f:
 
 DATABASE_URL = env["DATABASE_URL"]
 
+logger = logging.getLogger(__name__)
 engine = create_engine(DATABASE_URL)
 SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
-
 Base = declarative_base()
 mapper_registry = registry()
 metadata = MetaData()
 
 
+### Table definitions ###
 def get_segment_table(table_name):
     return Table(
         table_name,
@@ -51,6 +52,7 @@ def get_segment_table(table_name):
     )
 
 
+# Todo on update calculate reduced embeddings (onupdate)
 def get_reduced_embedding_table(table_name, segment_table_name):
     return Table(
         table_name,
@@ -62,6 +64,7 @@ def get_reduced_embedding_table(table_name, segment_table_name):
     )
 
 
+# Todo on update calculate clusters (onupdate)
 def get_cluster_table(table_name, segment_table_name):
     return Table(
         table_name,
@@ -81,6 +84,12 @@ class ReducedEmbeddingsTable:
     pass
 
 
+class ClustersTable:
+    pass
+
+
+### Table operations ###
+# Todo add class for parent and child table
 def init_table(table_name, table_class, parent_table_class=None):
     inspector = inspect(engine)
     if table_name not in inspector.get_table_names():
@@ -182,51 +191,55 @@ def get_session():
     return SessionLocal
 
 
-def table_has_entries(table_name, table_class):
-    session = SessionLocal()
-    try:
-        stmt = select_sql(table_class)
-        result = session.execute(stmt)
-        row_count = result.rowcount
-        return row_count > 0
-    finally:
-        session.close()
-
-
-def get_data(table_name, start, end, table_class, as_dict=True):
+### Query functions ###
+def get_data(table_class, start, end, as_dict=True):
     session = SessionLocal()
     try:
         query = session.query(table_class).slice(start, end)
         if as_dict:
             return [row._asdict() for row in query.all()]
         return query
+    except Exception as e:
+        session.rollback()
+        raise e
     finally:
         session.close()
 
 
-def get(table_name, table_class: Table, id):
+def get(table_class: Table, id):
     stmt = table_class.select().where(table_class.c.id == id)
     session = SessionLocal()
     try:
         data = session.execute(stmt).first()
-        logger.info(f"Loaded data from database: {table_name}")
+        logger.info(f"Loaded data from database: {table_class.name}")
         if data is not None:
             return data._asdict()
         else:
             return None
+    except Exception as e:
+        session.rollback()
+        raise e
     finally:
         session.close()
 
 
 # data: sentence, segment, annotation, position
 # reduced_embeddings: reduced_embeddings
-def create(table_name, table_class, **kwargs):
+def create(table_class, **kwargs):
     stmt = insert_sql(table_class).values(**kwargs)
-    SessionLocal.execute(stmt)
-    SessionLocal.commit()
+    session = SessionLocal()
+    try:
+        session.execute(stmt)
+        session.commit()
+        logger.info(f"Created data in database: {table_class.name}")
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
 
 
-def update(table_name, table_class, data_id, new_values):
+def update(table_class, data_id, new_values):
     """
     Update data in the specified table.
 
@@ -238,6 +251,7 @@ def update(table_name, table_class, data_id, new_values):
     try:
         session.execute(stmt)
         session.commit()
+        logger.info(f"Updated data in database: {table_class.name}")
     except Exception as e:
         session.rollback()
         raise e
@@ -245,14 +259,14 @@ def update(table_name, table_class, data_id, new_values):
         session.close()
 
 
-def delete(table_name, table_class, data_id):
+def delete(table_class, data_id):
     stmt = delete_sql(table_class).where(table_class.c.id == data_id)
     session = SessionLocal()
     try:
         result = session.execute(stmt)
         deleted_count = result.rowcount
         session.commit()
-        logger.info(f"Deleted data from database: {table_name}")
+        logger.info(f"Deleted data from database: {table_class.name}")
         return deleted_count > 0
     except Exception as e:
         session.rollback()
@@ -261,12 +275,15 @@ def delete(table_name, table_class, data_id):
         session.close()
 
 
-def table_has_entries(table_name, table_class):
+def table_has_entries(table_class):
     session = SessionLocal()
     try:
         stmt = select_sql(table_class)
         result = session.execute(stmt)
         row_count = result.rowcount
         return row_count > 0
+    except Exception as e:
+        session.rollback()
+        raise e
     finally:
         session.close()

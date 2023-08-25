@@ -13,8 +13,8 @@ from database.postgresql import (
     get_reduced_embedding_table,
     get_segment_table,
     init_table,
-    create,
-    get_data as get_data_db,
+    create as create_in_db,
+    get_data as get_all_db,
     table_has_entries,
 )
 from embeddings.service import get_embeddings
@@ -40,8 +40,8 @@ def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None
 
     embeddings_reduced = []
 
-    if table_has_entries(reduced_embedding_table_name, reduced_embeddings_table):
-        embeddings_reduced = get_data_db(reduced_embedding_table_name, start, end, reduced_embeddings_table)
+    if table_has_entries(reduced_embeddings_table):
+        embeddings_reduced = get_all_db(reduced_embeddings_table, start, end, True)
         return embeddings_reduced
         # return [row.__dict__ for row in data]
         # embeddings_reduced = load_reduced_embeddings(dataset_name, model_name, start, end)
@@ -63,7 +63,7 @@ def save_reduced_embeddings(reduced_embeddings: np.ndarray, index_list: List[int
     init_table(reduced_embedding_table_name, reduced_embeddings_table, segment_table)
 
     for embedding, segment_id in zip(reduced_embeddings, index_list):
-        create(reduced_embedding_table_name, reduced_embeddings_table, reduced_embeddings=embedding.tolist(), segment_id=segment_id)
+        create_in_db(reduced_embeddings_table, reduced_embeddings=embedding.tolist(), segment_id=segment_id)
 
 
 def get_reduced_embeddings_file(dataset_name: str, model_name: str):

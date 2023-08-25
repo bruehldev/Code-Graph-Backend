@@ -2,7 +2,7 @@ import json
 import logging
 from typing import List
 from embeddings.service import get_embeddings
-from database.postgresql import get_cluster_table, table_has_entries, get_data as get_data_db, init_table, create
+from database.postgresql import get_cluster_table, table_has_entries, get_data as get_all_db, init_table, create as create_in_db
 from data.utils import get_path_key
 
 import logging
@@ -30,15 +30,15 @@ def save_clusters(clusters: np.ndarray, dataset_name: str, model_name: str):
     init_table(cluster_table_name, cluster_table)
 
     for cluster in clusters:
-        create(cluster_table_name, cluster_table, cluster=int(cluster))
+        create_in_db(cluster_table, cluster=int(cluster))
 
 
 def get_clusters(dataset_name: str, model_name: str, start: int = 0, end: int = None):
     cluster_table_name = get_path_key("clusters", dataset_name, model_name)
     segment_table_name = get_path_key("data", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
-    if table_has_entries(cluster_table_name, cluster_table):
-        clusters = get_data_db(cluster_table_name, start, end, cluster_table)
+    if table_has_entries(cluster_table):
+        clusters = get_all_db(cluster_table, start, end, True)
         return clusters
     else:
         clusters = extract_clusters(dataset_name, model_name)

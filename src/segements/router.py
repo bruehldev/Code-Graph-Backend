@@ -4,7 +4,14 @@ from pydantic import BaseModel
 from segements.service import get_segments, extract_segments
 from database.schemas import Data, DataTableResponse
 from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
-from database.postgresql import get_data as get_data_db, get, create, update, delete, get_segment_table
+from database.postgresql import (
+    get_data as get_all_db,
+    get as get_in_db,
+    create as create_in_db,
+    update as update_in_db,
+    delete as delete_in_db,
+    get_segment_table,
+)
 from data.utils import get_path_key
 from embeddings.service import delete_embedding
 
@@ -40,7 +47,7 @@ def get_data_range_route(
     table_name = get_path_key("data", dataset_name)
     segment_table = get_segment_table(table_name)
 
-    data_range = get_data_db(table_name, (page - 1) * page_size, page * page_size, segment_table)
+    data_range = get_all_db(segment_table, (page - 1) * page_size, page * page_size, True)
     return [row.__dict__ for row in data_range]
 
 
@@ -54,7 +61,7 @@ def get_data_route(
 
     data = None
     try:
-        data = get(table_name, segment_table, id)
+        data = get_in_db(segment_table, id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"{str(e)}")
     if data is None:
@@ -70,7 +77,7 @@ def insert_data_route(
     table_name = get_path_key("data", dataset_name)
     segment_table = get_segment_table(table_name)
 
-    create(table_name, segment_table, sentence=data.sentence, segment=data.sentence, annotation=data.annotation, position=data.position)
+    create_in_db(segment_table, sentence=data.sentence, segment=data.sentence, annotation=data.annotation, position=data.position)
     return data
 
 
@@ -83,7 +90,7 @@ def delete_data_route(
     segment_table = get_segment_table(table_name)
 
     try:
-        deleted = delete(table_name, segment_table, id)
+        deleted = delete_in_db(segment_table, id)
         if deleted:
             print("TODO: delete embedding")
             # delete_embedding(id, dataset_name)
@@ -102,5 +109,5 @@ def update_data_route(
     table_name = get_path_key("data", dataset_name)
     segment_table = get_segment_table(table_name)
 
-    update(table_name, segment_table, id, data.dict())
+    update_in_db(segment_table, id, data.dict())
     return data

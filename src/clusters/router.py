@@ -5,7 +5,13 @@ from pydantic import BaseModel
 from data.schemas import Experimental_dataset_names
 from clusters.service import get_clusters, extract_clusters
 from models.schemas import Model_names
-from database.postgresql import get_cluster_table, get as get_from_db, get_data as get_data_db, create, update, delete
+from database.postgresql import (
+    get_cluster_table,
+    get as get_in_db,
+    create as create_in_db,
+    update as update_in_db,
+    delete as delete_in_db,
+)
 from data.utils import get_path_key
 from clusters.schemas import Cluster
 
@@ -27,7 +33,7 @@ def get_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name: M
     cluster_table_name = get_path_key("clusters", dataset_name, model_name)
     segment_table_name = get_path_key("data", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
-    data_from_db = get_from_db(cluster_table_name, cluster_table, id)
+    data_from_db = get_in_db(cluster_table, id)
 
     if data_from_db is not None:
         return ClustersTableResponse(**data_from_db.__dict__)
@@ -40,7 +46,7 @@ def insert_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name
     cluster_table_name = get_path_key("clusters", dataset_name, model_name)
     segment_table_name = get_path_key("data", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
-    create(cluster_table_name, cluster_table, cluster=data.cluster)
+    create_in_db(cluster_table, cluster=data.cluster)
     return data.__dict__
 
 
@@ -49,7 +55,7 @@ def update_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name
     cluster_table_name = get_path_key("clusters", dataset_name, model_name)
     segment_table_name = get_path_key("data", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
-    update(cluster_table_name, cluster_table, id, data.dict())
+    update_in_db(cluster_table, id, data.dict())
     return data
 
 
@@ -58,7 +64,7 @@ def delete_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name
     cluster_table_name = get_path_key("clusters", dataset_name, model_name)
     segment_table_name = get_path_key("data", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
-    return {"id": id, "deleted": delete(cluster_table_name, cluster_table, id)}
+    return {"id": id, "deleted": delete_in_db(cluster_table, id)}
 
 
 @router.get("/extract")

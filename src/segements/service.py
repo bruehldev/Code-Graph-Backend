@@ -2,7 +2,7 @@ import json
 import os
 import json
 import logging
-from database.postgresql import create, init_table, get_data as get_data_db, table_has_entries, get_segment_table
+from database.postgresql import create as create_in_db, init_table, get_data as get_all_db, table_has_entries, get_segment_table
 from tqdm import tqdm
 from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
 from data.file_operations import download_few_nerd_dataset, save_segments_file, get_segments_file
@@ -21,8 +21,8 @@ def get_segments(dataset_name: str, start: int = 0, end: int = None):
     segments_data = None
 
     # Return data from database if it exists
-    if table_has_entries(data_path_key, segment_table):
-        data = get_data_db(data_path_key, start, end, segment_table)
+    if table_has_entries(segment_table):
+        data = get_all_db(segment_table, start, end, True)
         return data
     else:
         segments_data = extract_segments(dataset_name, start, end)
@@ -119,6 +119,4 @@ def save_segments(entries, dataset_name: str, start=0, end=None):
     end = len(entries) if end is None else min(end, len(entries))  # Make sure end is within bounds
 
     for entry in entries[start:end]:
-        create(
-            segment_table_name, segment_table, sentence=entry["sentence"], segment=entry["segment"], annotation=entry["annotation"], position=entry["position"]
-        )
+        create_in_db(segment_table, sentence=entry["sentence"], segment=entry["segment"], annotation=entry["annotation"], position=entry["position"])
