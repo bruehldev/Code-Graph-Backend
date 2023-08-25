@@ -12,6 +12,7 @@ from segements.service import get_segments
 from models.service import ModelService
 from data.utils import get_model_file_path, get_supervised_path, get_path_key
 from configmanager.service import ConfigManager
+from database.postgresql import get_segment_table, get as get_in_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -72,15 +73,17 @@ def load_embeddings(dataset_name: str, model_name: str, with_index: bool = False
         return embeddings
 
 
-def create_embedding(embedding: list, dataset_name: str, model_name: str) -> List:
-    logger.info(f"Creating embedding.  dataset: {dataset_name} modelname: {model_name} index: {new_index}")
+def create_embedding(id: int, embedding: list, dataset_name: str, model_name: str) -> List:
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
     # Get the index for the new embedding
     last_index = loaded_embeddings[-1][0] if loaded_embeddings else 0
     new_index = last_index + 1
+    logger.info(f"Creating embedding.  dataset: {dataset_name} modelname: {model_name} index: {new_index}")
 
     # Append the new embedding with its index
+    if id is not None:
+        new_index = id
     loaded_embeddings.append([new_index, embedding])
     save_embeddings(embeddings=loaded_embeddings, dataset_name=dataset_name, model_name=model_name, index_provided=True)
 
@@ -124,11 +127,20 @@ def get_embeddings_file(dataset_name: str, model_name: str):
     return get_model_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"embeddings_{dataset_name}.pkl")
 
 
-def extract_embeddings(dataset_name, model_name, start=0, end=None):
+def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None):
     model_service = ModelService(dataset_name, model_name)
     logger.info(f"Extract embeddings: {dataset_name} / {model_name} start: {start} end: {end}")
+    segments = []
+
+    if id is not None:
+        table_name = get_path_key("data", dataset_name)
+        segment_table = get_segment_table(table_name)
+        segments.append(get_in_db(segment_table, id))
+    elif start is not None and end is not None:
+        segments.append(get_segments(dataset_name, start, end))
+    print("segments:", segments)
     if dataset_name == "few_nerd":
-        embeddings = model_service.process_data(get_segments(dataset_name))
+        embeddings = model_service.process_data(segments)
         embeddings_2d_bert = embeddings
     elif dataset_name == "fetch_20newsgroups":
         embeddings = model_service.model(get_data(dataset_name, start, end))
@@ -136,4 +148,17 @@ def extract_embeddings(dataset_name, model_name, start=0, end=None):
         embeddings_2d_bert = umap_model.fit_transform(embeddings)
 
     logger.info(f"Computed embeddings: {dataset_name} / {model_name}")
-    save_embeddings(embeddings_2d_bert, dataset_name, model_name, False, start, end)
+    embeddings_file = get_embeddings_file(dataset_name, model_name)
+
+    if os.path.exists(embeddings_file):
+        # update or create for each new embedding
+        for segment in segments:
+            id: int = segment["id"]
+            embedding = embeddings_2d_bert[id - 1]
+            # Todo Fix fileoperation withj db or delta load. We can have huge perfomance issues on large amount of extrations
+            if read_embedding(id, dataset_name, model_name) is not None:
+                update_embedding(id, embedding, dataset_name, model_name)
+            else:
+                create_embedding(id, embedding, dataset_name, model_name)
+    else:
+        save_embeddings(embeddings_2d_bert, dataset_name, model_name, False, start, end)

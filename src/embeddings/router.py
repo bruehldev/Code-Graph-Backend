@@ -16,18 +16,19 @@ router = APIRouter()
 
 @router.get("/")
 def get_embeddings_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 2):
-    return {"embeddings": get_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)}
+    return {"embeddings": get_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size, with_index=True)}
 
 
 @router.get("/extract")
-def extract_embeddings_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
-    extract_embeddings(dataset_name, model_name)
+def extract_embeddings_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100, id=None):
+    extract_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size, id=id)
     return {"message": "Embeddings extracted successfully"}
 
 
 @router.post("/")
 def create_embedding_endpoint(embedding: List[float], dataset_name: Experimental_dataset_names, model_name: Model_names):
-    create_embedding(embedding, dataset_name, model_name)
+    id = None
+    create_embedding(id, embedding, dataset_name, model_name)
     return {"message": "Embedding created successfully"}
 
 
