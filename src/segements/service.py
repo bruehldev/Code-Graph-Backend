@@ -2,7 +2,7 @@ import json
 import os
 import json
 import logging
-from database.postgresql import create as create_in_db, init_table, get_data as get_all_db, table_has_entries, get_segment_table
+from database.postgresql import create as create_in_db, init_table, get_data as get_all_db, table_has_entries, get_segment_table, get_session, batch_insert
 from tqdm import tqdm
 from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
 from data.file_operations import download_few_nerd_dataset, save_segments_file, get_segments_file
@@ -116,6 +116,13 @@ def save_segments(entries, dataset_name: str, start=0, end=None):
     init_table(segment_table_name, segment_table)
 
     end = len(entries) if end is None else min(end, len(entries))  # Make sure end is within bounds
+    session = get_session()
+    total_entries = len(entries) + 1
+    batch_size = 1000
+    with tqdm(total=total_entries, desc=f"Saving {dataset_name}") as pbar:
+        for i in range(start, end, batch_size):
+            batch_entries = entries[i : i + batch_size]
+            batch_insert(session, segment_table, batch_entries)
+            pbar.update(len(batch_entries))
 
-    for entry in entries[start:end]:
-        create_in_db(segment_table, sentence=entry["sentence"], segment=entry["segment"], annotation=entry["annotation"], position=entry["position"])
+    session.close()

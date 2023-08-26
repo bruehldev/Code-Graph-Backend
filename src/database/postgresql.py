@@ -219,6 +219,16 @@ def create(table_class, **kwargs):
         session.close()
 
 
+def batch_insert(session: Session, table_class, entries):
+    stmt = insert_dialect(table_class).values(entries)
+    try:
+        session.execute(stmt)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+
+
 def update(table_class, data_id, new_values):
     """
     Update data in the specified table.

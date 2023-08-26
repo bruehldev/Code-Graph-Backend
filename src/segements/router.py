@@ -27,14 +27,18 @@ class DataTableResponse(BaseModel):
 
 
 @router.get("/extract")
-def extract_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100, export_to_file: bool = False):
-    extract_segments(dataset_name, start=(page - 1) * page_size, end=page * page_size, export_to_file=export_to_file)
+def extract_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100, export_to_file: bool = False, all: bool = False):
+    if all:
+        extract_segments(dataset_name, export_to_file=export_to_file)
+    else:
+        extract_segments(dataset_name, start=(page - 1) * page_size, end=page * page_size, export_to_file=export_to_file)
     return {"message": "Segments extracted successfully"}
 
 
 @router.get("/")
 def get_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100):
     segments = get_segments(dataset_name, start=(page - 1) * page_size, end=page * page_size)
+
     return {"segments": segments}
 
 
