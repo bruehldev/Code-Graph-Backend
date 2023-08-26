@@ -41,12 +41,9 @@ def get_embeddings(dataset_name: str, model_name: str, start=0, end=None, with_i
     return embeddings_2d_bert
 
 
-def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, index_provided: bool = False, start=0, end=None):
+def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, start=0, end=None):
     embeddings_file = get_embeddings_file(dataset_name, model_name)
     num_embeddings = len(embeddings)  # Get the number of embeddings from the list
-
-    if not index_provided:
-        embeddings = [(index + 1, embedding) for index, embedding in enumerate(embeddings)]
 
     logger.info(f"Save embeddings as pickle: {dataset_name} / {model_name}. Length: {num_embeddings}")
 
@@ -61,7 +58,6 @@ def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, 
 def load_embeddings(dataset_name: str, model_name: str, with_index: bool = False) -> List:
     logger.info(f"Loaded embeddings pickle {dataset_name} / {model_name} with index: {with_index}")
     embeddings_file = get_embeddings_file(dataset_name, model_name)
-
     with open(embeddings_file, "rb") as f:
         num_embeddings, indexed_embeddings = pickle.load(f)
 
@@ -84,7 +80,7 @@ def create_embedding(id: int, embedding: list, dataset_name: str, model_name: st
     if id is not None:
         new_index = id
     loaded_embeddings.append([new_index, embedding])
-    save_embeddings(embeddings=loaded_embeddings, dataset_name=dataset_name, model_name=model_name, index_provided=True)
+    save_embeddings(embeddings=loaded_embeddings, dataset_name=dataset_name, model_name=model_name)
 
 
 def read_embedding(index: int, dataset_name: str, model_name: str) -> np.ndarray:
@@ -105,7 +101,7 @@ def update_embedding(index: int, new_embedding: np.ndarray, dataset_name: str, m
     for i, (loaded_index, embedding) in enumerate(loaded_embeddings):
         if loaded_index == index:
             loaded_embeddings[i] = [loaded_index, new_embedding]
-            save_embeddings(loaded_embeddings, dataset_name, model_name, index_provided=True)
+            save_embeddings(loaded_embeddings, dataset_name, model_name)
             return
 
 
@@ -116,7 +112,7 @@ def delete_embedding(index: int, dataset_name: str, model_name: str):
     for i, (loaded_index, embedding) in enumerate(loaded_embeddings):
         if loaded_index == index:
             loaded_embeddings.pop(i)
-            save_embeddings(loaded_embeddings, dataset_name, model_name, index_provided=True)
+            save_embeddings(loaded_embeddings, dataset_name, model_name)
             return
 
 
@@ -150,15 +146,16 @@ def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None, ret
 
     if os.path.exists(embeddings_file):
         # update or create for each new embedding
-        for segment in segments:
-            id: int = segment["id"]
-            embedding = embeddings_2d_bert[id - 1]
+        for embedding in embeddings_2d_bert:
+            id: int = embedding[0]
+            embedding: list = embedding[1]
+
             # Todo Fix fileoperation withj db or delta load. We can have huge perfomance issues on large amount of extrations
             if read_embedding(id, dataset_name, model_name) is not None:
                 update_embedding(id, embedding, dataset_name, model_name)
             else:
                 create_embedding(id, embedding, dataset_name, model_name)
     else:
-        save_embeddings(embeddings_2d_bert, dataset_name, model_name, False, start, end)
+        save_embeddings(embeddings_2d_bert, dataset_name, model_name, start, end)
 
     return load_embeddings(dataset_name, model_name, return_with_index)
