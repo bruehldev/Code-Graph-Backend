@@ -26,13 +26,13 @@ config = config_manager.get_default_model()
 
 
 ### Embedding functions ###
-def get_embeddings(dataset_name: str, model_name: str, start=0, end=None, with_index: bool = False):
+def get_embeddings(dataset_name: str, model_name: str, start=0, end=None, with_id: bool = False):
     global embeddings_2d_bert
     embeddings_file = get_embeddings_file(dataset_name, model_name)
     if os.path.exists(embeddings_file):
-        embeddings_2d_bert = load_embeddings(dataset_name, model_name, with_index)[start:end]
+        embeddings_2d_bert = load_embeddings(dataset_name, model_name, with_id)[start:end]
     else:
-        embeddings_2d_bert = extract_embeddings(dataset_name=dataset_name, model_name=model_name, start=start, end=end, id=None, return_with_index=with_index)
+        embeddings_2d_bert = extract_embeddings(dataset_name=dataset_name, model_name=model_name, start=start, end=end, id=None, return_with_id=with_id)
 
     if isinstance(embeddings_2d_bert, np.ndarray):
         embeddings_2d_bert = embeddings_2d_bert.tolist()
@@ -80,7 +80,7 @@ def delete_embeddings(dataset_name: str, model_name: str) -> bool:
         return False
 
 
-def create_embedding(id: int, embedding: list, dataset_name: str, model_name: str) -> List:
+def create_embedding(id: int, embedding: list, dataset_name: str, model_name: str) -> int and List:
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
     # Get the index for the new embedding
@@ -94,6 +94,8 @@ def create_embedding(id: int, embedding: list, dataset_name: str, model_name: st
     loaded_embeddings.append([new_index, embedding])
     save_embeddings(embeddings=loaded_embeddings, dataset_name=dataset_name, model_name=model_name)
 
+    return [new_index, embedding]
+
 
 def read_embedding(index: int, dataset_name: str, model_name: str) -> int and np.ndarray:
     logger.info(f"reading embedding.  dataset: {dataset_name} modelname: {model_name} index: {index}")
@@ -106,7 +108,7 @@ def read_embedding(index: int, dataset_name: str, model_name: str) -> int and np
     return None
 
 
-def update_embedding(index: int, new_embedding: np.ndarray, dataset_name: str, model_name: str):
+def update_embedding(index: int, new_embedding: np.ndarray, dataset_name: str, model_name: str) -> int and np.ndarray:
     logger.info(f"Updating embedding.  dataset: {dataset_name} modelname: {model_name} index: {index}")
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
@@ -114,10 +116,10 @@ def update_embedding(index: int, new_embedding: np.ndarray, dataset_name: str, m
         if loaded_index == index:
             loaded_embeddings[i] = [loaded_index, new_embedding]
             save_embeddings(loaded_embeddings, dataset_name, model_name)
-            return
+            return [loaded_index, new_embedding]
 
 
-def delete_embedding(index: int, dataset_name: str, model_name: str):
+def delete_embedding(index: int, dataset_name: str, model_name: str) -> int:
     logger.info(f"Deleting embedding.  dataset: {dataset_name} modelname: {model_name} index: {index}")
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
@@ -125,7 +127,7 @@ def delete_embedding(index: int, dataset_name: str, model_name: str):
         if loaded_index == index:
             loaded_embeddings.pop(i)
             save_embeddings(loaded_embeddings, dataset_name, model_name)
-            return
+            return loaded_index
 
 
 def get_embeddings_file(dataset_name: str, model_name: str):
@@ -134,7 +136,7 @@ def get_embeddings_file(dataset_name: str, model_name: str):
     return get_model_file_path(type="embeddings", dataset_name=dataset_name, model_name=model_name, filename=f"embeddings_{dataset_name}.pkl")
 
 
-def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None, return_with_index=None):
+def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None, return_with_id=None) -> List:
     model_service = ModelService(dataset_name, model_name)
     logger.info(f"Extract embeddings: {dataset_name} / {model_name} start: {start} end: {end}, id: {id}")
     segments = []
@@ -176,4 +178,4 @@ def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None, ret
     if id is not None:
         return [read_embedding(id, dataset_name, model_name)]
 
-    return load_embeddings(dataset_name, model_name, return_with_index)[start:end]
+    return load_embeddings(dataset_name, model_name, return_with_id)[start:end]
