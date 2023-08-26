@@ -174,9 +174,10 @@ def get_session():
 def get_data(table_class, start, end, as_dict=True):
     session = SessionLocal()
     try:
-        query = session.query(table_class).slice(start, end)
+        query = session.query(table_class).order_by(table_class.c.id).slice(start, end)
         if as_dict:
             return [row._asdict() for row in query.all()]
+        logger.info(f"Loaded data from database: {table_class.name}")
         return query
     except Exception as e:
         session.rollback()
