@@ -16,6 +16,8 @@ from database.postgresql import (
     create as create_in_db,
     get_data as get_all_db,
     table_has_entries,
+    update_or_create as update_or_create_db,
+    get_session,
 )
 from embeddings.service import get_embeddings
 
@@ -50,7 +52,7 @@ def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None
 
         if isinstance(embeddings_reduced, np.ndarray):
             embeddings_reduced = embeddings_reduced.tolist()
-        return embeddings_reduced[start:end]
+        return embeddings_reduced
 
 
 def save_reduced_embeddings(reduced_embeddings: np.ndarray, index_list: List[int], dataset_name: str, model_name: str):
@@ -63,7 +65,9 @@ def save_reduced_embeddings(reduced_embeddings: np.ndarray, index_list: List[int
     init_table(reduced_embedding_table_name, reduced_embeddings_table, segment_table)
 
     for embedding, segment_id in zip(reduced_embeddings, index_list):
-        create_in_db(reduced_embeddings_table, reduced_embeddings=embedding.tolist(), segment_id=segment_id)
+        # if exists upda
+        session = get_session()
+        update_or_create_db(session, reduced_embeddings_table, data_id=segment_id, reduced_embeddings=embedding.tolist())
 
 
 def get_reduced_embeddings_file(dataset_name: str, model_name: str):
@@ -74,22 +78,24 @@ def get_reduced_embeddings_file(dataset_name: str, model_name: str):
 
 def extract_embeddings_reduced(dataset_name, model_name, start=0, end=None):
     # embeddings with index
-    embeddings_with_index = get_embeddings(dataset_name, model_name, start, end, with_index=True)
+    # Important Note: Always use all embeddings for UMAP to optimize the embedding space
+    embeddings_with_index = get_embeddings(dataset_name, model_name, start=0, end=None, with_index=True)
+
     # get embeddings without index
     embeddings = [embedding for index, embedding in embeddings_with_index]
     index_list = [index for index, embedding in embeddings_with_index]
-    reduced_embeddings = np.array(embeddings)
-    umap_model = umap.UMAP(**config.embedding_config.dict())
 
     # Check the shape of the embeddings array
+    reduced_embeddings = np.array(embeddings)
     if reduced_embeddings.ndim == 1:
         reduced_embeddings = reduced_embeddings.reshape(-1, 1)  # Reshape to a column vector
 
+    umap_model = umap.UMAP(**config.embedding_config.dict())
     embeddings_reduced = umap_model.fit_transform(reduced_embeddings)
 
     save_reduced_embeddings(embeddings_reduced, index_list, dataset_name, model_name)
     logger.info(f"Computed reduced embeddings: {dataset_name} / {model_name}")
-    return embeddings_reduced
+    return embeddings_reduced[start:end]
 
 
 ### Save load reduced embeddings from pickle file and not db ###

@@ -17,11 +17,14 @@ from sqlalchemy import (
     delete as delete_sql,
     update as update_sql,
     select as select_sql,
+    event,
 )
 from sqlalchemy.types import Float
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry, mapper, Session
+from sqlalchemy.dialects.postgresql import ARRAY, insert as insert_dialect
+from sqlalchemy.exc import IntegrityError
+import inspect as inspect_module
 
 
 env = {}
@@ -57,9 +60,8 @@ def get_reduced_embedding_table(table_name, segment_table_name):
     return Table(
         table_name,
         metadata,
-        Column("id", Integer, primary_key=True, index=True),
         Column("reduced_embeddings", ARRAY(Float)),
-        Column("segment_id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE")),
+        Column("id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE"), primary_key=True),
         extend_existing=True,
     )
 
@@ -95,7 +97,6 @@ def init_table(table_name, table_class, parent_table_class=None):
     if table_name not in inspector.get_table_names():
         # remove index from relationship if it exists
         table_class.indexes.clear()
-
         # set relationships
         if parent_table_class is not None and hasattr(parent_table_class, "name"):
             mapper_registry.map_imperatively(
@@ -251,6 +252,38 @@ def delete(table_class, data_id):
         raise e
     finally:
         session.close()
+
+
+"""
+def update_or_create(session: Session, table_class, data_id, **kwargs):
+    try:
+        # Check if the row already exists
+        row = session.query(table_class).filter_by(id=data_id).first()
+        # returns (1, [13.63386344909668, 5.8151044845581055], 1)
+        if row is None:
+            # Create a new row
+            stmt = insert_sql(table_class).values(id=data_id, **kwargs)
+            session.execute(stmt)
+        else:
+            # Update the existing row
+            stmt = update_sql(table_class).where(table_class.c.id == data_id).values(**kwargs)
+            session.execute(stmt)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+"""
+
+
+def update_or_create(session: Session, table_class, data_id, **kwargs):
+    try:
+        stmt = insert_dialect(table_class).values(id=data_id, **kwargs)
+        stmt = stmt.on_conflict_do_update(index_elements=[table_class.c.id], set_=kwargs)
+        session.execute(stmt)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
 
 
 def table_has_entries(table_class):
