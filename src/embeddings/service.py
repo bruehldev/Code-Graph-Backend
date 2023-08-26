@@ -60,7 +60,8 @@ def load_embeddings(dataset_name: str, model_name: str, with_index: bool = False
     embeddings_file = get_embeddings_file(dataset_name, model_name)
     with open(embeddings_file, "rb") as f:
         num_embeddings, indexed_embeddings = pickle.load(f)
-
+        # sort by index
+        indexed_embeddings = sorted(indexed_embeddings, key=lambda x: x[0])
     if with_index:
         return indexed_embeddings
     else:
@@ -94,7 +95,7 @@ def create_embedding(id: int, embedding: list, dataset_name: str, model_name: st
     save_embeddings(embeddings=loaded_embeddings, dataset_name=dataset_name, model_name=model_name)
 
 
-def read_embedding(index: int, dataset_name: str, model_name: str) -> np.ndarray:
+def read_embedding(index: int, dataset_name: str, model_name: str) -> int and np.ndarray:
     logger.info(f"reading embedding.  dataset: {dataset_name} modelname: {model_name} index: {index}")
 
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
@@ -135,7 +136,7 @@ def get_embeddings_file(dataset_name: str, model_name: str):
 
 def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None, return_with_index=None):
     model_service = ModelService(dataset_name, model_name)
-    logger.info(f"Extract embeddings: {dataset_name} / {model_name} start: {start} end: {end}")
+    logger.info(f"Extract embeddings: {dataset_name} / {model_name} start: {start} end: {end}, id: {id}")
     segments = []
 
     if id is not None:
@@ -144,6 +145,9 @@ def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None, ret
         segments.append(get_in_db(segment_table, id))
     elif start is not None and end is not None:
         segments.extend(get_segments(dataset_name, start, end))
+    else:
+        segments.extend(get_segments(dataset_name))
+
     if dataset_name == "few_nerd":
         embeddings = model_service.process_data(segments)
         embeddings_2d_bert = embeddings
@@ -158,15 +162,18 @@ def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None, ret
     if os.path.exists(embeddings_file):
         # update or create for each new embedding
         for embedding in embeddings_2d_bert:
-            id: int = embedding[0]
+            embedding_id: int = embedding[0]
             embedding: list = embedding[1]
 
-            # Todo Fix fileoperation withj db or delta load. We can have huge perfomance issues on large amount of extrations
-            if read_embedding(id, dataset_name, model_name) is not None:
-                update_embedding(id, embedding, dataset_name, model_name)
+            # Todo Fix fileoperation with db or delta load. We can have huge perfomance issues on large amount of extrations
+            if read_embedding(embedding_id, dataset_name, model_name) is not None:
+                update_embedding(embedding_id, embedding, dataset_name, model_name)
             else:
-                create_embedding(id, embedding, dataset_name, model_name)
+                create_embedding(embedding_id, embedding, dataset_name, model_name)
     else:
         save_embeddings(embeddings_2d_bert, dataset_name, model_name, start, end)
 
-    return load_embeddings(dataset_name, model_name, return_with_index)
+    if id is not None:
+        return [read_embedding(id, dataset_name, model_name)]
+
+    return load_embeddings(dataset_name, model_name, return_with_index)[start:end]
