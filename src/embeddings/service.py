@@ -68,6 +68,17 @@ def load_embeddings(dataset_name: str, model_name: str, with_index: bool = False
         return embeddings
 
 
+def delete_embeddings(dataset_name: str, model_name: str) -> bool:
+    embeddings_file = get_embeddings_file(dataset_name, model_name)
+    if os.path.exists(embeddings_file):
+        logger.info(f"Deleting embeddings.  dataset: {dataset_name} modelname: {model_name}")
+        os.remove(embeddings_file)
+        return True
+    else:
+        logger.info(f"Embeddings file does not exist.  dataset: {dataset_name} modelname: {model_name}")
+        return False
+
+
 def create_embedding(id: int, embedding: list, dataset_name: str, model_name: str) -> List:
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
