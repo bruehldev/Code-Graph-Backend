@@ -80,7 +80,7 @@ def delete_embeddings(dataset_name: str, model_name: str) -> bool:
         return False
 
 
-def create_embedding(id: int, embedding: list, dataset_name: str, model_name: str) -> int and List:
+def create_embedding(id: int, embedding: list, dataset_name: str, model_name: str) -> List:
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
     # Get the index for the new embedding
@@ -105,10 +105,10 @@ def read_embedding(index: int, dataset_name: str, model_name: str) -> int and np
     for loaded_index, embedding in loaded_embeddings:
         if loaded_index == index:
             return loaded_index, embedding
-    return None
+    return None, None
 
 
-def update_embedding(index: int, new_embedding: np.ndarray, dataset_name: str, model_name: str) -> int and np.ndarray:
+def update_embedding(index: int, new_embedding: np.ndarray, dataset_name: str, model_name: str) -> List:
     logger.info(f"Updating embedding.  dataset: {dataset_name} modelname: {model_name} index: {index}")
     loaded_embeddings = load_embeddings(dataset_name, model_name, with_index=True)
 
@@ -128,6 +128,7 @@ def delete_embedding(index: int, dataset_name: str, model_name: str) -> int:
             loaded_embeddings.pop(i)
             save_embeddings(loaded_embeddings, dataset_name, model_name)
             return loaded_index
+    return None
 
 
 def get_embeddings_file(dataset_name: str, model_name: str):
