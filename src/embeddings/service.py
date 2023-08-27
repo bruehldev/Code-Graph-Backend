@@ -8,7 +8,7 @@ import umap
 
 from typing import List
 from data.service import get_data
-from segements.service import get_segments
+from segments.service import get_segments
 from models.service import ModelService
 from data.utils import get_model_file_path, get_supervised_path, get_path_key
 from configmanager.service import ConfigManager

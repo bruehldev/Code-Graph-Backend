@@ -156,6 +156,18 @@ def delete_table(table_name, engine=engine):
         raise ValueError(f"Table '{table_name}' does not exist")
 
 
+def get_table_length(table_class):
+    session = SessionLocal()
+    try:
+        query = session.query(table_class)
+        return query.count()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
 # Start the database engine
 def start_engine():
     engine.connect()
@@ -186,7 +198,7 @@ def get_data(table_class, start, end, as_dict=True):
         session.close()
 
 
-def get(table_class: Table, id):
+def get(table_class: Table, id) -> dict:
     stmt = table_class.select().where(table_class.c.id == id)
     session = SessionLocal()
     try:
@@ -205,13 +217,15 @@ def get(table_class: Table, id):
 
 # data: sentence, segment, annotation, position
 # reduced_embeddings: reduced_embeddings
-def create(table_class, **kwargs):
+def create(table_class, **kwargs) -> dict:
     stmt = insert_sql(table_class).values(**kwargs)
     session = SessionLocal()
     try:
-        session.execute(stmt)
+        result = session.execute(stmt)
         session.commit()
         # logger.info(f"Created data in database: {table_class.name}")
+        # return id
+        return {"id": result.inserted_primary_key[0], **kwargs}
     except Exception as e:
         session.rollback()
         raise e
@@ -229,7 +243,7 @@ def batch_insert(session: Session, table_class, entries):
         raise e
 
 
-def update(table_class, data_id, new_values):
+def update(table_class, data_id, new_values) -> dict:
     """
     Update data in the specified table.
 
@@ -242,6 +256,7 @@ def update(table_class, data_id, new_values):
         session.execute(stmt)
         session.commit()
         logger.info(f"Updated data in database: {table_class.name}")
+        return {"id": data_id, **new_values}
     except Exception as e:
         session.rollback()
         raise e
@@ -249,7 +264,7 @@ def update(table_class, data_id, new_values):
         session.close()
 
 
-def delete(table_class, data_id):
+def delete(table_class, data_id) -> bool:
     stmt = delete_sql(table_class).where(table_class.c.id == data_id)
     session = SessionLocal()
     try:

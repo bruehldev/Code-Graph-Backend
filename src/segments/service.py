@@ -18,13 +18,12 @@ with open("../env.json") as f:
 def get_segments(dataset_name: str, start: int = 0, end: int = None):
     data_path_key = get_path_key("data", dataset_name)
     segment_table = get_segment_table(data_path_key)
-    segments_data = None
+    segments_data = []
 
-    # Return data from database if it exists
-    if table_has_entries(segment_table):
-        segments_data = get_all_db(segment_table, start, end, True)
-    else:
-        segments_data = extract_segments(dataset_name, start, end)
+    if not table_has_entries(segment_table):
+        extract_segments(dataset_name, start, end)
+
+    segments_data = get_all_db(segment_table, start, end, True)
 
     return segments_data
 
@@ -105,8 +104,6 @@ def extract_segments(dataset_name: str, start: int = 0, end: int = None, export_
         save_segments_file(entries, get_segments_file(dataset_name))
         logger.info(f"Extracted and saved segments for dataset: {dataset_name}")
 
-    return entries
-
 
 def save_segments(entries, dataset_name: str, start=0, end=None):
     logger.info(f"Save segments in db: {dataset_name}. Length: {len(entries)}, start: {start}, end: {end}")
@@ -117,7 +114,7 @@ def save_segments(entries, dataset_name: str, start=0, end=None):
 
     end = len(entries) if end is None else min(end, len(entries))  # Make sure end is within bounds
     session = get_session()
-    total_entries = len(entries) + 1
+    total_entries = len(entries)
     batch_size = 1000
     with tqdm(total=total_entries, desc=f"Saving {dataset_name}") as pbar:
         for i in range(start, end, batch_size):

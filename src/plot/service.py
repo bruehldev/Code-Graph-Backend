@@ -6,7 +6,7 @@ import logging
 from typing import List
 
 from reduced_embeddings.service import get_reduced_embeddings
-from segements.service import get_segments
+from segments.service import get_segments
 from clusters.service import get_clusters
 from data.few_nerd import FINE_NER_TAGS_DICT
 
