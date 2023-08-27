@@ -10,6 +10,7 @@ from database.postgresql import (
     delete as delete_in_db,
     get_segment_table,
     get_table_length,
+    table_has_entries,
 )
 from data.utils import get_path_key
 
@@ -24,11 +25,16 @@ router = APIRouter()
 def extract_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100, export_to_file: bool = False, all: bool = False) -> SegmentTable:
     table_name = get_path_key("data", dataset_name)
     segment_table = get_segment_table(table_name)
-    length = get_table_length(segment_table)
-    extract_segments(dataset_name, start=(page - 1) * page_size, end=page * page_size, export_to_file=export_to_file)
-    start = length
-    end = start + page_size
-    segments = get_all_db(segment_table, start=start, end=end, as_dict=True)
+    segments = []
+    if table_has_entries(segment_table):
+        length = get_table_length(segment_table)
+        extract_segments(dataset_name, start=(page - 1) * page_size, end=page * page_size, export_to_file=export_to_file)
+        start = length
+        end = start + page_size
+        segments = get_all_db(segment_table, start=start, end=end, as_dict=True)
+    else:
+        segments = get_segments(dataset_name, start=0, end=page * page_size)
+        page = 1
     return {"data": segments, "length": len(segments), "page": page, "page_size": page_size}
 
 
