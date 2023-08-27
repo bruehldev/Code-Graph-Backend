@@ -60,7 +60,7 @@ def get_reduced_embedding_table(table_name, segment_table_name):
     return Table(
         table_name,
         metadata,
-        Column("reduced_embeddings", ARRAY(Float)),
+        Column("reduced_embedding", ARRAY(Float)),
         Column("id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE"), primary_key=True),
         extend_existing=True,
     )
@@ -100,7 +100,7 @@ def init_table(table_name, table_class, parent_table_class=None):
         # set relationships
         if parent_table_class is not None and hasattr(parent_table_class, "name"):
             mapper_registry.map_imperatively(
-                SegmentsTable, parent_table_class, properties={"reduced_embeddings": relationship(table_class, cascade="all,delete")}
+                SegmentsTable, parent_table_class, properties={"reduced_embedding": relationship(table_class, cascade="all,delete")}
             )
             mapper_registry.map_imperatively(
                 ReducedEmbeddingsTable, table_class, properties={"segment": relationship(parent_table_class, cascade="all,delete")}

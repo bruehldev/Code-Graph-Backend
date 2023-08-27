@@ -61,12 +61,12 @@ def save_reduced_embeddings(reduced_embeddings: np.ndarray, index_list: List[int
     for embedding, segment_id in zip(reduced_embeddings, index_list):
         # if exists upda
         session = get_session()
-        update_or_create_db(session, reduced_embeddings_table, data_id=segment_id, reduced_embeddings=embedding.tolist())
+        update_or_create_db(session, reduced_embeddings_table, data_id=segment_id, reduced_embedding=embedding.tolist())
 
 
 def extract_embeddings_reduced(dataset_name, model_name, start=0, end=None):
     # Important Note: Always use all embeddings for UMAP to optimize the embedding space
-    embeddings_with_index = get_embeddings(dataset_name, model_name, start=0, end=None, with_index=True)
+    embeddings_with_index = get_embeddings(dataset_name, model_name, start=0, end=None, with_id=True)
 
     # get embeddings without index
     embeddings = [embedding for index, embedding in embeddings_with_index]
@@ -84,7 +84,7 @@ def extract_embeddings_reduced(dataset_name, model_name, start=0, end=None):
     logger.info(f"Computed reduced embeddings: {dataset_name} / {model_name}")
 
     # transform to list of dict with id in start and end range
-    embeddings_reduced = [[index, embedding] for index, embedding in zip(index_list[start:end], embeddings_reduced.toList()[start:end])]
+    embeddings_reduced = [{"id": index_list[i], "reduced_embedding": embeddings_reduced[i].tolist()} for i in range(start, end)]
     return embeddings_reduced
 
 
