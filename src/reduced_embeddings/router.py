@@ -51,7 +51,7 @@ def get_data_route(
     return {"data": data}
 
 
-""" This is not allowed since the reduced_embedding id must be a segment id!!!
+""" This is not allowed and does not work anymore since the reduced_embedding id must be a segment id!
 @router.post("/")
 def insert_data_route(
     dataset_name: Experimental_dataset_names,

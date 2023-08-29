@@ -58,8 +58,8 @@ def get_reduced_embedding_table(table_name, segment_table_name):
     return Table(
         table_name,
         metadata,
-        Column("reduced_embedding", ARRAY(Float)),
         Column("id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True, nullable=False),
+        Column("reduced_embedding", ARRAY(Float)),
         extend_existing=True,
     )
 
@@ -69,9 +69,8 @@ def get_cluster_table(table_name, segment_table_name):
     return Table(
         table_name,
         metadata,
-        Column("id", Integer, primary_key=True, index=True),
+        Column("id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True, nullable=False),
         Column("cluster", Integer),
-        Column("segment_id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True, nullable=False),
         extend_existing=True,
     )
 
