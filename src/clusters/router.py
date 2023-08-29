@@ -23,6 +23,12 @@ class ClustersTableResponse(BaseModel):
     cluster: int
 
 
+@router.get("/extract")
+def extract_clusters_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100):
+    extract_clusters(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
+    return {"message": "Clusters extracted successfully"}
+
+
 @router.get("/")
 def list_clusters_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100):
     return {"clusters": get_clusters(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)}
@@ -65,9 +71,3 @@ def delete_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name
     segment_table_name = get_path_key("data", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
     return {"id": id, "deleted": delete_in_db(cluster_table, id)}
-
-
-@router.get("/extract")
-def extract_clusters_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
-    extract_clusters(dataset_name, model_name)
-    return {"message": "Clusters extracted successfully"}
