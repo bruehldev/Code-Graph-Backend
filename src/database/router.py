@@ -2,12 +2,7 @@ from fastapi import APIRouter, Depends
 from typing import List
 from pydantic import BaseModel
 
-from database.postgresql import (
-    delete_table,
-    get_table_info,
-    get_table_names,
-)
-
+from database.postgresql import delete_table, get_table_info, get_table_names, delete_all_tables
 
 router = APIRouter()
 
@@ -28,3 +23,8 @@ def delete_table_route(
     table_name: str,
 ):
     return {"deleted": delete_table(table_name)}
+
+
+@router.delete("/all")
+def delete_all_tables_route():
+    return {"deleted": delete_all_tables()}

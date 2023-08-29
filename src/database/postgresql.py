@@ -155,6 +155,19 @@ def delete_table(table_name, engine=engine):
         raise ValueError(f"Table '{table_name}' does not exist")
 
 
+def delete_all_tables(engine=engine):
+    Base = declarative_base()
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
+    for table_name in metadata.tables.keys():
+        table = metadata.tables[table_name]
+        if table is not None:
+            Base.metadata.drop_all(engine, [table], checkfirst=True)
+            logger.info(f"Table '{table_name}' dropped")
+        else:
+            raise ValueError(f"Table '{table_name}' does not exist")
+
+
 def get_table_length(table_class):
     session = SessionLocal()
     try:
