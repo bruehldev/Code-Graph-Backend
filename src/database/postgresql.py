@@ -17,13 +17,12 @@ from sqlalchemy import (
     update as update_sql,
     select as select_sql,
     Computed,
+    text,
 )
 from sqlalchemy.types import Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry, mapper, Session
 from sqlalchemy.dialects.postgresql import ARRAY, insert as insert_dialect, TSVECTOR
-from sqlalchemy.exc import IntegrityError
-import inspect as inspect_module
 
 env = {}
 with open("../env.json") as f:
@@ -60,7 +59,7 @@ def get_reduced_embedding_table(table_name, segment_table_name):
         table_name,
         metadata,
         Column("reduced_embedding", ARRAY(Float)),
-        Column("id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE"), primary_key=True),
+        Column("id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True, nullable=False),
         extend_existing=True,
     )
 
@@ -72,20 +71,16 @@ def get_cluster_table(table_name, segment_table_name):
         metadata,
         Column("id", Integer, primary_key=True, index=True),
         Column("cluster", Integer),
-        Column("segment_id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE")),
+        Column("segment_id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True, nullable=False),
         extend_existing=True,
     )
 
 
-class SegmentsTable:
+class ParentTable:
     pass
 
 
-class ReducedEmbeddingsTable:
-    pass
-
-
-class ClustersTable:
+class ChildTable:
     pass
 
 
@@ -98,12 +93,8 @@ def init_table(table_name, table_class, parent_table_class=None):
         table_class.indexes.clear()
         # set relationships
         if parent_table_class is not None and hasattr(parent_table_class, "name"):
-            mapper_registry.map_imperatively(
-                SegmentsTable, parent_table_class, properties={"reduced_embedding": relationship(table_class, cascade="all,delete")}
-            )
-            mapper_registry.map_imperatively(
-                ReducedEmbeddingsTable, table_class, properties={"segment": relationship(parent_table_class, cascade="all,delete")}
-            )
+            mapper_registry.map_imperatively(ParentTable, parent_table_class, properties={"reduced_embedding": relationship(table_class, cascade="all,delete")})
+            mapper_registry.map_imperatively(ChildTable, table_class, properties={"segment": relationship(parent_table_class, cascade="all,delete")})
 
         # create table
         table_class.create(bind=engine)
@@ -156,16 +147,16 @@ def delete_table(table_name, engine=engine):
 
 
 def delete_all_tables(engine=engine):
-    Base = declarative_base()
-    metadata = MetaData()
-    metadata.reflect(bind=engine)
-    for table_name in metadata.tables.keys():
-        table = metadata.tables[table_name]
-        if table is not None:
-            Base.metadata.drop_all(engine, [table], checkfirst=True)
-            logger.info(f"Table '{table_name}' dropped")
-        else:
-            raise ValueError(f"Table '{table_name}' does not exist")
+    inspector = inspect(engine)
+    table_names = inspector.get_table_names()
+    session = SessionLocal()
+
+    for table_name in table_names:
+        stmt = text(f"DROP TABLE IF EXISTS {table_name} CASCADE;")
+        session.execute(stmt)
+        logger.info(f"Table '{table_name}' dropped")
+    session.commit()
+    session.close()
 
 
 def get_table_length(table_class):
