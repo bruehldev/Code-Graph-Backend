@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 
 class SegmentData(BaseModel):
@@ -19,8 +19,9 @@ class SegmentEntry(BaseModel):
 
 class SegmentTable(BaseModel):
     length: int
-    page: int
-    page_size: int
+    limit: Optional[int]
+    page: Optional[int]
+    page_size: Optional[int]
     data: List[SegmentEntry]
 
 

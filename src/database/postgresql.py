@@ -12,20 +12,18 @@ from sqlalchemy import (
     MetaData,
     ForeignKey,
     Table,
-    text,
     insert as insert_sql,
     delete as delete_sql,
     update as update_sql,
     select as select_sql,
-    event,
+    Computed,
 )
 from sqlalchemy.types import Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry, mapper, Session
-from sqlalchemy.dialects.postgresql import ARRAY, insert as insert_dialect
+from sqlalchemy.dialects.postgresql import ARRAY, insert as insert_dialect, TSVECTOR
 from sqlalchemy.exc import IntegrityError
 import inspect as inspect_module
-
 
 env = {}
 with open("../env.json") as f:
@@ -48,6 +46,7 @@ def get_segment_table(table_name):
         metadata,
         Column("id", Integer, primary_key=True, index=True),
         Column("sentence", Text),
+        Column("sentence_tsv", TSVECTOR, Computed("to_tsvector('english', sentence)")),
         Column("segment", String),
         Column("annotation", String),
         Column("position", Integer),
@@ -273,6 +272,24 @@ def delete(table_class, data_id) -> bool:
         session.commit()
         logger.info(f"Deleted data from database: {table_class.name}")
         return deleted_count > 0
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
+def search_segments(table_class, query, as_dict=True, limit=None):
+    stmt = select_sql(table_class).where(table_class.c.sentence_tsv.match(query))
+    if limit is not None:
+        stmt = stmt.limit(limit)  # Apply the limit
+    session = SessionLocal()
+    try:
+        result = session.execute(stmt)
+
+        if as_dict:
+            return [row._asdict() for row in result.fetchall()]
+        return result.fetchall()
     except Exception as e:
         session.rollback()
         raise e
