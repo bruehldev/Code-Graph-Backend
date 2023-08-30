@@ -75,27 +75,53 @@ def get_cluster_table(table_name, segment_table_name):
     )
 
 
-class ParentTable:
+class Segment:
     pass
 
 
-class ChildTable:
+class ReducedEmbeddingTable:
     pass
+
+
+class ClusterTable:
+    pass
+
+
+class MapperFactory:
+    def __init__(self, base_class):
+        self.base_class = base_class
+        self.counter = 1
+
+    def create(self):
+        class_name = f"{self.base_class.__name__}{self.counter}"
+        new_class = type(class_name, (self.base_class,), {})
+        self.counter += 1
+        return new_class
 
 
 ### Table operations ###
-# Todo add class for parent and child table
-def init_table(table_name, table_class, parent_table_class=None):
+def init_table(table_name, table_class, parent_table_class=None, cls=None):
     inspector = inspect(engine)
     if table_name not in inspector.get_table_names():
         # remove index from relationship if it exists
         table_class.indexes.clear()
-        # set relationships
-        if parent_table_class is not None and hasattr(parent_table_class, "name"):
-            mapper_registry.map_imperatively(ParentTable, parent_table_class, properties={"reduced_embedding": relationship(table_class, cascade="all,delete")})
-            mapper_registry.map_imperatively(ChildTable, table_class, properties={"segment": relationship(parent_table_class, cascade="all,delete")})
 
-        # create table
+        if parent_table_class is not None and hasattr(parent_table_class, "name") and cls is not None:
+            cluster_factory = MapperFactory(ClusterTable)
+            if isinstance(cls, ReducedEmbeddingTable):
+                mapper_registry.map_imperatively(
+                    cluster_factory.create(), parent_table_class, properties={"reduced_embedding": relationship(table_class.name, cascade="all,delete")}
+                )
+                mapper_registry.map_imperatively(
+                    cluster_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
+                )
+            elif isinstance(cls, ClusterTable):
+                mapper_registry.map_imperatively(
+                    cluster_factory.create(), parent_table_class, properties={"cluster": relationship(table_class.name, cascade="all,delete")}
+                )
+                mapper_registry.map_imperatively(
+                    cluster_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
+                )
         table_class.create(bind=engine)
         logger.info(f"Initialized table: {table_name}")
     else:
@@ -149,13 +175,17 @@ def delete_all_tables(engine=engine):
     inspector = inspect(engine)
     table_names = inspector.get_table_names()
     session = SessionLocal()
-
+    results = []
     for table_name in table_names:
         stmt = text(f"DROP TABLE IF EXISTS {table_name} CASCADE;")
-        session.execute(stmt)
+        results.append(session.execute(stmt))
         logger.info(f"Table '{table_name}' dropped")
     session.commit()
     session.close()
+
+    mapper_registry.dispose()
+
+    return [result.rowcount for result in results]
 
 
 def get_table_length(table_class):

@@ -10,6 +10,7 @@ from database.postgresql import (
     update_or_create as update_or_create_db,
     get_session,
     get_segment_table,
+    ClusterTable,
 )
 from data.utils import get_path_key
 
@@ -36,7 +37,8 @@ def save_clusters(clusters: np.ndarray, index_list: List[int], dataset_name: str
     segment_table_name = get_path_key("data", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
     segment_table = get_segment_table(segment_table_name)
-    init_table(cluster_table_name, cluster_table, segment_table)
+
+    init_table(cluster_table_name, cluster_table, segment_table, ClusterTable())
 
     for cluster, segment_id in zip(clusters, index_list):
         # if exists upda
@@ -52,9 +54,8 @@ def get_clusters(dataset_name: str, model_name: str, start: int = 0, end: int = 
         clusters = get_all_db(cluster_table, start, end, True)
         return clusters
     else:
-        clusters = extract_clusters(dataset_name, model_name)
-        save_clusters(clusters, dataset_name, model_name)
-        return clusters[start:end]
+        clusters = extract_clusters(dataset_name, model_name, start, end)
+        return clusters
 
 
 def extract_clusters(dataset_name: str, model_name: str, start: int = 0, end: int = None):
@@ -69,5 +70,8 @@ def extract_clusters(dataset_name: str, model_name: str, start: int = 0, end: in
     logger.info(f"Computed clusters: {dataset_name} / {model_name}")
     save_clusters(clusters, index_list, dataset_name, model_name)
 
-    clusters = [{"id": index_list[i], "cluster": clusters[i].tolist()} for i in range(start, end)]
+    if end is None:
+        end = len(clusters)
+
+    clusters = [{"id": index_list[i], "cluster": clusters[i]} for i in range(start, end)]
     return clusters

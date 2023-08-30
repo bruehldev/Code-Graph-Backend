@@ -18,6 +18,7 @@ from database.postgresql import (
     table_has_entries,
     update_or_create as update_or_create_db,
     get_session,
+    ReducedEmbeddingTable,
 )
 from embeddings.service import get_embeddings
 
@@ -56,7 +57,7 @@ def save_reduced_embeddings(reduced_embeddings: np.ndarray, index_list: List[int
     segment_table = get_segment_table(segment_table_name)
     reduced_embeddings_table = get_reduced_embedding_table(reduced_embedding_table_name, segment_table_name)
 
-    init_table(reduced_embedding_table_name, reduced_embeddings_table, segment_table)
+    init_table(reduced_embedding_table_name, reduced_embeddings_table, segment_table, ReducedEmbeddingTable())
 
     for embedding, segment_id in zip(reduced_embeddings, index_list):
         # if exists upda
@@ -82,6 +83,9 @@ def extract_embeddings_reduced(dataset_name, model_name, start=0, end=None):
 
     save_reduced_embeddings(embeddings_reduced, index_list, dataset_name, model_name)
     logger.info(f"Computed reduced embeddings: {dataset_name} / {model_name}")
+
+    if end is None:
+        end = len(embeddings_reduced)
 
     # transform to list of dict with id in start and end range
     embeddings_reduced = [{"id": index_list[i], "reduced_embedding": embeddings_reduced[i].tolist()} for i in range(start, end)]
