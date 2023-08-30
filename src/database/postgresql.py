@@ -312,10 +312,96 @@ def delete(table_class, data_id) -> bool:
         session.close()
 
 
-def search_segments(table_class, query, as_dict=True, limit=None):
-    stmt = select_sql(table_class).where(table_class.c.sentence_tsv.match(query))
+def plot_search_query(segment_table, reduced_embedding_table, cluster_table, query, as_dict=True, limit=None):
+    # Define the columns
+    selected_columns = [
+        segment_table.c.id,
+        segment_table.c.sentence,
+        segment_table.c.segment,
+        segment_table.c.annotation,
+        segment_table.c.position,
+        reduced_embedding_table.c.reduced_embedding,
+        cluster_table.c.cluster,
+    ]
+
+    # Construct the SQL statement
+    stmt = select_sql(*selected_columns).where(segment_table.c.sentence_tsv.match(query))
+    stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
+    stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+
+    if limit is not None:
+        stmt = stmt.limit(limit)
+
+    session = SessionLocal()
+    try:
+        result = session.execute(stmt)
+
+        if as_dict:
+            return [row._asdict() for row in result.fetchall()]
+        return result.fetchall()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
+def plot_search_annotion(segment_table, reduced_embedding_table, cluster_table, query, as_dict=True, limit=None):
+    escaped_query = query.replace("/", r"\/")
+
+    # Define the columns you want to select
+    selected_columns = [
+        segment_table.c.id,
+        segment_table.c.sentence,
+        segment_table.c.segment,
+        segment_table.c.annotation,
+        segment_table.c.position,
+        reduced_embedding_table.c.reduced_embedding,  # Include reduced_embeddings
+        cluster_table.c.cluster,  # Include clusters
+    ]
+
+    # Construct the SQL statement
+    stmt = select_sql(*selected_columns).where(segment_table.c.annotation.match(escaped_query))
+    stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
+    stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+
     if limit is not None:
         stmt = stmt.limit(limit)  # Apply the limit
+
+    session = SessionLocal()
+    try:
+        result = session.execute(stmt)
+
+        if as_dict:
+            return [row._asdict() for row in result.fetchall()]
+        return result.fetchall()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
+def plot_search_cluster(segment_table, reduced_embedding_table, cluster_table, query, as_dict=True, limit=None):
+    # Define the columns you want to select
+    selected_columns = [
+        segment_table.c.id,
+        segment_table.c.sentence,
+        segment_table.c.segment,
+        segment_table.c.annotation,
+        segment_table.c.position,
+        reduced_embedding_table.c.reduced_embedding,  # Include reduced_embeddings
+        cluster_table.c.cluster,  # Include clusters
+    ]
+
+    # Construct the SQL statement
+    stmt = select_sql(*selected_columns).where(cluster_table.c.cluster == query)
+    stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
+    stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+
+    if limit is not None:
+        stmt = stmt.limit(limit)  # Apply the limit
+
     session = SessionLocal()
     try:
         result = session.execute(stmt)

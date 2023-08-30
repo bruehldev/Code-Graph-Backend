@@ -8,7 +8,7 @@ class PlotData(BaseModel):
     annotation: str
     position: int
     cluster: int
-    embedding: List[float]
+    reduced_embedding: List[float]
 
 
 class PlotEntry(BaseModel):
@@ -18,7 +18,7 @@ class PlotEntry(BaseModel):
     annotation: str
     position: int
     cluster: int
-    embedding: List[float]
+    reduced_embedding: List[float]
 
 
 class PlotTable(BaseModel):

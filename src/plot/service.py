@@ -25,7 +25,7 @@ def get_plot(dataset_name: str, model_name: str, start: int = 0, end: int = None
         # Check if ids are equal
         assert segment["id"] == embedding["id"] == cluster["id"]
 
-        segment["embedding"] = embedding["reduced_embedding"]
+        segment["reduced_embedding"] = embedding["reduced_embedding"]
         segment["cluster"] = cluster["cluster"]
         segment["annotation"] = FINE_NER_TAGS_DICT[segment["annotation"]]
 

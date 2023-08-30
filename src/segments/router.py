@@ -11,7 +11,6 @@ from database.postgresql import (
     get_segment_table,
     get_table_length,
     table_has_entries,
-    search_segments,
 )
 from data.utils import get_path_key
 
@@ -122,17 +121,3 @@ def update_segment_route(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
 
     return {"data": response}
-
-
-@router.get("/search/{query}")
-def search_segments_route(dataset_name: Dataset_names, query: str, limit: int = 100) -> SegmentTable:
-    table_name = get_path_key("segments", dataset_name)
-    segment_table = get_segment_table(table_name)
-
-    segments = search_segments(segment_table, query, as_dict=True, limit=limit)
-
-    return {
-        "data": segments,
-        "length": len(segments),
-        "limit": limit,
-    }
