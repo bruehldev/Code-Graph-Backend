@@ -37,7 +37,7 @@ config = config_manager.get_default_model()
 ### Reduced Embedding functions ###
 def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None):
     reduced_embedding_table_name = get_path_key("reduced_embedding", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     reduced_embeddings_table = get_reduced_embedding_table(reduced_embedding_table_name, segment_table_name)
 
     embeddings_reduced = []
@@ -53,7 +53,7 @@ def get_reduced_embeddings(dataset_name: str, model_name: str, start=0, end=None
 def save_reduced_embeddings(reduced_embeddings: np.ndarray, index_list: List[int], dataset_name: str, model_name: str):
     logger.info(f"Save reduced embeddings db: {dataset_name} / {model_name}. Length: {len(reduced_embeddings)}")
     reduced_embedding_table_name = get_path_key("reduced_embedding", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(segment_table_name)
     reduced_embeddings_table = get_reduced_embedding_table(reduced_embedding_table_name, segment_table_name)
 

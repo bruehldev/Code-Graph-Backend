@@ -39,7 +39,7 @@ def get_data_route(
     id: int,
 ) -> DataReducedEmbeddingResponse:
     reduced_embedding_table_name = get_path_key("reduced_embedding", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     reduced_embeddings_table = get_reduced_embedding_table(reduced_embedding_table_name, segment_table_name)
     data = None
     try:
@@ -59,7 +59,7 @@ def insert_data_route(
     data: ReducedEmbeddingData = {"reduced_embedding": [0.0, 0.0, 0.0, 0.0]},
 ) -> DataReducedEmbeddingResponse:
     reduced_embedding_table_name = get_path_key("reduced_embedding", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     reduced_embeddings_table = get_reduced_embedding_table(reduced_embedding_table_name, segment_table_name)
 
     response = None
@@ -81,7 +81,7 @@ def delete_data_route(
     id: int = 0,
 ):
     reduced_embedding_table_name = get_path_key("reduced_embedding", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     reduced_embeddings_table = get_reduced_embedding_table(reduced_embedding_table_name, segment_table_name)
 
     try:
@@ -95,7 +95,7 @@ def update_data_route(
     dataset_name: Experimental_dataset_names, model_name: Model_names, id: int = 0, data: ReducedEmbeddingData = {"reduced_embedding": [0.1, 0.1, 0.1, 0.1]}
 ) -> DataReducedEmbeddingResponse:
     reduced_embedding_table_name = get_path_key("reduced_embedding", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     reduced_embeddings_table = get_reduced_embedding_table(reduced_embedding_table_name, segment_table_name)
 
     response = None

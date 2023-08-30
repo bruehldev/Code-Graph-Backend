@@ -143,7 +143,7 @@ def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None, ret
     segments = []
 
     if id is not None:
-        table_name = get_path_key("data", dataset_name)
+        table_name = get_path_key("segments", dataset_name)
         segment_table = get_segment_table(table_name)
         segments.append(get_in_db(segment_table, id))
     elif start is not None and end is not None:

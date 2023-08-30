@@ -24,7 +24,7 @@ router = APIRouter()
 
 @router.get("/extract")
 def extract_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100, export_to_file: bool = False, all: bool = False) -> SegmentTable:
-    table_name = get_path_key("data", dataset_name)
+    table_name = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(table_name)
     segments = []
     if table_has_entries(segment_table):
@@ -51,7 +51,7 @@ def get_segment_route(
     dataset_name: Experimental_dataset_names,
     id: int,
 ) -> DataSegmentResponse:
-    table_name = get_path_key("data", dataset_name)
+    table_name = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(table_name)
 
     data = None
@@ -69,7 +69,7 @@ def insert_segment_route(
     dataset_name: Experimental_dataset_names,
     segment_data: SegmentData = {"sentence": "test", "segment": "test", "annotation": "test", "position": 0},
 ) -> DataSegmentResponse:
-    table_name = get_path_key("data", dataset_name)
+    table_name = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(table_name)
 
     response = None
@@ -90,7 +90,7 @@ def delete_segment_route(
     dataset_name: Experimental_dataset_names,
     id: int = 0,
 ):
-    table_name = get_path_key("data", dataset_name)
+    table_name = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(table_name)
 
     try:
@@ -110,7 +110,7 @@ def update_segment_route(
     id: int = 0,
     segment_data: SegmentData = {"sentence": "test", "segment": "test", "annotation": "test", "position": 0},
 ) -> DataSegmentResponse:
-    table_name = get_path_key("data", dataset_name)
+    table_name = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(table_name)
 
     response = None
@@ -126,7 +126,7 @@ def update_segment_route(
 
 @router.get("/search/{query}")
 def search_segments_route(dataset_name: Dataset_names, query: str, limit: int = 100) -> SegmentTable:
-    table_name = get_path_key("data", dataset_name)
+    table_name = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(table_name)
 
     segments = search_segments(segment_table, query, as_dict=True, limit=limit)

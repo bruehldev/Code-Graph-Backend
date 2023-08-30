@@ -40,7 +40,7 @@ def list_clusters_endpoint(dataset_name: Experimental_dataset_names, model_name:
 @router.get("/{id}")
 def get_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, id: int) -> DataClusterResponse:
     cluster_table_name = get_path_key("clusters", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
     data = None
     try:
@@ -57,7 +57,7 @@ def update_cluster_endpoint(
     dataset_name: Experimental_dataset_names, model_name: Model_names, id: int, data: ClusterData = {"cluster": -2}
 ) -> DataClusterResponse:
     cluster_table_name = get_path_key("clusters", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
 
     response = None
@@ -74,7 +74,7 @@ def update_cluster_endpoint(
 @router.delete("/{id}")
 def delete_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, id: int) -> DeleteResponse:
     cluster_table_name = get_path_key("clusters", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
     try:
         return {"id": id, "deleted": delete_in_db(cluster_table, id)}

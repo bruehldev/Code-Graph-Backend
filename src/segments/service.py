@@ -24,7 +24,7 @@ with open("../env.json") as f:
 
 
 def get_segments(dataset_name: str, start: int = 0, end: int = None):
-    data_path_key = get_path_key("data", dataset_name)
+    data_path_key = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(data_path_key)
     segments_data = []
 
@@ -115,7 +115,7 @@ def extract_segments(dataset_name: str, start: int = 0, end: int = None, export_
 
 def save_segments(entries, dataset_name: str, start=0, end=None):
     logger.info(f"Save segments in db: {dataset_name}. Length: {len(entries)}, start: {start}, end: {end}")
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(segment_table_name)
 
     init_table(segment_table_name, segment_table, parent_table_class=None, cls=None)

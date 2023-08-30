@@ -34,7 +34,7 @@ config = config_manager.get_default_model()
 def save_clusters(clusters: np.ndarray, index_list: List[int], dataset_name: str, model_name: str):
     logger.info(f"Save clusters db: {dataset_name} / {model_name}. Length: {len(clusters)}")
     cluster_table_name = get_path_key("clusters", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
     segment_table = get_segment_table(segment_table_name)
 
@@ -48,7 +48,7 @@ def save_clusters(clusters: np.ndarray, index_list: List[int], dataset_name: str
 
 def get_clusters(dataset_name: str, model_name: str, start: int = 0, end: int = None):
     cluster_table_name = get_path_key("clusters", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
     if table_has_entries(cluster_table):
         clusters = get_all_db(cluster_table, start, end, True)
