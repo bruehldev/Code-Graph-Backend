@@ -1,9 +1,6 @@
 import json
-import os
 import json
 import logging
-
-from typing import List
 
 from reduced_embeddings.service import get_reduced_embeddings
 from segments.service import get_segments
@@ -19,53 +16,18 @@ with open("../env.json") as f:
     env = json.load(f)
 
 
-def get_plot(dataset_name: str, model_names: str, start: int = 0, end: int = None):
-    plot_file = get_plot_file(dataset_name)
-    segments = []
-    if os.path.exists(plot_file):
-        try:
-            segments = load_plot(plot_file, start, end)
-            logger.info(f"Loaded plot from file for dataset: {dataset_name}")
-        except Exception as e:
-            logger.error(f"Error loading plot from file for dataset: {dataset_name}")
-            logger.error(str(e))
-            raise
-    else:
-        segments = extract_plot(dataset_name, model_names)
-        segments = segments[start:end]
+def get_plot(dataset_name: str, model_name: str, start: int = 0, end: int = None):
+    segments = get_segments(dataset_name, start, end)
+    embeddings = get_reduced_embeddings(dataset_name, model_name, start, end)
+    clusters = get_clusters(dataset_name, model_name, start, end)
 
-    logger.info(f"Retrieved plot for dataset: {dataset_name}")
-    return segments
-
-
-def extract_plot(dataset_name: str, model_names: str):
-    # Convert index, data, embedding, and topic to JSON structure
-    plot_file = get_plot_file(dataset_name)
-    segments = get_segments(dataset_name)
-    embeddings = get_reduced_embeddings(dataset_name, model_names)
-    clusters = get_clusters(dataset_name, model_names)
-    # inject embedding and cluster
     for segment, embedding, cluster in zip(segments, embeddings, clusters):
-        segment["embedding"] = embedding
-        segment["cluster"] = cluster
+        # Check if ids are equal
+        assert segment["id"] == embedding["id"] == cluster["id"]
+
+        segment["embedding"] = embedding["reduced_embedding"]
+        segment["cluster"] = cluster["cluster"]
         segment["annotation"] = FINE_NER_TAGS_DICT[segment["annotation"]]
-    logger.info(f"Extracted and saved plot to file for dataset: {dataset_name}")
-    save_plot(segments, plot_file)
+
+    logger.info(f"Retrieved plot: {dataset_name} / {model_name}")
     return segments
-
-
-def load_plot(plot_file, start=0, end=None):
-    with open(plot_file, "r") as file:
-        plot_data = json.load(file)
-    return plot_data[start:end]
-
-
-def save_plot(plot_data, plot_file):
-    with open(plot_file, "w") as file:
-        json.dump(plot_data, file)
-
-
-def get_plot_file(dataset_name: str):
-    plot_directory = os.path.join(env["plot_path"], dataset_name)
-    os.makedirs(plot_directory, exist_ok=True)
-    return os.path.join(plot_directory, f"plot_{dataset_name}.json")
