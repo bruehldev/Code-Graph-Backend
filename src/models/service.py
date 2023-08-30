@@ -13,6 +13,7 @@ from configmanager.service import ConfigManager
 from tqdm import tqdm
 import numpy as np
 from urllib.parse import unquote
+from data.utils import get_supervised_path
 
 
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +44,7 @@ class ModelService:
         if self.model:
             logger.info(f"Using model {model_name} from runtime for {dataset_name}")
         else:
-            model_path = os.path.join(env["model_path"], dataset_name)
+            model_path = get_supervised_path("model", dataset_name, model_name)
             os.makedirs(model_path, exist_ok=True)
 
             if model_name:

@@ -7,6 +7,7 @@ from reduced_embeddings.service import get_reduced_embeddings
 from segments.service import get_segments
 from clusters.service import get_clusters
 from data.few_nerd import FINE_NER_TAGS_DICT
+from data.utils import get_model_file_path
 
 
 logging.basicConfig(level=logging.INFO)
@@ -17,8 +18,8 @@ with open("../env.json") as f:
     env = json.load(f)
 
 
-def get_plot(dataset_name: str, model_names: str, start: int = 0, end: int = None):
-    plot_file = get_plot_file(dataset_name)
+def get_plot(dataset_name: str, model_name: str, start: int = 0, end: int = None):
+    plot_file = get_plot_file(dataset_name, model_name)
     segments = []
     if os.path.exists(plot_file):
         try:
@@ -29,19 +30,19 @@ def get_plot(dataset_name: str, model_names: str, start: int = 0, end: int = Non
             logger.error(str(e))
             raise
     else:
-        segments = extract_plot(dataset_name, model_names)
+        segments = extract_plot(dataset_name, model_name)
         segments = segments[start:end]
 
     logger.info(f"Retrieved plot for dataset: {dataset_name}")
     return segments
 
 
-def extract_plot(dataset_name: str, model_names: str):
+def extract_plot(dataset_name: str, model_name: str):
     # Convert index, data, embedding, and topic to JSON structure
-    plot_file = get_plot_file(dataset_name)
+    plot_file = get_plot_file(dataset_name, model_name)
     segments = get_segments(dataset_name)
-    embeddings = get_reduced_embeddings(dataset_name, model_names)
-    clusters = get_clusters(dataset_name, model_names)
+    embeddings = get_reduced_embeddings(dataset_name, model_name)
+    clusters = get_clusters(dataset_name, model_name)
 
     # inject embedding and cluster
     for segment, embedding, cluster in zip(segments, embeddings, clusters):
@@ -64,7 +65,8 @@ def save_plot(plot_data, plot_file):
         json.dump(plot_data, file)
 
 
-def get_plot_file(dataset_name: str):
-    plot_directory = os.path.join(env["plot_path"], dataset_name)
+def get_plot_file(dataset_name: str, model_name: str):
+    plot_directory = get_model_file_path("plot", dataset_name, model_name)
+
     os.makedirs(plot_directory, exist_ok=True)
     return os.path.join(plot_directory, f"plot_{dataset_name}.json")

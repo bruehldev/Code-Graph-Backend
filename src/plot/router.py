@@ -11,11 +11,11 @@ router = APIRouter()
 @router.get("/")
 def get_plot_endpoint(
     dataset_name: Experimental_dataset_names,
-    model_names: Model_names,
+    model_name: Model_names,
     page: int = 1,
     page_size: int = 100,
 ) -> PlotTable:
-    segments = get_plot(dataset_name, model_names, start=(page - 1) * page_size, end=page * page_size)
+    segments = get_plot(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
     return {"data": segments, "page": page, "page_size": page_size, "length": len(segments)}
 
 
@@ -23,7 +23,7 @@ def get_plot_endpoint(
 @router.get("/extract")
 def extract_plot_endpoint(
     dataset_name: Experimental_dataset_names,
-    model_names: Model_names,
+    model_name: Model_names,
 ):
-    extract_plot(dataset_name, model_names)
+    extract_plot(dataset_name, model_name)
     return {"message": "Plot data extracted successfully"}
