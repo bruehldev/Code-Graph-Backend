@@ -53,7 +53,7 @@ def get_segment_table(table_name):
     )
 
 
-# Todo on update calculate reduced embeddings (onupdate)
+# TODO on update calculate reduced embeddings (onupdate)
 def get_reduced_embedding_table(table_name, segment_table_name):
     return Table(
         table_name,
@@ -64,7 +64,7 @@ def get_reduced_embedding_table(table_name, segment_table_name):
     )
 
 
-# Todo on update calculate clusters (onupdate)
+# TODO on update calculate clusters (onupdate)
 def get_cluster_table(table_name, segment_table_name):
     return Table(
         table_name,
@@ -107,20 +107,21 @@ def init_table(table_name, table_class, parent_table_class=None, cls=None):
         table_class.indexes.clear()
 
         if parent_table_class is not None and hasattr(parent_table_class, "name") and cls is not None:
-            cluster_factory = MapperFactory(ClusterTable)
             if isinstance(cls, ReducedEmbeddingTable):
+                mapper_factory = MapperFactory(ReducedEmbeddingTable)
                 mapper_registry.map_imperatively(
-                    cluster_factory.create(), parent_table_class, properties={"reduced_embedding": relationship(table_class.name, cascade="all,delete")}
+                    mapper_factory.create(), parent_table_class, properties={"reduced_embedding": relationship(table_class.name, cascade="all,delete")}
                 )
                 mapper_registry.map_imperatively(
-                    cluster_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
+                    mapper_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
                 )
             elif isinstance(cls, ClusterTable):
+                mapper_factory = MapperFactory(ClusterTable)
                 mapper_registry.map_imperatively(
-                    cluster_factory.create(), parent_table_class, properties={"cluster": relationship(table_class.name, cascade="all,delete")}
+                    mapper_factory.create(), parent_table_class, properties={"cluster": relationship(table_class.name, cascade="all,delete")}
                 )
                 mapper_registry.map_imperatively(
-                    cluster_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
+                    mapper_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
                 )
         table_class.create(bind=engine)
         logger.info(f"Initialized table: {table_name}")

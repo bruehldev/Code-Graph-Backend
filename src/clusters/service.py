@@ -60,6 +60,7 @@ def get_clusters(dataset_name: str, model_name: str, start: int = 0, end: int = 
 
 def extract_clusters(dataset_name: str, model_name: str, start: int = 0, end: int = None):
     clusterer = hdbscan.HDBSCAN(**config.cluster_config.dict())
+    # TODO use reduced embeddings here
     embeddings_with_index = get_embeddings(dataset_name, model_name, start=0, end=None, with_id=True)
 
     # get embeddings without index

@@ -17,6 +17,7 @@ with open("../env.json") as f:
 
 
 def get_plot(dataset_name: str, model_name: str, start: int = 0, end: int = None):
+    # Important Note: Anti pattern here for testing purpose. To gain performance, we should use only one query
     segments = get_segments(dataset_name, start, end)
     embeddings = get_reduced_embeddings(dataset_name, model_name, start, end)
     clusters = get_clusters(dataset_name, model_name, start, end)
