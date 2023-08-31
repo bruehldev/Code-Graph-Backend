@@ -16,7 +16,6 @@ from data.utils import get_path_key
 
 from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
 from segments.schemas import SegmentTable, DataSegmentResponse, SegmentEntry, SegmentData
-from embeddings.service import delete_embedding
 
 router = APIRouter()
 
@@ -94,9 +93,7 @@ def delete_segment_route(
 
     try:
         deleted = delete_in_db(segment_table, id)
-        if deleted:
-            print("TODO: delete embedding")
-            # delete_embedding(id, dataset_name)
+
         return {"id": id, "deleted": deleted}
 
     except Exception as e:

@@ -59,10 +59,12 @@ def save_reduced_embeddings(reduced_embeddings: np.ndarray, index_list: List[int
 
     init_table(reduced_embedding_table_name, reduced_embeddings_table, segment_table, ReducedEmbeddingTable())
 
+    session = get_session()
     for embedding, segment_id in zip(reduced_embeddings, index_list):
         # if exists upda
-        session = get_session()
         update_or_create_db(session, reduced_embeddings_table, data_id=segment_id, reduced_embedding=embedding.tolist())
+    session.commit()
+    session.close()
 
 
 def extract_embeddings_reduced(dataset_name, model_name, start=0, end=None):

@@ -9,7 +9,6 @@ from database.postgresql import (
     get_segment_table,
     get_session,
     batch_insert,
-    Segment,
 )
 from tqdm import tqdm
 from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
