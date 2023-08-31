@@ -22,7 +22,7 @@ from sqlalchemy import (
 from sqlalchemy.types import Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry, mapper, Session
-from sqlalchemy.dialects.postgresql import ARRAY, insert as insert_dialect, TSVECTOR
+from sqlalchemy.dialects.postgresql import ARRAY, insert as insert_dialect, TSVECTOR, BYTEA
 
 env = {}
 with open("../env.json") as f:
@@ -53,6 +53,16 @@ def get_segment_table(table_name):
     )
 
 
+def get_embedding_table(table_name, segment_table_name):
+    return Table(
+        table_name,
+        metadata,
+        Column("id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True, nullable=False),
+        Column("embedding", BYTEA),
+        extend_existing=True,
+    )
+
+
 # TODO on update calculate reduced embeddings (onupdate)
 def get_reduced_embedding_table(table_name, segment_table_name):
     return Table(
@@ -75,7 +85,11 @@ def get_cluster_table(table_name, segment_table_name):
     )
 
 
-class Segment:
+class SegmentTable:
+    pass
+
+
+class EmbeddingTable:
     pass
 
 
@@ -107,7 +121,15 @@ def init_table(table_name, table_class, parent_table_class=None, cls=None):
         table_class.indexes.clear()
 
         if parent_table_class is not None and hasattr(parent_table_class, "name") and cls is not None:
-            if isinstance(cls, ReducedEmbeddingTable):
+            if isinstance(cls, EmbeddingTable):
+                mapper_factory = MapperFactory(EmbeddingTable)
+                mapper_registry.map_imperatively(
+                    mapper_factory.create(), parent_table_class, properties={"embedding": relationship(table_class.name, cascade="all,delete")}
+                )
+                mapper_registry.map_imperatively(
+                    mapper_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
+                )
+            elif isinstance(cls, ReducedEmbeddingTable):
                 mapper_factory = MapperFactory(ReducedEmbeddingTable)
                 mapper_registry.map_imperatively(
                     mapper_factory.create(), parent_table_class, properties={"reduced_embedding": relationship(table_class.name, cascade="all,delete")}
@@ -146,6 +168,9 @@ def get_table_info():
         # Little bit hacky, but it works :D
         if "data" in table_name:
             table_class = get_segment_table(table_name)
+            row_count = session.query(table_class).count()
+        elif "embedding" in table_name:
+            table_class = get_embedding_table(table_name, "data")
             row_count = session.query(table_class).count()
         elif "reduced_embedding" in table_name:
             table_class = get_reduced_embedding_table(table_name, "data")

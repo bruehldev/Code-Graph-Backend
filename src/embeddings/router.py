@@ -1,17 +1,16 @@
-from fastapi import APIRouter, HTTPException, status
+import pickle
 from typing import List
+from fastapi import APIRouter, HTTPException, status
+
+from database.postgresql import get as get_in_db, create as create_in_db, update as update_in_db, delete as delete_in_db, get_embedding_table
+from embeddings.service import get_embeddings, extract_embeddings
+
 from data.schemas import Experimental_dataset_names
 from models.schemas import Model_names
-from embeddings.service import (
-    get_embeddings,
-    extract_embeddings,
-    create_embedding,
-    read_embedding,
-    update_embedding,
-    delete_embedding,
-    delete_embeddings,
-)
-from embeddings.schemas import EmbeddingTable, EmbeddingEntry, DataEmbeddingResponse
+from embeddings.schemas import EmbeddingTable, EmbeddingEntry, DataEmbeddingResponse, EmbeddingData
+from database.schemas import DeleteResponse
+
+from data.utils import get_path_key
 
 router = APIRouter()
 
@@ -20,9 +19,10 @@ router = APIRouter()
 def get_embeddings_endpoint(
     dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100, reduce_length: int = 3
 ) -> EmbeddingTable:
-    embeddings = get_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size, with_id=True)
+    embeddings = get_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
+    # reduce the length of the embeddings
+    result = limit_embeddings_length(embeddings, reduce_length)
 
-    result = transform_embeddings_to_dict(embeddings, reduce_length=reduce_length)
     return {"length": len(result), "page": page, "page_size": page_size, "reduce_length": reduce_length, "data": result}
 
 
@@ -31,57 +31,73 @@ def extract_embeddings_endpoint(
     dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100, id=None, reduce_length: int = 3
 ) -> EmbeddingTable:
     embeddings = extract_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size, id=id, return_with_id=True)
-    result = transform_embeddings_to_dict(embeddings, reduce_length=reduce_length)
+    result = limit_embeddings_length(embeddings, reduce_length)
+
     return {"length": len(result), "page": page, "page_size": page_size, "data": result, "reduce_length": reduce_length}
 
 
-def transform_embeddings_to_dict(embeddings, reduce_length=None):
-    # reduce the length of the embeddings
-    if reduce_length is not None:
-        n = reduce_length
-        embeddings = [[index, embedding[:n]] for index, embedding in embeddings]
-    result = [{"embedding": embedding, "id": data_id} for data_id, embedding in embeddings]
-    return result
+def limit_embeddings_length(embeddings, reduce_length):
+    embeddings = [{"id": embedding["id"], "embedding": embedding["embedding"][:reduce_length]} for embedding in embeddings]
 
-
-@router.delete("/")
-def delete_embeddings_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
-    deleted = delete_embeddings(dataset_name, model_name)
-    if deleted is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
-    return {"deleted": deleted}
-
-
-@router.post("/")
-def create_embedding_endpoint(embedding: List[float], dataset_name: Experimental_dataset_names, model_name: Model_names) -> DataEmbeddingResponse:
-    id = None
-    id, embedding = create_embedding(id, embedding, dataset_name, model_name)
-    if id is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
-    return {"data": {"id": id, "embedding": embedding}}
+    return embeddings
 
 
 @router.get("/{id}")
-def read_embedding_endpoint(id: int, dataset_name: Experimental_dataset_names, model_name: Model_names) -> DataEmbeddingResponse:
-    id, embedding = read_embedding(id, dataset_name, model_name)
-    if id is None:
+def get_data_route(
+    dataset_name: Experimental_dataset_names,
+    model_name: Model_names,
+    id: int,
+) -> DataEmbeddingResponse:
+    embedding_table_name = get_path_key("embeddings", dataset_name, model_name)
+    segment_table_name = get_path_key("segments", dataset_name)
+    embeddings_table = get_embedding_table(embedding_table_name, segment_table_name)
+    data = None
+    try:
+        data = get_in_db(embeddings_table, id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"{str(e)}")
+    if data is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
+    data["embedding"] = pickle.loads(data["embedding"])
+    return {"data": data}
 
-    return {"data": {"id": id, "embedding": embedding}}
+
+@router.delete("/{id}", response_model=DeleteResponse)
+def delete_data_route(
+    dataset_name: Experimental_dataset_names,
+    model_name: Model_names,
+    id: int,
+):
+    embedding_table_name = get_path_key("embeddings", dataset_name, model_name)
+    segment_table_name = get_path_key("segments", dataset_name)
+    embeddings_table = get_embedding_table(embedding_table_name, segment_table_name)
+    data = None
+    try:
+        return {"id": id, "deleted": delete_in_db(embeddings_table, id)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"{str(e)}")
 
 
 @router.put("/{id}")
-def update_embedding_endpoint(id: int, new_embedding: List[float], dataset_name: Experimental_dataset_names, model_name: Model_names) -> DataEmbeddingResponse:
-    id, embedding = update_embedding(id, new_embedding, dataset_name, model_name)
-    if id is None:
+def update_data_route(
+    dataset_name: Experimental_dataset_names,
+    model_name: Model_names,
+    id: int,
+    data: EmbeddingData = {"embedding": [0.1, 0.1, 0.1, 0.1]},
+) -> DataEmbeddingResponse:
+    embedding_table_name = get_path_key("embeddings", dataset_name, model_name)
+    segment_table_name = get_path_key("segments", dataset_name)
+    embeddings_table = get_embedding_table(embedding_table_name, segment_table_name)
+
+    response = None
+    try:
+        embedding_data = data.dict()
+        embedding_data = {"embedding": pickle.dumps(embedding_data["embedding"])}
+        print(embedding_data)
+        response = update_in_db(embeddings_table, id, embedding_data)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"{str(e)}")
+    if response is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
-
-    return {"data": {"id": id, "embedding": embedding}}
-
-
-@router.delete("/{id}")
-def delete_embedding_endpoint(id: int, dataset_name: Experimental_dataset_names, model_name: Model_names):
-    id = delete_embedding(id, dataset_name, model_name)
-    if id is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
-    return {"data": {"id": id}}
+    response = {"id": response["id"], "embedding": pickle.loads(response["embedding"])}
+    return {"data": response}

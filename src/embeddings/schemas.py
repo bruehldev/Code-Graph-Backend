@@ -17,3 +17,7 @@ class EmbeddingTable(BaseModel):
     page_size: int
     reduce_length: int
     data: List[EmbeddingEntry]
+
+
+class EmbeddingData(BaseModel):
+    embedding: List[float]
