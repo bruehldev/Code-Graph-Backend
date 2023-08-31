@@ -1,7 +1,7 @@
 import json
 import logging
 from typing import List
-from embeddings.service import get_embeddings
+from reduced_embeddings.service import get_reduced_embeddings
 from database.postgresql import (
     get_cluster_table,
     table_has_entries,
@@ -61,13 +61,13 @@ def get_clusters(dataset_name: str, model_name: str, start: int = 0, end: int = 
 def extract_clusters(dataset_name: str, model_name: str, start: int = 0, end: int = None):
     clusterer = hdbscan.HDBSCAN(**config.cluster_config.dict())
     # TODO use reduced embeddings here
-    embeddings_with_index = get_embeddings(dataset_name, model_name, start=0, end=None, with_id=True)
+    reduced_embeddings_with_index = get_reduced_embeddings(dataset_name, model_name, start=0, end=None)
 
     # get embeddings without index
-    embeddings = [embedding for index, embedding in embeddings_with_index]
-    index_list = [index for index, embedding in embeddings_with_index]
+    reduced_embeddings = [embedding["reduced_embedding"] for embedding in reduced_embeddings_with_index]
+    index_list = [embedding["id"] for embedding in reduced_embeddings_with_index]
 
-    clusters = clusterer.fit_predict(embeddings)
+    clusters = clusterer.fit_predict(reduced_embeddings)
     logger.info(f"Computed clusters: {dataset_name} / {model_name}")
     save_clusters(clusters, index_list, dataset_name, model_name)
 

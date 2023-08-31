@@ -69,11 +69,11 @@ def save_reduced_embeddings(reduced_embeddings: np.ndarray, index_list: List[int
 
 def extract_embeddings_reduced(dataset_name, model_name, start=0, end=None):
     # Important Note: Always use all embeddings for UMAP to optimize the embedding space
-    embeddings_with_index = get_embeddings(dataset_name, model_name, start=0, end=None, with_id=True)
+    embeddings_with_index = get_embeddings(dataset_name, model_name, start=0, end=None)
 
     # get embeddings without index
-    embeddings = [embedding for index, embedding in embeddings_with_index]
-    index_list = [index for index, embedding in embeddings_with_index]
+    embeddings = [embedding["embedding"] for embedding in embeddings_with_index]
+    index_list = [embedding["id"] for embedding in embeddings_with_index]
 
     # Check the shape of the embeddings array
     reduced_embeddings = np.array(embeddings)
