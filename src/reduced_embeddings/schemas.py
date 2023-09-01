@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -13,8 +13,8 @@ class ReducedEmbeddingEntry(BaseModel):
 
 class ReducedEmbeddingTable(BaseModel):
     length: int
-    page: int
-    page_size: int
+    page: Optional[int]
+    page_size: Optional[int]
     data: List[ReducedEmbeddingEntry]
 
 

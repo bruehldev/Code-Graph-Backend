@@ -17,19 +17,31 @@ router = APIRouter()
 
 @router.get("/")
 def get_reduced_embeddings_endpoint(
-    dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100
+    dataset_name: Experimental_dataset_names, model_name: Model_names, all: bool = False, page: int = 1, page_size: int = 100
 ) -> ReducedEmbeddingTable:
-    reduced_embeddings = get_reduced_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
-
-    return {"data": reduced_embeddings, "length": len(reduced_embeddings), "page": page, "page_size": page_size}
+    if all:
+        reduced_embeddings = get_reduced_embeddings(dataset_name, model_name)
+        return {"data": reduced_embeddings, "length": len(reduced_embeddings)}
+    else:
+        reduced_embeddings = get_reduced_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
+        return {"data": reduced_embeddings, "length": len(reduced_embeddings), "page": page, "page_size": page_size}
 
 
 @router.get("/extract")
 def extract_embeddings_reduced_endpoint(
-    dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100
+    dataset_name: Experimental_dataset_names, model_name: Model_names, all: bool = True, page: int = 1, page_size: int = 100, return_data: bool = True
 ) -> ReducedEmbeddingTable:
-    reduced_embeddings = extract_embeddings_reduced(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
-    return {"data": reduced_embeddings, "length": len(reduced_embeddings), "page": page, "page_size": page_size}
+    reduced_embeddings = []
+    if all:
+        reduced_embeddings = extract_embeddings_reduced(dataset_name, model_name)
+        if return_data:
+            return {"data": reduced_embeddings, "length": len(reduced_embeddings)}
+    else:
+        reduced_embeddings = extract_embeddings_reduced(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
+        if return_data:
+            return {"data": reduced_embeddings, "length": len(reduced_embeddings), "page": page, "page_size": page_size}
+
+    return {"data": [], "length": len(reduced_embeddings), "page": page, "page_size": page_size}
 
 
 @router.get("/{id}")
