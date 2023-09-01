@@ -166,7 +166,7 @@ def get_table_info():
 
     for table_name in table_names:
         # Little bit hacky, but it works :D
-        if "data" in table_name:
+        if "segment" in table_name:
             table_class = get_segment_table(table_name)
             row_count = session.query(table_class).count()
         elif "embedding" in table_name:
@@ -291,9 +291,19 @@ def create(table_class, **kwargs) -> dict:
         session.close()
 
 
-def batch_insert(session: Session, table_class, entries):
+def batch_update_or_update(session: Session, table_class, entries):
     stmt = insert_dialect(table_class).values(entries)
     try:
+        session.execute(stmt)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+
+
+def batch_update_or_update(session: Session, table_class, entries):
+    try:
+        stmt = insert_dialect(table_class).values(entries)
         session.execute(stmt)
         session.commit()
     except Exception as e:
@@ -338,7 +348,7 @@ def delete(table_class, data_id) -> bool:
         session.close()
 
 
-def plot_search_query(segment_table, reduced_embedding_table, cluster_table, query, as_dict=True, limit=None):
+def plot_search_sentenc(segment_table, reduced_embedding_table, cluster_table, query, as_dict=True, limit=None):
     # Define the columns
     selected_columns = [
         segment_table.c.id,
@@ -346,15 +356,17 @@ def plot_search_query(segment_table, reduced_embedding_table, cluster_table, que
         segment_table.c.segment,
         segment_table.c.annotation,
         segment_table.c.position,
-        reduced_embedding_table.c.reduced_embedding,
-        cluster_table.c.cluster,
     ]
 
     # Construct the SQL statement
     stmt = select_sql(*selected_columns).where(segment_table.c.sentence_tsv.match(query))
-    stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
-    stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
 
+    if table_has_entries(reduced_embedding_table):
+        stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
+        selected_columns.append(reduced_embedding_table.c.reduced_embedding)
+    if table_has_entries(cluster_table):
+        stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+        selected_columns.append(cluster_table.c.cluster)
     if limit is not None:
         stmt = stmt.limit(limit)
 
@@ -382,14 +394,17 @@ def plot_search_annotion(segment_table, reduced_embedding_table, cluster_table, 
         segment_table.c.segment,
         segment_table.c.annotation,
         segment_table.c.position,
-        reduced_embedding_table.c.reduced_embedding,  # Include reduced_embeddings
-        cluster_table.c.cluster,  # Include clusters
     ]
 
     # Construct the SQL statement
     stmt = select_sql(*selected_columns).where(segment_table.c.annotation.match(escaped_query))
-    stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
-    stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+
+    if table_has_entries(reduced_embedding_table):
+        stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
+        selected_columns.append(reduced_embedding_table.c.reduced_embedding)
+    if table_has_entries(cluster_table):
+        stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+        selected_columns.append(cluster_table.c.cluster)
 
     if limit is not None:
         stmt = stmt.limit(limit)  # Apply the limit
@@ -416,14 +431,54 @@ def plot_search_cluster(segment_table, reduced_embedding_table, cluster_table, q
         segment_table.c.segment,
         segment_table.c.annotation,
         segment_table.c.position,
-        reduced_embedding_table.c.reduced_embedding,  # Include reduced_embeddings
-        cluster_table.c.cluster,  # Include clusters
     ]
 
     # Construct the SQL statement
     stmt = select_sql(*selected_columns).where(cluster_table.c.cluster == query)
-    stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
-    stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+
+    if table_has_entries(reduced_embedding_table):
+        stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
+        selected_columns.append(reduced_embedding_table.c.reduced_embedding)
+    if table_has_entries(cluster_table):
+        stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+        selected_columns.append(cluster_table.c.cluster)
+
+    if limit is not None:
+        stmt = stmt.limit(limit)  # Apply the limit
+
+    session = SessionLocal()
+    try:
+        result = session.execute(stmt)
+
+        if as_dict:
+            return [row._asdict() for row in result.fetchall()]
+        return result.fetchall()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
+def plot_search_segment(segment_table, reduced_embedding_table, cluster_table, query, as_dict=True, limit=None):
+    # Define the columns you want to select
+    selected_columns = [
+        segment_table.c.id,
+        segment_table.c.sentence,
+        segment_table.c.segment,
+        segment_table.c.annotation,
+        segment_table.c.position,
+    ]
+
+    # Construct the SQL statement
+    stmt = select_sql(*selected_columns).where(segment_table.c.segment.match(query))
+
+    if table_has_entries(reduced_embedding_table):
+        stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
+        selected_columns.append(reduced_embedding_table.c.reduced_embedding)
+    if table_has_entries(cluster_table):
+        stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+        selected_columns.append(cluster_table.c.cluster)
 
     if limit is not None:
         stmt = stmt.limit(limit)  # Apply the limit
