@@ -98,7 +98,7 @@ class ModelService:
         start_indexes = data["position"].astype(int)
         embeddings = []
         total_samples = len(data)
-        with tqdm(total=total_samples, desc="Processing data") as pbar:
+        with tqdm(total=total_samples, desc="Calculate embeddings") as pbar:
             for id, sentence, segment, start_index in zip(id, sentences, segments, start_indexes):
                 start_index = start_index - 1  # tried because the other didnt work
                 end_index = start_index + len(segment)
@@ -123,8 +123,8 @@ class ModelService:
                     mean_embeddings = torch.mean(torch.stack(segment_embeddings), dim=0)
                     embeddings.append([id, mean_embeddings.detach().cpu().numpy().tolist()])
                 else:
-                    # Append np.nan as a placeholder value
-                    embeddings.append(np.nan)
+                    # Append np.nan on error as a placeholder value
+                    embeddings.append([id, np.nan])
                 pbar.update(1)
         return embeddings  # return embedding of the sentence
 
