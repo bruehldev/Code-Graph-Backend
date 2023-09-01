@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -13,10 +13,11 @@ class DataEmbeddingResponse(BaseModel):
 
 class EmbeddingTable(BaseModel):
     length: int
-    page: int
-    page_size: int
+    page: Optional[int]
+    page_size: Optional[int]
     reduce_length: int
     data: List[EmbeddingEntry]
+    id: Optional[int]
 
 
 class EmbeddingData(BaseModel):

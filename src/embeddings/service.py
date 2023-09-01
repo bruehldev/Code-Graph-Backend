@@ -55,9 +55,7 @@ def get_embeddings(dataset_name: str, model_name: str, start=0, end=None):
     return embeddings
 
 
-def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, start=0, end=None):
-    num_embeddings = len(embeddings)  # Get the number of embeddings from the list
-
+def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str):
     segments_table_name = get_path_key("segments", dataset_name)
     segments_table = get_segment_table(segments_table_name)
     embeddings_table_name = get_path_key("embeddings", dataset_name, model_name)
@@ -66,9 +64,6 @@ def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, 
 
     session = get_session()
     total_entries = len(embeddings)
-
-    if end is None:
-        end = num_embeddings
 
     # transform embeddings to list of dicts
 
@@ -105,7 +100,7 @@ def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None) -> 
         id_embedding_array = umap_model.fit_transform(embeddings)
 
     logger.info(f"Computed embeddings: {dataset_name} / {model_name}")
-    save_embeddings(id_embedding_array, dataset_name, model_name, start, end)
+    save_embeddings(id_embedding_array, dataset_name, model_name)
     # transform to dict
     embeddings = [{"id": embedding[0], "embedding": embedding[1]} for embedding in id_embedding_array]
     return embeddings

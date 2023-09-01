@@ -1,5 +1,5 @@
 import pickle
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, status
 
 from database.postgresql import get as get_in_db, create as create_in_db, update as update_in_db, delete as delete_in_db, get_embedding_table
@@ -17,23 +17,48 @@ router = APIRouter()
 
 @router.get("/")
 def get_embeddings_endpoint(
-    dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100, reduce_length: int = 3
+    dataset_name: Experimental_dataset_names,
+    model_name: Model_names,
+    all: bool = False,
+    page: int = 1,
+    page_size: int = 100,
+    reduce_length: int = 3,
 ) -> EmbeddingTable:
-    embeddings = get_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
-    # reduce the length of the embeddings
-    result = limit_embeddings_length(embeddings, reduce_length)
-
-    return {"length": len(result), "page": page, "page_size": page_size, "reduce_length": reduce_length, "data": result}
+    embeddings = []
+    if all:
+        embeddings = limit_embeddings_length(get_embeddings(dataset_name, model_name), reduce_length)
+        return {"length": len(embeddings), "data": embeddings, "reduce_length": reduce_length}
+    else:
+        embeddings = limit_embeddings_length(get_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size), reduce_length)
+        return {"length": len(embeddings), "page": page, "page_size": page_size, "reduce_length": reduce_length, "data": embeddings}
 
 
 @router.get("/extract")
 def extract_embeddings_endpoint(
-    dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100, id=None, reduce_length: int = 3
+    dataset_name: Experimental_dataset_names,
+    model_name: Model_names,
+    all: bool = False,
+    page: int = 1,
+    page_size: int = 100,
+    id=None,
+    reduce_length: int = 3,
+    return_data: bool = False,
 ) -> EmbeddingTable:
-    embeddings = extract_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size, id=id)
-    result = limit_embeddings_length(embeddings, reduce_length)
-
-    return {"length": len(result), "page": page, "page_size": page_size, "data": result, "reduce_length": reduce_length}
+    embeddings = []
+    if all:
+        embeddings = extract_embeddings(dataset_name, model_name)
+        if return_data:
+            embeddings = limit_embeddings_length(embeddings, reduce_length)
+            return {"length": len(embeddings), "data": embeddings, "reduce_length": reduce_length}
+    else:
+        embeddings = extract_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size, id=id)
+        embeddings = limit_embeddings_length(embeddings, reduce_length)
+        if return_data:
+            if id is None:
+                return {"length": len(embeddings), "page": page, "page_size": page_size, "data": embeddings, "reduce_length": reduce_length}
+            else:
+                return {"length": len(embeddings), "id": id, "data": embeddings, "reduce_length": reduce_length}
+    return {"length": len(embeddings), "page": page, "page_size": page_size, "reduce_length": reduce_length, "data": []}
 
 
 def limit_embeddings_length(embeddings, reduce_length):
@@ -93,7 +118,6 @@ def update_data_route(
     try:
         embedding_data = data.dict()
         embedding_data = {"embedding": pickle.dumps(embedding_data["embedding"])}
-        print(embedding_data)
         response = update_in_db(embeddings_table, id, embedding_data)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"{str(e)}")
