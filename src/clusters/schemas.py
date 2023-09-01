@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 
 class ClusterData(BaseModel):
@@ -13,8 +13,8 @@ class ClusterEntry(BaseModel):
 
 class ClusterTable(BaseModel):
     length: int
-    page: int
-    page_size: int
+    page: Optional[int]
+    page_size: Optional[int]
     data: List[ClusterEntry]
 
 

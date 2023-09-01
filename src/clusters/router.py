@@ -26,15 +26,34 @@ class ClustersTableResponse(BaseModel):
 
 
 @router.get("/extract")
-def extract_clusters_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100) -> ClusterTable:
-    clusters = extract_clusters(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
-    return {"data": clusters, "length": len(clusters), "page": page, "page_size": page_size}
+def extract_clusters_endpoint(
+    dataset_name: Experimental_dataset_names, model_name: Model_names, all: bool = False, page: int = 1, page_size: int = 100, return_data: bool = False
+) -> ClusterTable:
+    if all:
+        clusters = extract_clusters(dataset_name, model_name)
+        if return_data:
+            return {"data": clusters, "length": len(clusters)}
+        else:
+            return {"data": [], "length": len(clusters)}
+    else:
+        clusters = extract_clusters(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
+        if return_data:
+            return {"data": clusters, "length": len(clusters), "page": page, "page_size": page_size}
+        else:
+            return {"data": [], "length": len(clusters), "page": page, "page_size": page_size}
 
 
 @router.get("/")
-def list_clusters_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100) -> ClusterTable:
-    clusters = get_clusters(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
-    return {"data": clusters, "length": len(clusters), "page": page, "page_size": page_size}
+def get_clusters_endpoint(
+    dataset_name: Experimental_dataset_names, model_name: Model_names, all: bool = False, page: int = 1, page_size: int = 100
+) -> ClusterTable:
+    clusters = []
+    if all:
+        clusters = get_clusters(dataset_name, model_name)
+        return {"data": clusters, "length": len(clusters)}
+    else:
+        clusters = get_clusters(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
+        return {"data": clusters, "length": len(clusters), "page": page, "page_size": page_size}
 
 
 @router.get("/{id}")

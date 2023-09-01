@@ -74,5 +74,5 @@ def extract_clusters(dataset_name: str, model_name: str, start: int = 0, end: in
     if end is None:
         end = len(clusters)
 
-    clusters = [{"id": index_list[i], "cluster": clusters[i]} for i in range(start, end)]
+    clusters = [{"id": id, "cluster": clusters} for id, clusters in zip(index_list, clusters)]
     return clusters
