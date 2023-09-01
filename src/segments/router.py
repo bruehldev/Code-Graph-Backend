@@ -44,10 +44,13 @@ def extract_segments_route(dataset_name: Dataset_names, page: int = 1, page_size
 
 
 @router.get("/")
-def get_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100) -> SegmentTable:
-    segments = get_segments(dataset_name, start=(page - 1) * page_size, end=page * page_size)
-
-    return {"data": segments, "length": len(segments), "page": page, "page_size": page_size}
+def get_segments_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100, all: bool = False) -> SegmentTable:
+    if all:
+        segments = get_segments(dataset_name)
+        return {"data": segments, "length": len(segments)}
+    else:
+        segments = get_segments(dataset_name, start=(page - 1) * page_size, end=page * page_size)
+        return {"data": segments, "length": len(segments), "page": page, "page_size": page_size}
 
 
 @router.get("/{id}")
