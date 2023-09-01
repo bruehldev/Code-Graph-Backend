@@ -82,7 +82,8 @@ def extract_segments(dataset_name: str, start: int = 0, end: int = None, export_
                         else:
                             if segment:
                                 segment = segment.lstrip()
-                                position = sentence.find(segment, position + 1)
+                                # find position reversed in can the segment is not unique
+                                position = sentence.rfind(segment, position + 1)
                                 segment_list.append((segment, cur_annotation, position))
                                 segment = ""
                                 cur_annotation = None
