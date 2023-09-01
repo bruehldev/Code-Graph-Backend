@@ -15,7 +15,6 @@ from database.postgresql import (
     plot_search_segment,
 )
 from plot.schemas import PlotData, PlotEntry, PlotTable, DataPlotResponse
-from typing import Optional
 
 
 router = APIRouter()
@@ -25,11 +24,11 @@ router = APIRouter()
 def get_plot_endpoint(
     dataset_name: Experimental_dataset_names,
     model_name: Model_names,
-    include_all: Optional[bool] = False,
-    page: Optional[int] = 1,
-    page_size: Optional[int] = 100,
+    all: bool = False,
+    page: int = 1,
+    page_size: int = 100,
 ) -> PlotTable:
-    if include_all:
+    if all:
         segments = get_plot(dataset_name, model_name)
         return {"data": segments, "length": len(segments)}
     else:
