@@ -17,8 +17,8 @@ class PlotEntry(BaseModel):
     segment: str
     annotation: str
     position: int
-    cluster: int
-    reduced_embedding: List[float]
+    cluster: Optional[int]
+    reduced_embedding: Optional[List[float]]
 
 
 class PlotTable(BaseModel):
