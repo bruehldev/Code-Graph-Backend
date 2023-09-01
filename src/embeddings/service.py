@@ -18,7 +18,7 @@ from database.postgresql import (
     get_embedding_table,
     init_table,
     get_session,
-    batch_insert,
+    batch_update_or_update,
     EmbeddingTable,
     update_or_create,
     table_has_entries,
@@ -82,7 +82,7 @@ def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str, 
     session.close()
 
 
-def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None, return_with_id=None) -> List:
+def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None) -> List:
     model_service = ModelService(dataset_name, model_name)
     logger.info(f"Extract embeddings: {dataset_name} / {model_name} start: {start} end: {end}, id: {id}")
     segments = []

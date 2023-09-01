@@ -30,7 +30,7 @@ def get_embeddings_endpoint(
 def extract_embeddings_endpoint(
     dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100, id=None, reduce_length: int = 3
 ) -> EmbeddingTable:
-    embeddings = extract_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size, id=id, return_with_id=True)
+    embeddings = extract_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size, id=id)
     result = limit_embeddings_length(embeddings, reduce_length)
 
     return {"length": len(result), "page": page, "page_size": page_size, "data": result, "reduce_length": reduce_length}
