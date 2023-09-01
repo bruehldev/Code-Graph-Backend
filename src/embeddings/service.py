@@ -18,7 +18,7 @@ from database.postgresql import (
     get_embedding_table,
     init_table,
     get_session,
-    batch_update_or_update,
+    batch_insert,
     EmbeddingTable,
     update_or_create,
     table_has_entries,

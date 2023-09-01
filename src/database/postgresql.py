@@ -291,7 +291,7 @@ def create(table_class, **kwargs) -> dict:
         session.close()
 
 
-def batch_update_or_update(session: Session, table_class, entries):
+def batch_insert(session: Session, table_class, entries):
     stmt = insert_dialect(table_class).values(entries)
     try:
         session.execute(stmt)
@@ -301,9 +301,11 @@ def batch_update_or_update(session: Session, table_class, entries):
         raise e
 
 
-def batch_update_or_update(session: Session, table_class, entries):
+def batch_update_or_create(session: Session, table_class, entries):
     try:
         stmt = insert_dialect(table_class).values(entries)
+        stmt = stmt.on_conflict_do_update(index_elements=[table_class.c.id], set_=entries)
+
         session.execute(stmt)
         session.commit()
     except Exception as e:
@@ -495,27 +497,6 @@ def plot_search_segment(segment_table, reduced_embedding_table, cluster_table, q
         raise e
     finally:
         session.close()
-
-
-"""
-def update_or_create(session: Session, table_class, data_id, **kwargs):
-    try:
-        # Check if the row already exists
-        row = session.query(table_class).filter_by(id=data_id).first()
-        # returns (1, [13.63386344909668, 5.8151044845581055], 1)
-        if row is None:
-            # Create a new row
-            stmt = insert_sql(table_class).values(id=data_id, **kwargs)
-            session.execute(stmt)
-        else:
-            # Update the existing row
-            stmt = update_sql(table_class).where(table_class.c.id == data_id).values(**kwargs)
-            session.execute(stmt)
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        raise e
-"""
 
 
 def update_or_create(session: Session, table_class, data_id, **kwargs):
