@@ -117,13 +117,11 @@ def extract_segments(dataset_name: str, start: int = 0, end: int = None):
                         # Important Note! Could be more than page_size if the last sentence has more than one annotation
                         # Each different annotation is counted as a new entry
                         break
-    print(start, end, len(entries))
     save_segments(entries[start:end], dataset_name)
+    return len(entries)
 
 
 def save_segments(entries, dataset_name: str):
-    print(len(entries))
-
     logger.info(f"Save segments in db: {dataset_name}. Length: {len(entries)}")
     segment_table_name = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(segment_table_name)
