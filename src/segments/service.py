@@ -29,13 +29,24 @@ def get_segments(dataset_name: str, start: int = 0, end: int = None):
 
     if not table_has_entries(segment_table):
         extract_segments(dataset_name, start, end)
+        if end:
+            end = end - start
+        segments_data = get_all_db(segment_table, 0, end, True)
 
-    segments_data = get_all_db(segment_table, start, end, True)
+    else:
+        segments_data = get_all_db(segment_table, start, end, True)
+        """ TODO Discuss if this is necessary to auto extract if it wasn't extracted before
+        if len(segments_data) == 0:
+            extract_segments(dataset_name, start, end)
+            if end:
+                end = end - start
+            segments_data = get_all_db(segment_table, 0, end, True)
+        """
 
     return segments_data
 
 
-def extract_segments(dataset_name: str, start: int = 0, end: int = None, export_to_file: bool = False):
+def extract_segments(dataset_name: str, start: int = 0, end: int = None):
     entries = []
 
     if dataset_name == "few_nerd":
@@ -106,26 +117,24 @@ def extract_segments(dataset_name: str, start: int = 0, end: int = None, export_
                         # Important Note! Could be more than page_size if the last sentence has more than one annotation
                         # Each different annotation is counted as a new entry
                         break
-    save_segments(entries, dataset_name, start, end)
-
-    if export_to_file:
-        save_segments_file(entries, get_segments_file(dataset_name))
-        logger.info(f"Extracted and saved segments for dataset: {dataset_name}")
+    print(start, end, len(entries))
+    save_segments(entries[start:end], dataset_name)
 
 
-def save_segments(entries, dataset_name: str, start=0, end=None):
-    logger.info(f"Save segments in db: {dataset_name}. Length: {len(entries)}, start: {start}, end: {end}")
+def save_segments(entries, dataset_name: str):
+    print(len(entries))
+
+    logger.info(f"Save segments in db: {dataset_name}. Length: {len(entries)}")
     segment_table_name = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(segment_table_name)
 
     init_table(segment_table_name, segment_table, parent_table_class=None, cls=None)
 
-    end = len(entries) if end is None else min(end, len(entries))  # Make sure end is within bounds
     session = get_session()
     total_entries = len(entries)
     batch_size = 1000
     with tqdm(total=total_entries, desc=f"Saving {dataset_name}") as pbar:
-        for i in range(start, end, batch_size):
+        for i in range(0, total_entries, batch_size):
             batch_entries = entries[i : i + batch_size]
             batch_insert(session, segment_table, batch_entries)
             pbar.update(len(batch_entries))

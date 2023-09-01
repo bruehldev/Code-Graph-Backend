@@ -241,7 +241,7 @@ def get_session():
 
 
 ### Query functions ###
-def get_data(table_class, start, end, as_dict=True):
+def get_data(table_class, start=0, end=None, as_dict=True):
     session = SessionLocal()
     try:
         query = session.query(table_class).order_by(table_class.c.id).slice(start, end)
