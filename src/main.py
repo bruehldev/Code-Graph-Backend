@@ -20,6 +20,7 @@ from clusters.router import router as clusters_router
 from plot.router import router as plot_router
 from segements.router import router as segments_router
 from reduced_embeddings.router import router as reduced_embeddings_router
+from codes.router import router as code_router
 
 from configmanager.service import ConfigManager
 
@@ -32,6 +33,7 @@ app.include_router(embeddings_router, prefix="/data/{dataset_name}/model{model_n
 app.include_router(reduced_embeddings_router, prefix="/data/{dataset_name}/model/{model_name}/reduced_embeddings", tags=["reduced_embeddings"])
 app.include_router(clusters_router, prefix="/data/{dataset_name}/model/{model_name}/clusters", tags=["clusters"])
 app.include_router(plot_router, prefix="/data/{dataset_name}/model/{model_name}/plot", tags=["plot"])
+app.include_router(code_router, prefix="/data/{dataset_name}/codes", tags=["codes"])
 app.include_router(config_router, prefix="/config", tags=["config"])
 
 

@@ -118,7 +118,7 @@ def get_annotations(dataset_name: str, start: int = 0, end: int = None):
     else:
         _, annotations_data = extract_sentences_and_annotations(dataset_name)
 
-    return annotations_data[start:end]
+    return annotations_data
 
 
 def get_sentences_file(dataset_name: str):

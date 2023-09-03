@@ -13,6 +13,9 @@ from sqlalchemy import (
     ForeignKey,
     Table,
     text,
+    func,
+    exists,
+    CheckConstraint,
     insert as insert_sql,
     delete as delete_sql,
     update as update_sql,
@@ -20,8 +23,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.types import Float
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry
+from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry, aliased
 from sqlalchemy.dialects.postgresql import ARRAY
+from collections import defaultdict
 
 
 env = {}
@@ -48,6 +52,7 @@ def get_segment_table(table_name):
         Column("segment", String),
         Column("annotation", String),
         Column("position", Integer),
+        #Column("code_id", Integer, ForeignKey(f"{code_table_name}.id", ondelete="SET NULL")
         extend_existing=True,
     )
 
@@ -63,8 +68,6 @@ def get_reduced_embedding_table(table_name, segment_table_name):
         extend_existing=True,
     )
 
-
-# Todo on update calculate clusters (onupdate)
 def get_cluster_table(table_name, segment_table_name):
     return Table(
         table_name,
@@ -75,6 +78,15 @@ def get_cluster_table(table_name, segment_table_name):
         extend_existing=True,
     )
 
+def get_code_table(table_name):
+    return Table(
+        table_name,
+        metadata,
+        Column("id", Integer, primary_key=True, index=True),
+        Column("code", String),
+        Column("top_level_code_id", Integer, ForeignKey(f"{table_name}.id", ondelete="SET NULL")),
+        extend_existing=True,
+    )
 
 class SegmentsTable:
     pass
@@ -87,11 +99,15 @@ class ReducedEmbeddingsTable:
 class ClustersTable:
     pass
 
+class CodeTable:
+    pass
+
 
 ### Table operations ###
 # Todo add class for parent and child table
 def init_table(table_name, table_class, parent_table_class=None):
     inspector = inspect(engine)
+    logger.info(f"Initialized table: {table_name}")
     if table_name not in inspector.get_table_names():
         # remove index from relationship if it exists
         table_class.indexes.clear()
@@ -104,7 +120,9 @@ def init_table(table_name, table_class, parent_table_class=None):
             mapper_registry.map_imperatively(
                 ReducedEmbeddingsTable, table_class, properties={"segment": relationship(parent_table_class, cascade="all,delete")}
             )
-
+        if "code" in table_name:
+             check_constraint = CheckConstraint("id <> top_level_code_id", name="no_circular_reference")
+             table_class.append_constraint(check_constraint)
         # create table
         table_class.create(bind=engine)
         logger.info(f"Initialized table: {table_name}")
@@ -135,6 +153,9 @@ def get_table_info():
             row_count = session.query(table_class).count()
         elif "clusters" in table_name:
             table_class = get_cluster_table(table_name, "data")
+            row_count = session.query(table_class).count()
+        elif "code" in table_name:
+            table_class = get_code_table(table_name)
             row_count = session.query(table_class).count()
 
         table_info[table_name] = {"table_name": table_name, "row_count": row_count}
@@ -265,3 +286,74 @@ def table_has_entries(table_class):
         return False
     finally:
         session.close()
+
+def get_all_codes(table_class):
+    stmt = table_class.select().where(table_class.c.top_level_code_id.is_(None))
+    session = SessionLocal()
+    try:
+        data = session.execute(stmt)
+        logger.info(f"Loaded data from database: {table_class.name}")
+        if data is not None:
+            return [row._asdict() for row in data]
+        else:
+            return None
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+def get_all_leaf_codes(table_class):
+    subquery = (
+        table_class.select()
+        .add_columns(func.coalesce(table_class.c.top_level_code_id, table_class.c.id).label('leaf_id'))
+        .distinct()
+        .cte()
+        .select()
+    )
+
+    stmt = table_class.select().where(~exists().where(table_class.c.id == subquery.c.leaf_id))
+    session = SessionLocal()
+    try:
+        data = session.execute(stmt)
+        logger.info(f"Loaded data from database: {table_class.name}")
+        if data is not None:
+            return [row._asdict() for row in data]
+        else:
+            return None
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
+def has_circular_reference(table_class, id):
+    session = SessionLocal()
+    visited_nodes = set()
+    path = []
+
+    def dfs(node_id):
+        if node_id in visited_nodes:
+            return False
+
+        visited_nodes.add(node_id)
+        path.append(node_id)
+
+        parent_alias = aliased(table_class)
+        children = (
+            session.query(table_class)
+            .join(parent_alias, parent_alias.c.id == table_class.c.top_level_code_id)
+            .filter(table_class.c.id == node_id)
+            .all()
+        )
+
+        for child in children:
+            child_id = child.id
+            if child_id in path or dfs(child_id):
+                return True
+
+        path.pop()
+        return False
+
+    return dfs(id)
