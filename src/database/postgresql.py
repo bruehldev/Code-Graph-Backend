@@ -98,7 +98,7 @@ def get_code_table(table_name):
         metadata,
         Column("id", Integer, primary_key=True, index=True),
         Column("code", String),
-        Column("top_level_code_id", Integer),  # , ForeignKey(f"{table_name}.id", ondelete="SET NULL")
+        Column("top_level_code_id", Integer, ForeignKey(f"{table_name}.id", ondelete="SET NULL")),
         extend_existing=True,
     )
 
@@ -167,9 +167,10 @@ def init_table(table_name, table_class, parent_table_class=None, cls=None):
                 mapper_registry.map_imperatively(
                     mapper_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
                 )
-        # if "code" in table_name:
-        # check_constraint = CheckConstraint("id <> top_level_code_id", name="no_circular_reference")
-        # table_class.append_constraint(check_constraint)
+        if "code" in table_name:
+            table_class.constraints.clear()
+            check_constraint = CheckConstraint("id <> top_level_code_id", name="no_circular_reference")
+            table_class.append_constraint(check_constraint)
         table_class.create(bind=engine)
         logger.info(f"Initialized table: {table_name}")
     else:
