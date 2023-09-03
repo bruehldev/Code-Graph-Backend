@@ -13,7 +13,9 @@ from database.postgresql import (
     delete as delete_in_db,
 )
 from data.utils import get_path_key
-from clusters.schemas import Cluster
+
+from clusters.schemas import DataClusterResponse, ClusterTable, ClusterEntry, ClusterData
+from database.schemas import DeleteResponse
 
 router = APIRouter()
 
@@ -23,51 +25,77 @@ class ClustersTableResponse(BaseModel):
     cluster: int
 
 
-@router.get("/")
-def list_clusters_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, page: int = 1, page_size: int = 100):
-    return {"clusters": get_clusters(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)}
-
-
-@router.get("/{id}", response_model=ClustersTableResponse)
-def get_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, id: int):
-    cluster_table_name = get_path_key("clusters", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
-    cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
-    data_from_db = get_in_db(cluster_table, id)
-
-    if data_from_db is not None:
-        return ClustersTableResponse(**data_from_db.__dict__)
+@router.get("/extract")
+def extract_clusters_endpoint(
+    dataset_name: Experimental_dataset_names, model_name: Model_names, all: bool = False, page: int = 1, page_size: int = 100, return_data: bool = False
+) -> ClusterTable:
+    if all:
+        clusters = extract_clusters(dataset_name, model_name)
+        if return_data:
+            return {"data": clusters, "length": len(clusters)}
+        else:
+            return {"data": [], "length": len(clusters)}
     else:
+        clusters = extract_clusters(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
+        if return_data:
+            return {"data": clusters, "length": len(clusters), "page": page, "page_size": page_size}
+        else:
+            return {"data": [], "length": len(clusters), "page": page, "page_size": page_size}
+
+
+@router.get("/")
+def get_clusters_endpoint(
+    dataset_name: Experimental_dataset_names, model_name: Model_names, all: bool = False, page: int = 1, page_size: int = 100
+) -> ClusterTable:
+    clusters = []
+    if all:
+        clusters = get_clusters(dataset_name, model_name)
+        return {"data": clusters, "length": len(clusters)}
+    else:
+        clusters = get_clusters(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size)
+        return {"data": clusters, "length": len(clusters), "page": page, "page_size": page_size}
+
+
+@router.get("/{id}")
+def get_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, id: int) -> DataClusterResponse:
+    cluster_table_name = get_path_key("clusters", dataset_name, model_name)
+    segment_table_name = get_path_key("segments", dataset_name)
+    cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
+    data = None
+    try:
+        data = get_in_db(cluster_table, id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"{str(e)}")
+    if data is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
+    return {"data": data}
+
+
+@router.put("/{id}")
+def update_cluster_endpoint(
+    dataset_name: Experimental_dataset_names, model_name: Model_names, id: int, data: ClusterData = {"cluster": -2}
+) -> DataClusterResponse:
+    cluster_table_name = get_path_key("clusters", dataset_name, model_name)
+    segment_table_name = get_path_key("segments", dataset_name)
+    cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
+
+    response = None
+    try:
+        response = update_in_db(cluster_table, id, data.dict())
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"{str(e)}")
+    if response is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
 
-
-@router.post("/", response_model=Cluster)
-def insert_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, data: Cluster = {"cluster": -1}):
-    cluster_table_name = get_path_key("clusters", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
-    cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
-    create_in_db(cluster_table, cluster=data.cluster)
-    return data.__dict__
-
-
-@router.put("/{id}", response_model=Cluster)
-def update_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, id: int, data: Cluster = {"cluster": -2}):
-    cluster_table_name = get_path_key("clusters", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
-    cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
-    update_in_db(cluster_table, id, data.dict())
-    return data
+    return {"data": response}
 
 
 @router.delete("/{id}")
-def delete_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, id: int):
+def delete_cluster_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names, id: int) -> DeleteResponse:
     cluster_table_name = get_path_key("clusters", dataset_name, model_name)
-    segment_table_name = get_path_key("data", dataset_name)
+    segment_table_name = get_path_key("segments", dataset_name)
     cluster_table = get_cluster_table(cluster_table_name, segment_table_name)
-    return {"id": id, "deleted": delete_in_db(cluster_table, id)}
-
-
-@router.get("/extract")
-def extract_clusters_endpoint(dataset_name: Experimental_dataset_names, model_name: Model_names):
-    extract_clusters(dataset_name, model_name)
-    return {"message": "Clusters extracted successfully"}
+    try:
+        return {"id": id, "deleted": delete_in_db(cluster_table, id)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"{str(e)}")

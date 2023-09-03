@@ -13,6 +13,7 @@ from configmanager.service import ConfigManager
 from tqdm import tqdm
 import numpy as np
 from urllib.parse import unquote
+from data.utils import get_supervised_path
 
 
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +44,7 @@ class ModelService:
         if self.model:
             logger.info(f"Using model {model_name} from runtime for {dataset_name}")
         else:
-            model_path = os.path.join(env["model_path"], dataset_name)
+            model_path = get_supervised_path("model", dataset_name, model_name)
             os.makedirs(model_path, exist_ok=True)
 
             if model_name:
@@ -91,13 +92,14 @@ class ModelService:
             data = data[:default_limit]
             logger.info(f"Limiting data to {default_limit} samples")
 
+        id = data["id"]
         sentences = data["sentence"]
         segments = data["segment"]
         start_indexes = data["position"].astype(int)
         embeddings = []
         total_samples = len(data)
-        with tqdm(total=total_samples, desc="Processing data") as pbar:
-            for sentence, segment, start_index in zip(sentences, segments, start_indexes):
+        with tqdm(total=total_samples, desc="Calculate embeddings") as pbar:
+            for id, sentence, segment, start_index in zip(id, sentences, segments, start_indexes):
                 start_index = start_index - 1  # tried because the other didnt work
                 end_index = start_index + len(segment)
                 # logger.info(f"Processing sentence: {sentence} : {segment} : {start_index} : {end_index}")
@@ -119,10 +121,10 @@ class ModelService:
 
                 if segment_embeddings:
                     mean_embeddings = torch.mean(torch.stack(segment_embeddings), dim=0)
-                    embeddings.append(mean_embeddings.detach().cpu().numpy().tolist())
+                    embeddings.append([id, mean_embeddings.detach().cpu().numpy().tolist()])
                 else:
-                    # Append np.nan as a placeholder value
-                    embeddings.append(np.nan)
+                    # Append np.nan on error as a placeholder value
+                    embeddings.append([id, np.nan])
                 pbar.update(1)
         return embeddings  # return embedding of the sentence
 

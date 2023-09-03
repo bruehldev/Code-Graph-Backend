@@ -2,7 +2,14 @@ import json
 import os
 import json
 import logging
-from database.postgresql import create as create_in_db, init_table, get_data as get_all_db, table_has_entries, get_segment_table
+from database.postgresql import (
+    init_table,
+    get_data as get_all_db,
+    table_has_entries,
+    get_segment_table,
+    get_session,
+    batch_insert,
+)
 from tqdm import tqdm
 from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
 from data.file_operations import download_few_nerd_dataset, save_segments_file, get_segments_file
@@ -16,20 +23,30 @@ with open("../env.json") as f:
 
 
 def get_segments(dataset_name: str, start: int = 0, end: int = None):
-    data_path_key = get_path_key("data", dataset_name)
+    data_path_key = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(data_path_key)
-    segments_data = None
+    segments_data = []
 
-    # Return data from database if it exists
-    if table_has_entries(segment_table):
-        segments_data = get_all_db(segment_table, start, end, True)
+    if not table_has_entries(segment_table):
+        extract_segments(dataset_name, start, end)
+        if end:
+            end = end - start
+        segments_data = get_all_db(segment_table, 0, end, True)
+
     else:
-        segments_data = extract_segments(dataset_name, start, end)
+        segments_data = get_all_db(segment_table, start, end, True)
+        """ TODO Discuss if this is necessary to auto extract if it wasn't extracted before
+        if len(segments_data) == 0:
+            extract_segments(dataset_name, start, end)
+            if end:
+                end = end - start
+            segments_data = get_all_db(segment_table, 0, end, True)
+        """
 
     return segments_data
 
 
-def extract_segments(dataset_name: str, start: int = 0, end: int = None, export_to_file: bool = False):
+def extract_segments(dataset_name: str, start: int = 0, end: int = None):
     entries = []
 
     if dataset_name == "few_nerd":
@@ -76,7 +93,8 @@ def extract_segments(dataset_name: str, start: int = 0, end: int = None, export_
                         else:
                             if segment:
                                 segment = segment.lstrip()
-                                position = sentence.find(segment, position + 1)
+                                # find position reversed in case the segment is not unique
+                                position = sentence.rfind(segment, position + 1)
                                 segment_list.append((segment, cur_annotation, position))
                                 segment = ""
                                 cur_annotation = None
@@ -99,23 +117,24 @@ def extract_segments(dataset_name: str, start: int = 0, end: int = None, export_
                         # Important Note! Could be more than page_size if the last sentence has more than one annotation
                         # Each different annotation is counted as a new entry
                         break
-    save_segments(entries, dataset_name, start, end)
-
-    if export_to_file:
-        save_segments_file(entries, get_segments_file(dataset_name))
-        logger.info(f"Extracted and saved segments for dataset: {dataset_name}")
-
-    return entries
+    save_segments(entries[start:end], dataset_name)
+    return len(entries)
 
 
-def save_segments(entries, dataset_name: str, start=0, end=None):
-    logger.info(f"Save segments in db: {dataset_name}. Length: {len(entries)}, start: {start}, end: {end}")
-    segment_table_name = get_path_key("data", dataset_name)
+def save_segments(entries, dataset_name: str):
+    logger.info(f"Save segments in db: {dataset_name}. Length: {len(entries)}")
+    segment_table_name = get_path_key("segments", dataset_name)
     segment_table = get_segment_table(segment_table_name)
 
-    init_table(segment_table_name, segment_table)
+    init_table(segment_table_name, segment_table, parent_table_class=None, cls=None)
 
-    end = len(entries) if end is None else min(end, len(entries))  # Make sure end is within bounds
+    session = get_session()
+    total_entries = len(entries)
+    batch_size = 1000
+    with tqdm(total=total_entries, desc=f"Saving {dataset_name}") as pbar:
+        for i in range(0, total_entries, batch_size):
+            batch_entries = entries[i : i + batch_size]
+            batch_insert(session, segment_table, batch_entries)
+            pbar.update(len(batch_entries))
 
-    for entry in entries[start:end]:
-        create_in_db(segment_table, sentence=entry["sentence"], segment=entry["segment"], annotation=entry["annotation"], position=entry["position"])
+    session.close()

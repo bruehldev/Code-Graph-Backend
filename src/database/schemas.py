@@ -8,7 +8,7 @@ class Data(BaseModel):
     position: int
 
 
-class DataTableResponse(BaseModel):
+class SegmentTableResponse(BaseModel):
     id: int
     sentence: str
     segment: str
@@ -25,3 +25,8 @@ class Plot(Data):
 
     class Config:
         orm_mode = True
+
+
+class DeleteResponse(BaseModel):
+    id: int
+    deleted: bool

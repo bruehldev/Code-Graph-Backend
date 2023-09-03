@@ -20,11 +20,13 @@ from sqlalchemy import (
     delete as delete_sql,
     update as update_sql,
     select as select_sql,
+    Computed,
+    text,
 )
 from sqlalchemy.types import Float
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry, aliased
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry, aliased, mapper, Session
+from sqlalchemy.dialects.postgresql import ARRAY, insert as insert_dialect, TSVECTOR, BYTEA
 from collections import defaultdict
 
 
@@ -49,6 +51,7 @@ def get_segment_table(table_name):
         metadata,
         Column("id", Integer, primary_key=True, index=True),
         Column("sentence", Text),
+        Column("sentence_tsv", TSVECTOR, Computed("to_tsvector('english', sentence)")),
         Column("segment", String),
         Column("annotation", String),
         Column("position", Integer),
@@ -57,24 +60,34 @@ def get_segment_table(table_name):
     )
 
 
-# Todo on update calculate reduced embeddings (onupdate)
+def get_embedding_table(table_name, segment_table_name):
+    return Table(
+        table_name,
+        metadata,
+        Column("id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True, nullable=False),
+        Column("embedding", BYTEA),
+        extend_existing=True,
+    )
+
+
+# TODO on update calculate reduced embeddings (onupdate)
 def get_reduced_embedding_table(table_name, segment_table_name):
     return Table(
         table_name,
         metadata,
-        Column("id", Integer, primary_key=True, index=True),
-        Column("reduced_embeddings", ARRAY(Float)),
-        Column("segment_id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE")),
+        Column("id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True, nullable=False),
+        Column("reduced_embedding", ARRAY(Float)),
         extend_existing=True,
     )
 
+
+# TODO on update calculate clusters (onupdate)
 def get_cluster_table(table_name, segment_table_name):
     return Table(
         table_name,
         metadata,
-        Column("id", Integer, primary_key=True, index=True),
+        Column("id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True, nullable=False),
         Column("cluster", Integer),
-        Column("segment_id", Integer, ForeignKey(f"{segment_table_name}.id", ondelete="CASCADE")),
         extend_existing=True,
     )
 
@@ -88,42 +101,72 @@ def get_code_table(table_name):
         extend_existing=True,
     )
 
-class SegmentsTable:
+class SegmentTable:
     pass
 
 
-class ReducedEmbeddingsTable:
+class EmbeddingTable:
     pass
 
 
-class ClustersTable:
+class ReducedEmbeddingTable:
     pass
 
 class CodeTable:
     pass
 
 
+class ClusterTable:
+    pass
+
+
+class MapperFactory:
+    def __init__(self, base_class):
+        self.base_class = base_class
+        self.counter = 1
+
+    def create(self):
+        class_name = f"{self.base_class.__name__}{self.counter}"
+        new_class = type(class_name, (self.base_class,), {})
+        self.counter += 1
+        return new_class
+
+
 ### Table operations ###
-# Todo add class for parent and child table
-def init_table(table_name, table_class, parent_table_class=None):
+def init_table(table_name, table_class, parent_table_class=None, cls=None):
     inspector = inspect(engine)
-    logger.info(f"Initialized table: {table_name}")
     if table_name not in inspector.get_table_names():
         # remove index from relationship if it exists
         table_class.indexes.clear()
 
-        # set relationships
-        if parent_table_class is not None and hasattr(parent_table_class, "name"):
-            mapper_registry.map_imperatively(
-                SegmentsTable, parent_table_class, properties={"reduced_embeddings": relationship(table_class, cascade="all,delete")}
-            )
-            mapper_registry.map_imperatively(
-                ReducedEmbeddingsTable, table_class, properties={"segment": relationship(parent_table_class, cascade="all,delete")}
-            )
+        if parent_table_class is not None and hasattr(parent_table_class, "name") and cls is not None:
+            if isinstance(cls, EmbeddingTable):
+                mapper_factory = MapperFactory(EmbeddingTable)
+                mapper_registry.map_imperatively(
+                    mapper_factory.create(), parent_table_class, properties={"embedding": relationship(table_class.name, cascade="all,delete")}
+                )
+                mapper_registry.map_imperatively(
+                    mapper_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
+                )
+            elif isinstance(cls, ReducedEmbeddingTable):
+                mapper_factory = MapperFactory(ReducedEmbeddingTable)
+                mapper_registry.map_imperatively(
+                    mapper_factory.create(), parent_table_class, properties={"reduced_embedding": relationship(table_class.name, cascade="all,delete")}
+                )
+                mapper_registry.map_imperatively(
+                    mapper_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
+                )
+            elif isinstance(cls, ClusterTable):
+                mapper_factory = MapperFactory(ClusterTable)
+                mapper_registry.map_imperatively(
+                    mapper_factory.create(), parent_table_class, properties={"cluster": relationship(table_class.name, cascade="all,delete")}
+                )
+                mapper_registry.map_imperatively(
+                    mapper_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
+                )
         if "code" in table_name:
-             check_constraint = CheckConstraint("id <> top_level_code_id", name="no_circular_reference")
-             table_class.append_constraint(check_constraint)
-        # create table
+            check_constraint = CheckConstraint("id <> top_level_code_id", name="no_circular_reference")
+            table_class.append_constraint(check_constraint)
         table_class.create(bind=engine)
         logger.info(f"Initialized table: {table_name}")
     else:
@@ -145,8 +188,11 @@ def get_table_info():
 
     for table_name in table_names:
         # Little bit hacky, but it works :D
-        if "data" in table_name:
+        if "segment" in table_name:
             table_class = get_segment_table(table_name)
+            row_count = session.query(table_class).count()
+        elif "embedding" in table_name:
+            table_class = get_embedding_table(table_name, "data")
             row_count = session.query(table_class).count()
         elif "reduced_embedding" in table_name:
             table_class = get_reduced_embedding_table(table_name, "data")
@@ -176,6 +222,35 @@ def delete_table(table_name, engine=engine):
         raise ValueError(f"Table '{table_name}' does not exist")
 
 
+def delete_all_tables(engine=engine):
+    inspector = inspect(engine)
+    table_names = inspector.get_table_names()
+    session = SessionLocal()
+    results = []
+    for table_name in table_names:
+        stmt = text(f"DROP TABLE IF EXISTS {table_name} CASCADE;")
+        results.append(session.execute(stmt))
+        logger.info(f"Table '{table_name}' dropped")
+    session.commit()
+    session.close()
+
+    mapper_registry.dispose()
+
+    return [result.rowcount for result in results]
+
+
+def get_table_length(table_class):
+    session = SessionLocal()
+    try:
+        query = session.query(table_class)
+        return query.count()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
 # Start the database engine
 def start_engine():
     engine.connect()
@@ -191,12 +266,13 @@ def get_session():
 
 
 ### Query functions ###
-def get_data(table_class, start, end, as_dict=True):
+def get_data(table_class, start=0, end=None, as_dict=True):
     session = SessionLocal()
     try:
-        query = session.query(table_class).slice(start, end)
+        query = session.query(table_class).order_by(table_class.c.id).slice(start, end)
         if as_dict:
             return [row._asdict() for row in query.all()]
+        logger.info(f"Loaded data from database: {table_class.name}")
         return query
     except Exception as e:
         session.rollback()
@@ -205,7 +281,7 @@ def get_data(table_class, start, end, as_dict=True):
         session.close()
 
 
-def get(table_class: Table, id):
+def get(table_class: Table, id) -> dict:
     stmt = table_class.select().where(table_class.c.id == id)
     session = SessionLocal()
     try:
@@ -224,13 +300,15 @@ def get(table_class: Table, id):
 
 # data: sentence, segment, annotation, position
 # reduced_embeddings: reduced_embeddings
-def create(table_class, **kwargs):
+def create(table_class, **kwargs) -> dict:
     stmt = insert_sql(table_class).values(**kwargs)
     session = SessionLocal()
     try:
-        session.execute(stmt)
+        result = session.execute(stmt)
         session.commit()
         # logger.info(f"Created data in database: {table_class.name}")
+        # return id
+        return {"id": result.inserted_primary_key[0], **kwargs}
     except Exception as e:
         session.rollback()
         raise e
@@ -238,7 +316,29 @@ def create(table_class, **kwargs):
         session.close()
 
 
-def update(table_class, data_id, new_values):
+def batch_insert(session: Session, table_class, entries):
+    stmt = insert_dialect(table_class).values(entries)
+    try:
+        session.execute(stmt)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+
+
+def batch_update_or_create(session: Session, table_class, entries):
+    try:
+        stmt = insert_dialect(table_class).values(entries)
+        stmt = stmt.on_conflict_do_update(index_elements=[table_class.c.id], set_=entries)
+
+        session.execute(stmt)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+
+
+def update(table_class, data_id, new_values) -> dict:
     """
     Update data in the specified table.
 
@@ -251,6 +351,7 @@ def update(table_class, data_id, new_values):
         session.execute(stmt)
         session.commit()
         logger.info(f"Updated data in database: {table_class.name}")
+        return {"id": data_id, **new_values}
     except Exception as e:
         session.rollback()
         raise e
@@ -258,7 +359,7 @@ def update(table_class, data_id, new_values):
         session.close()
 
 
-def delete(table_class, data_id):
+def delete(table_class, data_id) -> bool:
     stmt = delete_sql(table_class).where(table_class.c.id == data_id)
     session = SessionLocal()
     try:
@@ -272,6 +373,166 @@ def delete(table_class, data_id):
         raise e
     finally:
         session.close()
+
+
+def plot_search_sentenc(segment_table, reduced_embedding_table, cluster_table, query, as_dict=True, limit=None):
+    # Define the columns
+    selected_columns = [
+        segment_table.c.id,
+        segment_table.c.sentence,
+        segment_table.c.segment,
+        segment_table.c.annotation,
+        segment_table.c.position,
+    ]
+
+    # Construct the SQL statement
+    stmt = select_sql(*selected_columns).where(segment_table.c.sentence_tsv.match(query))
+
+    if table_has_entries(reduced_embedding_table):
+        stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
+        selected_columns.append(reduced_embedding_table.c.reduced_embedding)
+    if table_has_entries(cluster_table):
+        stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+        selected_columns.append(cluster_table.c.cluster)
+    if limit is not None:
+        stmt = stmt.limit(limit)
+
+    session = SessionLocal()
+    try:
+        result = session.execute(stmt)
+
+        if as_dict:
+            return [row._asdict() for row in result.fetchall()]
+        return result.fetchall()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
+def plot_search_annotion(segment_table, reduced_embedding_table, cluster_table, query, as_dict=True, limit=None):
+    escaped_query = query.replace("/", r"\/")
+
+    # Define the columns you want to select
+    selected_columns = [
+        segment_table.c.id,
+        segment_table.c.sentence,
+        segment_table.c.segment,
+        segment_table.c.annotation,
+        segment_table.c.position,
+    ]
+
+    # Construct the SQL statement
+    stmt = select_sql(*selected_columns).where(segment_table.c.annotation.match(escaped_query))
+
+    if table_has_entries(reduced_embedding_table):
+        stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
+        selected_columns.append(reduced_embedding_table.c.reduced_embedding)
+    if table_has_entries(cluster_table):
+        stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+        selected_columns.append(cluster_table.c.cluster)
+
+    if limit is not None:
+        stmt = stmt.limit(limit)  # Apply the limit
+
+    session = SessionLocal()
+    try:
+        result = session.execute(stmt)
+
+        if as_dict:
+            return [row._asdict() for row in result.fetchall()]
+        return result.fetchall()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
+def plot_search_cluster(segment_table, reduced_embedding_table, cluster_table, query, as_dict=True, limit=None):
+    # Define the columns you want to select
+    selected_columns = [
+        segment_table.c.id,
+        segment_table.c.sentence,
+        segment_table.c.segment,
+        segment_table.c.annotation,
+        segment_table.c.position,
+    ]
+
+    # Construct the SQL statement
+    stmt = select_sql(*selected_columns).where(cluster_table.c.cluster == query)
+
+    if table_has_entries(reduced_embedding_table):
+        stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
+        selected_columns.append(reduced_embedding_table.c.reduced_embedding)
+    if table_has_entries(cluster_table):
+        stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+        selected_columns.append(cluster_table.c.cluster)
+
+    if limit is not None:
+        stmt = stmt.limit(limit)  # Apply the limit
+
+    session = SessionLocal()
+    try:
+        result = session.execute(stmt)
+
+        if as_dict:
+            return [row._asdict() for row in result.fetchall()]
+        return result.fetchall()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
+def plot_search_segment(segment_table, reduced_embedding_table, cluster_table, query, as_dict=True, limit=None):
+    # Define the columns you want to select
+    selected_columns = [
+        segment_table.c.id,
+        segment_table.c.sentence,
+        segment_table.c.segment,
+        segment_table.c.annotation,
+        segment_table.c.position,
+    ]
+
+    # Construct the SQL statement
+    stmt = select_sql(*selected_columns).where(segment_table.c.segment.match(query))
+
+    if table_has_entries(reduced_embedding_table):
+        stmt = stmt.join(reduced_embedding_table, segment_table.c.id == reduced_embedding_table.c.id)
+        selected_columns.append(reduced_embedding_table.c.reduced_embedding)
+    if table_has_entries(cluster_table):
+        stmt = stmt.join(cluster_table, segment_table.c.id == cluster_table.c.id)
+        selected_columns.append(cluster_table.c.cluster)
+
+    if limit is not None:
+        stmt = stmt.limit(limit)  # Apply the limit
+
+    session = SessionLocal()
+    try:
+        result = session.execute(stmt)
+
+        if as_dict:
+            return [row._asdict() for row in result.fetchall()]
+        return result.fetchall()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
+def update_or_create(session: Session, table_class, data_id, **kwargs):
+    try:
+        stmt = insert_dialect(table_class).values(id=data_id, **kwargs)
+        stmt = stmt.on_conflict_do_update(index_elements=[table_class.c.id], set_=kwargs)
+        session.execute(stmt)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
 
 
 def table_has_entries(table_class):

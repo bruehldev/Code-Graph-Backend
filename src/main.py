@@ -18,7 +18,7 @@ from configmanager.router import router as config_router
 from embeddings.router import router as embeddings_router
 from clusters.router import router as clusters_router
 from plot.router import router as plot_router
-from segements.router import router as segments_router
+from segments.router import router as segments_router
 from reduced_embeddings.router import router as reduced_embeddings_router
 from codes.router import router as code_router
 
