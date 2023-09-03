@@ -55,7 +55,7 @@ def get_segment_table(table_name):
         Column("segment", String),
         Column("annotation", String),
         Column("position", Integer),
-        #Column("code_id", Integer, ForeignKey(f"{code_table_name}.id", ondelete="SET NULL")
+        # Column("code_id", Integer, ForeignKey(f"{code_table_name}.id", ondelete="SET NULL")
         extend_existing=True,
     )
 
@@ -91,15 +91,17 @@ def get_cluster_table(table_name, segment_table_name):
         extend_existing=True,
     )
 
+
 def get_code_table(table_name):
     return Table(
         table_name,
         metadata,
         Column("id", Integer, primary_key=True, index=True),
         Column("code", String),
-        Column("top_level_code_id", Integer, ForeignKey(f"{table_name}.id", ondelete="SET NULL")),
+        Column("top_level_code_id", Integer),  # , ForeignKey(f"{table_name}.id", ondelete="SET NULL")
         extend_existing=True,
     )
+
 
 class SegmentTable:
     pass
@@ -111,6 +113,7 @@ class EmbeddingTable:
 
 class ReducedEmbeddingTable:
     pass
+
 
 class CodeTable:
     pass
@@ -164,9 +167,9 @@ def init_table(table_name, table_class, parent_table_class=None, cls=None):
                 mapper_registry.map_imperatively(
                     mapper_factory.create(), table_class, properties={"segment": relationship(parent_table_class.name, cascade="all,delete")}
                 )
-        if "code" in table_name:
-            check_constraint = CheckConstraint("id <> top_level_code_id", name="no_circular_reference")
-            table_class.append_constraint(check_constraint)
+        # if "code" in table_name:
+        # check_constraint = CheckConstraint("id <> top_level_code_id", name="no_circular_reference")
+        # table_class.append_constraint(check_constraint)
         table_class.create(bind=engine)
         logger.info(f"Initialized table: {table_name}")
     else:
@@ -309,6 +312,19 @@ def create(table_class, **kwargs) -> dict:
         # logger.info(f"Created data in database: {table_class.name}")
         # return id
         return {"id": result.inserted_primary_key[0], **kwargs}
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+
+# get last id
+def get_last_id(table_class):
+    session = SessionLocal()
+    try:
+        query = session.query(table_class).order_by(table_class.c.id.desc()).first()
+        return query.id
     except Exception as e:
         session.rollback()
         raise e
@@ -548,6 +564,7 @@ def table_has_entries(table_class):
     finally:
         session.close()
 
+
 def get_all_codes(table_class):
     stmt = table_class.select().where(table_class.c.top_level_code_id.is_(None))
     session = SessionLocal()
@@ -564,14 +581,9 @@ def get_all_codes(table_class):
     finally:
         session.close()
 
+
 def get_all_leaf_codes(table_class):
-    subquery = (
-        table_class.select()
-        .add_columns(func.coalesce(table_class.c.top_level_code_id, table_class.c.id).label('leaf_id'))
-        .distinct()
-        .cte()
-        .select()
-    )
+    subquery = table_class.select().add_columns(func.coalesce(table_class.c.top_level_code_id, table_class.c.id).label("leaf_id")).distinct().cte().select()
 
     stmt = table_class.select().where(~exists().where(table_class.c.id == subquery.c.leaf_id))
     session = SessionLocal()
@@ -602,12 +614,7 @@ def has_circular_reference(table_class, id):
         path.append(node_id)
 
         parent_alias = aliased(table_class)
-        children = (
-            session.query(table_class)
-            .join(parent_alias, parent_alias.c.id == table_class.c.top_level_code_id)
-            .filter(table_class.c.id == node_id)
-            .all()
-        )
+        children = session.query(table_class).join(parent_alias, parent_alias.c.id == table_class.c.top_level_code_id).filter(table_class.c.id == node_id).all()
 
         for child in children:
             child_id = child.id
