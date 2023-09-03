@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List, Union
 from pydantic import BaseModel
 from codes.service import get_codes, extract_codes, get_top_level_codes, get_leaf_codes, build_category_tree
-from database.schemas import Data, DataTableResponse
+from database.schemas import Data, DataTableResponse, DataRes
 from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
 from database.postgresql import (
     get_data as get_all_db,
@@ -15,7 +15,6 @@ from database.postgresql import (
     delete_table
 )
 from data.utils import get_path_key
-from embeddings.service import delete_embedding
 
 router = APIRouter()
 

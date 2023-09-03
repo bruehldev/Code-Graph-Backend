@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Union
 
 
 class Data(BaseModel):
@@ -14,6 +15,15 @@ class SegmentTableResponse(BaseModel):
     segment: str
     annotation: str
     position: int
+
+class DataTableResponse(BaseModel):
+    id: int
+    code: str
+    top_level_code_id: Union[int, None]
+
+class DataRes(BaseModel):
+    code: str
+    top_level_code_id: Union[int, None]
 
 
 class PlotCreate(Data):
