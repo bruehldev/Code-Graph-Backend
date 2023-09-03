@@ -5,6 +5,7 @@ import json
 import logging
 from data.utils import get_data_file_path, get_root_path, get_supervised_path
 from data.file_operations import download_few_nerd_dataset
+from codes.service import extract_codes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -47,12 +48,14 @@ def get_annotations_keys(dataset_name: str):
         annotations = load_annotations_keys(dataset_name)
         logger.info(f"Loaded annotations from file for dataset: {dataset_name}")
     else:
-        annotations = extract_annotations_keys(dataset_name)
+        annotations = extract_codes(dataset_name)
 
     return annotations
 
 
-def save_annotations_keys(annotations: dict, annotations_file: str):
+def save_annotations_keys(dataset_name: str, annotations: dict):
+    annotations_file = get_annotations_keys_file(dataset_name)
+
     with open(annotations_file, "w", encoding="utf-8") as f:
         json.dump(annotations, f, indent=4)
 
@@ -66,38 +69,3 @@ def load_annotations_keys(dataset_name: str):
     with open(get_data_file_path(type="annotations", dataset_name=dataset_name, filename="annotations.json"), "r") as f:
         annotations = json.load(f)
         return annotations
-
-
-def extract_annotations_keys(dataset_name: str):
-    annotations = {}
-
-    if dataset_name == "few_nerd":
-        data_file_path = get_data_file_path(type="data", dataset_name=dataset_name, filename="train.txt")
-        if not os.path.exists(data_file_path):
-            # Download the data if it doesn't exist
-            download_few_nerd_dataset(dataset_name)
-        key_id = 1
-        with open(data_file_path, "r", encoding="utf8") as f:
-            for line in f:
-                fields = line.strip().split("\t")
-                if len(fields) > 1:
-                    annotation = fields[1]
-                    categories = annotation.split("-")
-
-                    last_category = categories[-1]
-                    last_category_parts = last_category.split("/")
-                    categories = categories[:-1] + last_category_parts
-                    nested_obj = annotations
-                    for category in categories:
-                        subcategories = nested_obj.setdefault(category, {})
-                        subcategories.setdefault("id", key_id)
-                        subcategories.setdefault("name", category)
-                        subcategories.setdefault("subcategories", {})
-                        nested_obj = subcategories.setdefault("subcategories", {})
-                        key_id += 1
-
-    annotations_file = get_annotations_keys_file(dataset_name)
-    save_annotations_keys(annotations, annotations_file)
-    logger.info(f"Extracted and saved annotations for dataset: {dataset_name}")
-
-    return annotations

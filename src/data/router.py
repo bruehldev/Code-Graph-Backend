@@ -3,8 +3,6 @@ from typing import List
 from pydantic import BaseModel
 from data.service import (
     get_data,
-    extract_annotations_keys,
-    get_annotations_keys,
 )
 from data.file_operations import download_few_nerd_dataset
 from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
@@ -25,6 +23,7 @@ def load_few_nerd_dataset_route(dataset_name: Dataset_names):
     return {"message": "Few NERD dataset loaded successfully"}
 
 
+"""
 @router.get("/{dataset_name}/annotations-keys/extract")
 def extract_annotations_route(dataset_name: Dataset_names):
     extract_annotations_keys(dataset_name)
@@ -36,8 +35,6 @@ def get_annotations_keys_route(dataset_name: Dataset_names):
     annotations = get_annotations_keys(dataset_name)
     return {"annotations": annotations}
 
-
-"""
 @router.get("/{dataset_name}/sentences")
 def get_sentences_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100):
     sentences = get_sentences(dataset_name, start=(page - 1) * page_size, end=page * page_size)
