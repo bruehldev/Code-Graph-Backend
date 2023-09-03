@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import BaseModel
 from codes.service import get_codes, extract_codes, get_top_level_codes, get_leaf_codes, build_category_tree
 from database.schemas import Data, DataTableResponse, DataRes
@@ -12,7 +12,11 @@ from database.postgresql import (
     delete as delete_in_db,
     get_code_table,
     has_circular_reference,
-    delete_table
+    delete_table,
+    table_has_entries,
+    get_last_id,
+    update_or_create,
+    get_session,
 )
 from data.utils import get_path_key
 
@@ -20,40 +24,53 @@ router = APIRouter()
 
 
 class DataTableResponse(BaseModel):
-    id: int
+    id: Optional[int]
     code: str
     top_level_code_id: Union[int, None]
+
 
 class DataRes(BaseModel):
     code: str
     top_level_code_id: Union[int, None]
 
+
 @router.get("/extract")
 def extract_codes_route(dataset_name: Dataset_names):
-    extract_codes(dataset_name)
-    return {"message": "Codes extracted successfully"}
+    if not table_has_entries(get_code_table(get_path_key("code", dataset_name))):
+        extract_codes(dataset_name)
+        return {"message": "Codes extracted successfully"}
+    else:
+        raise HTTPException(status_code=400, detail="Codes already extracted")
 
-@router.get("/codes")
-def get_codes_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100):
-    codes = get_codes(dataset_name, start=(page - 1) * page_size, end=page * page_size)
+
+@router.get("/")
+def get_codes_route(
+    dataset_name: Dataset_names,
+):
+    codes = get_codes(dataset_name)
     return {"codes": codes}
 
 
 @router.get("/roots")
-def get_top_level_codes_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100):
-    codes = get_top_level_codes(dataset_name, start=(page - 1) * page_size, end=page * page_size)
+def get_top_level_codes_route(dataset_name: Dataset_names):
+    codes = get_top_level_codes(dataset_name)
     return {"codes": codes}
 
+
 @router.get("/leaves")
-def get_leaf_codes_route(dataset_name: Dataset_names, page: int = 1, page_size: int = 100):
-    codes = get_leaf_codes(dataset_name, start=(page - 1) * page_size, end=page * page_size)
+def get_leaf_codes_route(
+    dataset_name: Dataset_names,
+):
+    codes = get_leaf_codes(dataset_name)
     return {"codes": codes}
+
 
 @router.get("/tree")
 def get_code_tree(dataset_name: Dataset_names):
     codes = get_codes(dataset_name)
     codes = build_category_tree(codes)
     return {"codes": codes}
+
 
 @router.get("/{id}", response_model=DataTableResponse)
 def get_code_route(
@@ -72,16 +89,21 @@ def get_code_route(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
     return data
 
+
 @router.post("/")
 def insert_code_route(
     dataset_name: Experimental_dataset_names,
-    data: DataTableResponse = {"id": 1, "code": "test", "top_level_code_id": 24},
+    data: DataTableResponse = {"code": "test", "top_level_code_id": 24},
 ):
     table_name = get_path_key("code", dataset_name)
     code_table = get_code_table(table_name)
+    last_id = get_last_id(code_table)
+    print(last_id)
+    session = get_session()
 
-    create_in_db(code_table, id = data.id, code=data.code, top_level_code_id=data.top_level_code_id)
+    update_or_create(session, code_table, data_id=last_id + 1, code=data.code, top_level_code_id=data.top_level_code_id)
     return data
+
 
 @router.delete("/{id}")
 def delete_code_route(
@@ -98,14 +120,13 @@ def delete_code_route(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"{str(e)}")
 
+
 @router.put("/{id}")
-def update_code_route(
-    dataset_name: Experimental_dataset_names,
-    id: int,
-    data: DataRes = {"code": "director", "top_level_code_id": 707}
-    ):
+def update_code_route(dataset_name: Experimental_dataset_names, id: int, data: DataRes = {"code": "director", "top_level_code_id": 2}):
     table_name = get_path_key("code", dataset_name)
     code_table = get_code_table(table_name)
-    if not has_circular_reference(code_table, data.top_level_code_id):
-        update_in_db(code_table, id, data.dict())
+    # if not has_circular_reference(code_table, data.top_level_code_id):
+    #    print("NOOOOOOO Circular reference detected")
+
+    update_in_db(code_table, id, data.dict())
     return data
