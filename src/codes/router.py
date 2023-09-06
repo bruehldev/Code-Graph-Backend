@@ -1,24 +1,15 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Union, Optional
 from pydantic import BaseModel
-from codes.service import get_codes, extract_codes, get_top_level_codes, get_leaf_codes, build_category_tree
-from database.schemas import Data, DataTableResponse, DataRes
-from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
-from database.postgresql import (
-    get_data as get_all_db,
-    get as get_in_db,
-    create as create_in_db,
-    update as update_in_db,
-    delete as delete_in_db,
-    get_code_table,
-    has_circular_reference,
-    delete_table,
-    table_has_entries,
-    get_last_id,
-    update_or_create,
-    get_session,
-)
-from data.utils import get_path_key
+from sqlalchemy.orm import Session
+
+from src.codes.service import get_codes, extract_codes, get_top_level_codes, get_leaf_codes, build_category_tree
+from src.db import session, models
+#from database.schemas import Data, DataTableResponse, DataRes
+#from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
+from src.db.schemas import DeleteResponse
+
+##from data.utils import get_path_key
 
 router = APIRouter()
 
@@ -33,30 +24,38 @@ class DataRes(BaseModel):
     code: str
     top_level_code_id: Union[int, None]
 
-
+# to do pls
+"""
 @router.get("/extract")
-def extract_codes_route(dataset_name: Dataset_names):
+def extract_codes_route(
+        db: Session = Depends(session.get_db)
+):
     if not table_has_entries(get_code_table(get_path_key("code", dataset_name))):
         extract_codes(dataset_name)
         return {"message": "Codes extracted successfully"}
     else:
         raise HTTPException(status_code=400, detail="Codes already extracted")
 
-
+"""
 @router.get("/")
 def get_codes_route(
-    dataset_name: Dataset_names,
+    project_id: int,
+    db: Session = Depends(session.get_db)
 ):
-    codes = get_codes(dataset_name)
-    return {"codes": codes}
+    codes = db.query(models.Code).filter(models.Code.project_id == project_id).all()
+    build_category_tree(codes)
+    return {"data": codes}
 
 
 @router.get("/roots")
-def get_top_level_codes_route(dataset_name: Dataset_names):
-    codes = get_top_level_codes(dataset_name)
-    return {"codes": codes}
+def get_top_level_codes_route(
+    project_id: int,
+    db: Session = Depends(session.get_db)
+):
+    codes = db.query(models.Code).filter(models.Code.project_id == project_id).filter(models.Code.parent_code_id == None).all()
+    return {"data": codes}
 
-
+"""
 @router.get("/leaves")
 def get_leaf_codes_route(
     dataset_name: Dataset_names,
@@ -65,31 +64,31 @@ def get_leaf_codes_route(
     return {"codes": codes}
 
 
+"""
 @router.get("/tree")
-def get_code_tree(dataset_name: Dataset_names):
-    codes = get_codes(dataset_name)
+def get_code_tree(
+    project_id: int,
+    db: Session = Depends(session.get_db)
+):
+    codes = db.query(models.Code).filter(models.Code.project_id == project_id).all()
     codes = build_category_tree(codes)
     return {"codes": codes}
 
-
 @router.get("/{id}", response_model=DataTableResponse)
 def get_code_route(
-    dataset_name: Experimental_dataset_names,
-    id: int,
+    project_id: int,
+    code_id: int,
+    db: Session = Depends(session.get_db)
 ):
-    table_name = get_path_key("code", dataset_name)
-    code_table = get_code_table(table_name)
-
-    data = None
     try:
-        data = get_in_db(code_table, id)
+        data = db.query(models.Code).filter(models.Code.project_id == project_id).filter(models.Code.code_id == code_id).first()
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"{str(e)}")
     if data is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
     return data
 
-
+"""
 @router.post("/")
 def insert_code_route(
     dataset_name: Experimental_dataset_names,
@@ -130,3 +129,4 @@ def update_code_route(dataset_name: Experimental_dataset_names, id: int, data: D
 
     update_in_db(code_table, id, data.dict())
     return data
+"""
