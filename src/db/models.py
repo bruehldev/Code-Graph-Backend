@@ -20,7 +20,7 @@ class Dataset(Base):
 
     dataset_id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey('Project.project_id', ondelete="CASCADE"))
-    DatasetName = Column(String(255), nullable=False)
+    dataset_name = Column(String(255), nullable=False)
 
     project = relationship("Project", back_populates="datasets")
     sentences = relationship("Sentence", back_populates="dataset")
@@ -84,7 +84,7 @@ class Code(Base):
     __tablename__ = "Code"
 
     code_id = Column(Integer, primary_key=True)
-    code_text = Column(Text, nullable=False)
+    text = Column(Text, nullable=False)
     parent_code_id = Column(Integer, ForeignKey('Code.code_id', ondelete="CASCADE"))
     project_id = Column(Integer, ForeignKey('Project.project_id', ondelete="CASCADE"))
 

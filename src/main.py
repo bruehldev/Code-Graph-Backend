@@ -22,12 +22,14 @@ from segments.router import router as segments_router
 from reduced_embeddings.router import router as reduced_embeddings_router
 from codes.router import router as code_router
 from project.router import router as project_router
+from dataset.router import router as dataset_router
 
 from configmanager.service import ConfigManager
 
 app = FastAPI(title="CodeGraph")
 
 app.include_router(project_router, prefix="/project", tags=["project"])
+app.include_router(dataset_router, prefix="/project/{project_id}/dataset", tags=["dataset"])
 
 
 app.include_router(data_router, prefix="/data", tags=["data"])
