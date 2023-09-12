@@ -9,7 +9,7 @@ with open("../env.json") as f:
 
 DATABASE_URL = env["DATABASE_URL"]
 engine = create_engine(DATABASE_URL)  # , echo=True)
-Base.metadata.create_all(engine)
+Base.metadata.create_all(bind=engine)
 SessionLocal = sessionmaker(bind=engine)
 
 
