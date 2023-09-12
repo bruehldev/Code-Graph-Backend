@@ -7,7 +7,9 @@ from db.session import engine
 from codes.router import router as code_router
 from project.router import router as project_router
 from dataset.router import router as dataset_router
+
 from db.base import Base
+from db.session import engine
 
 app = FastAPI(title="CodeGraph")
 
@@ -29,7 +31,4 @@ def init_db():
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-if __name__ == "__main__":
-    init_db()
-    uvicorn.run(app, host=env["host"], port=env["port"])
+init_db()
