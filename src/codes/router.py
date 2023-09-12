@@ -74,59 +74,78 @@ def get_code_tree(
     codes = build_category_tree(codes)
     return {"codes": codes}
 
-@router.get("/{id}", response_model=DataTableResponse)
+@router.get("/{id}")
 def get_code_route(
     project_id: int,
-    code_id: int,
+    id: int,
     db: Session = Depends(session.get_db)
 ):
-    try:
-        data = db.query(models.Code).filter(models.Code.project_id == project_id).filter(models.Code.code_id == code_id).first()
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"{str(e)}")
-    if data is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
+    data = db.query(models.Code).filter(models.Code.project_id == project_id).filter(models.Code.code_id == id).first()
+
     return data
-
-"""
-@router.post("/")
-def insert_code_route(
-    dataset_name: Experimental_dataset_names,
-    data: DataTableResponse = {"code": "test", "top_level_code_id": 24},
-):
-    table_name = get_path_key("code", dataset_name)
-    code_table = get_code_table(table_name)
-    last_id = get_last_id(code_table)
-    print(last_id)
-    session = get_session()
-
-    update_or_create(session, code_table, data_id=last_id + 1, code=data.code, top_level_code_id=data.top_level_code_id)
-    return data
-
 
 @router.delete("/{id}")
 def delete_code_route(
-    dataset_name: Experimental_dataset_names,
-    id: int = 0,
+    project_id: int,
+    id: int,
+    db: Session = Depends(session.get_db)
 ):
-    table_name = get_path_key("code", dataset_name)
-    code_table = get_code_table(table_name)
-
     try:
-        deleted = delete_in_db(code_table, id)
-        return {"id": id, "deleted": deleted}
+        data = db.query(models.Code).filter(models.Code.project_id == project_id).filter(
+            models.Code.code_id == id).first()
+        db.delete(data)
+        db.commit()
+        return {"id": id, "deleted": True}
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"{str(e)}")
 
+    data = db.query(models.Code).filter(models.Code.project_id == project_id).filter(
+        models.Code.code_id == id).first()
+    if not data:
+        return {"id": id, "deleted": False}
+    db.delete(data)
+    db.commit()
+    data = db.query(models.Code).filter(models.Code.project_id == project_id).filter(
+        models.Code.code_id == id).first()
+    if data:
+        return {"id": id, "deleted": False}
+    return {"id": id, "deleted": True}
+
+@router.post("/")
+def insert_code_route(
+    project_id: int,
+    code_name: str,
+    parent_id: Optional[int] = None,
+    db: Session = Depends(session.get_db)
+):
+    new_code = models.Code(
+        parent_code_id=parent_id,
+        project_id=project_id,
+        text = code_name
+    )
+    db.add(new_code)
+    db.commit()
+    db.refresh(new_code)
+    return new_code
+
 
 @router.put("/{id}")
-def update_code_route(dataset_name: Experimental_dataset_names, id: int, data: DataRes = {"code": "director", "top_level_code_id": 2}):
-    table_name = get_path_key("code", dataset_name)
-    code_table = get_code_table(table_name)
-    # if not has_circular_reference(code_table, data.top_level_code_id):
-    #    print("NOOOOOOO Circular reference detected")
-
-    update_in_db(code_table, id, data.dict())
+def update_code_route(
+    project_id: int,
+    code_id: int,
+    code_name: Optional[str] = None,
+    parent_id: Optional[int] = None,
+    db: Session = Depends(session.get_db)
+):
+    data = db.query(models.Code).filter(models.Code.project_id == project_id).filter(
+        models.Code.code_id == code_id).first()
+    if code_name:
+        data.text = code_name
+    data.parent_code_id = parent_id
+    db.add(data)
+    db.commit()
+    db.refresh(data)
     return data
-"""
+
+

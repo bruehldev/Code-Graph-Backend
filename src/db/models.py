@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, LargeBinary, Table, Float, UniqueConstraint
 from sqlalchemy.orm import relationship
-from .base import Base
+from src.db.base import Base
 
 
 class Project(Base):
@@ -9,10 +9,10 @@ class Project(Base):
     project_id = Column(Integer, primary_key=True)
     project_name = Column(String(255), nullable=False)
 
-    datasets = relationship("Dataset", back_populates="project")
-    codes = relationship("Code", back_populates="project")
-    configs = relationship("Config", back_populates="project")
-    models = relationship("Model", back_populates="project")
+    datasets = relationship("Dataset", cascade="all, delete, delete-orphan", back_populates="project")
+    codes = relationship("Code", cascade="all, delete, delete-orphan", back_populates="project")
+    configs = relationship("Config", cascade="all, delete, delete-orphan", back_populates="project")
+    models = relationship("Model", cascade="all, delete, delete-orphan", back_populates="project")
 
 
 class Dataset(Base):
@@ -23,7 +23,7 @@ class Dataset(Base):
     dataset_name = Column(String(255), nullable=False)
 
     project = relationship("Project", back_populates="datasets")
-    sentences = relationship("Sentence", back_populates="dataset")
+    sentences = relationship("Sentence", cascade="all, delete, delete-orphan", back_populates="dataset")
 
 
 class Sentence(Base):
@@ -35,7 +35,7 @@ class Sentence(Base):
     position_in_dataset = Column(Integer)
 
     dataset = relationship("Dataset", back_populates="sentences")
-    segments = relationship("Segment", back_populates="sentence")
+    segments = relationship("Segment", cascade="all, delete, delete-orphan", back_populates="sentence")
 
 
 class Segment(Base):
@@ -48,7 +48,7 @@ class Segment(Base):
     code_id = Column(Integer, ForeignKey('Code.code_id', ondelete="CASCADE"))
 
     sentence = relationship("Sentence", back_populates="segments")
-    embedding = relationship("Embedding", back_populates="segment")
+    embedding = relationship("Embedding", cascade="all, delete, delete-orphan", back_populates="segment")
     code = relationship("Code", back_populates="segments")
 
 
@@ -62,7 +62,7 @@ class Embedding(Base):
     config_id = Column(Integer, ForeignKey('Config.config_id'))
 
     segment = relationship("Segment", back_populates="embedding")
-    reduced_embeddings = relationship("ReducedEmbedding", back_populates="embedding")
+    reduced_embeddings = relationship("ReducedEmbedding", cascade="all, delete, delete-orphan", back_populates="embedding")
     model = relationship("Model")
 
 
