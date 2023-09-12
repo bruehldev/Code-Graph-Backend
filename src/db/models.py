@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, LargeBinary, Table, Float, UniqueConstraint
 from sqlalchemy.orm import relationship
-from src.db.base import Base
+from db.base import Base
 
 
 class Project(Base):
@@ -19,7 +19,7 @@ class Dataset(Base):
     __tablename__ = "Dataset"
 
     dataset_id = Column(Integer, primary_key=True)
-    project_id = Column(Integer, ForeignKey('Project.project_id', ondelete="CASCADE"))
+    project_id = Column(Integer, ForeignKey("Project.project_id", ondelete="CASCADE"))
     dataset_name = Column(String(255), nullable=False)
 
     project = relationship("Project", back_populates="datasets")
@@ -31,7 +31,7 @@ class Sentence(Base):
 
     sentence_id = Column(Integer, primary_key=True)
     text = Column(Text, nullable=False)
-    dataset_id = Column(Integer, ForeignKey('Dataset.dataset_id', ondelete="CASCADE"))
+    dataset_id = Column(Integer, ForeignKey("Dataset.dataset_id", ondelete="CASCADE"))
     position_in_dataset = Column(Integer)
 
     dataset = relationship("Dataset", back_populates="sentences")
@@ -42,10 +42,10 @@ class Segment(Base):
     __tablename__ = "Segment"
 
     segment_id = Column(Integer, primary_key=True)
-    sentence_id = Column(Integer, ForeignKey('Sentence.sentence_id', ondelete="CASCADE"))
+    sentence_id = Column(Integer, ForeignKey("Sentence.sentence_id", ondelete="CASCADE"))
     text = Column(Text, nullable=False)
     start_position = Column(Integer, nullable=False)
-    code_id = Column(Integer, ForeignKey('Code.code_id', ondelete="CASCADE"))
+    code_id = Column(Integer, ForeignKey("Code.code_id", ondelete="CASCADE"))
 
     sentence = relationship("Sentence", back_populates="segments")
     embedding = relationship("Embedding", cascade="all, delete, delete-orphan", back_populates="segment")
@@ -56,10 +56,10 @@ class Embedding(Base):
     __tablename__ = "Embedding"
 
     embedding_id = Column(Integer, primary_key=True)
-    segment_id = Column(Integer, ForeignKey('Segment.segment_id', ondelete="CASCADE"))
-    model_id = Column(Integer, ForeignKey('Model.model_id'))
+    segment_id = Column(Integer, ForeignKey("Segment.segment_id", ondelete="CASCADE"))
+    model_id = Column(Integer, ForeignKey("Model.model_id"))
     embedding_value = Column(LargeBinary, nullable=False)
-    config_id = Column(Integer, ForeignKey('Config.config_id'))
+    config_id = Column(Integer, ForeignKey("Config.config_id"))
 
     segment = relationship("Segment", back_populates="embedding")
     reduced_embeddings = relationship("ReducedEmbedding", cascade="all, delete, delete-orphan", back_populates="embedding")
@@ -70,11 +70,11 @@ class ReducedEmbedding(Base):
     __tablename__ = "ReducedEmbedding"
 
     reduced_embedding_id = Column(Integer, primary_key=True)
-    embedding_id = Column(Integer, ForeignKey('Embedding.embedding_id', ondelete="CASCADE"))
-    model_id = Column(Integer, ForeignKey('Model.model_id'))
+    embedding_id = Column(Integer, ForeignKey("Embedding.embedding_id", ondelete="CASCADE"))
+    model_id = Column(Integer, ForeignKey("Model.model_id"))
     pos_x = Column(Float, nullable=False)
     pos_y = Column(Float, nullable=False)
-    config_id = Column(Integer, ForeignKey('Config.config_id'))
+    config_id = Column(Integer, ForeignKey("Config.config_id"))
 
     embedding = relationship("Embedding", back_populates="reduced_embeddings")
     model = relationship("Model")
@@ -85,8 +85,8 @@ class Code(Base):
 
     code_id = Column(Integer, primary_key=True)
     text = Column(Text, nullable=False)
-    parent_code_id = Column(Integer, ForeignKey('Code.code_id', ondelete="CASCADE"))
-    project_id = Column(Integer, ForeignKey('Project.project_id', ondelete="CASCADE"))
+    parent_code_id = Column(Integer, ForeignKey("Code.code_id", ondelete="CASCADE"))
+    project_id = Column(Integer, ForeignKey("Project.project_id", ondelete="CASCADE"))
 
     project = relationship("Project", back_populates="codes")
     segments = relationship("Segment", back_populates="code")
@@ -96,23 +96,23 @@ class Model(Base):
     __tablename__ = "Model"
 
     model_id = Column(Integer, primary_key=True)
-    project_id = Column(Integer, ForeignKey('Project.project_id', ondelete="CASCADE"))
+    project_id = Column(Integer, ForeignKey("Project.project_id", ondelete="CASCADE"))
     model_name = Column(String(255), nullable=False)
     model_file = Column(String(1000), nullable=False)
 
     project = relationship("Project", back_populates="models")
 
-    __table_args__ = (UniqueConstraint('project_id', 'model_name', name='_project_modelname_uc'),)
+    __table_args__ = (UniqueConstraint("project_id", "model_name", name="_project_modelname_uc"),)
 
 
 class Config(Base):
     __tablename__ = "Config"
 
     config_id = Column(Integer, primary_key=True)
-    project_id = Column(Integer, ForeignKey('Project.project_id', ondelete="CASCADE"))
-    embedding_model_id = Column(Integer, ForeignKey('Model.model_id'))
-    reduced_embedding_model_id = Column(Integer, ForeignKey('Model.model_id'))
-    cluster_model_id = Column(Integer, ForeignKey('Model.model_id'))
+    project_id = Column(Integer, ForeignKey("Project.project_id", ondelete="CASCADE"))
+    embedding_model_id = Column(Integer, ForeignKey("Model.model_id"))
+    reduced_embedding_model_id = Column(Integer, ForeignKey("Model.model_id"))
+    cluster_model_id = Column(Integer, ForeignKey("Model.model_id"))
 
     project = relationship("Project", back_populates="configs")
     embedding_model = relationship("Model", foreign_keys=[embedding_model_id])

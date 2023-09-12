@@ -32,6 +32,7 @@ def get_codes(dataset_name: str):
     if table_has_entries(code_table):
         code_data = get_all_db(code_table)
     else:
+        # TODO Change form so is flat map after extract
         code_data = extract_codes(dataset_name)
 
     return code_data

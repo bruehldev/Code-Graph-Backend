@@ -1,19 +1,15 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from src.db.schemas import DeleteResponse
+from db.schemas import DeleteResponse
 
-from src.db import models, session
+from db import models, session
 
 router = APIRouter()
 
-@router.post("/")
-def create_project_route(
-    project_name: str,
-    db: Session = Depends(session.get_db)):
 
-    new_project = models.Project(
-        project_name = project_name
-    )
+@router.post("/")
+def create_project_route(project_name: str, db: Session = Depends(session.get_db)):
+    new_project = models.Project(project_name=project_name)
     db.add(new_project)
     db.commit()
     db.refresh(new_project)
@@ -22,24 +18,19 @@ def create_project_route(
 
 
 @router.get("/")
-def get_projects_route(
-        db: Session = Depends(session.get_db)):
-
+def get_projects_route(db: Session = Depends(session.get_db)):
     projects = db.query(models.Project).all()
     return projects
 
+
 @router.get("/{project_id}/")
-def get_project_route(
-        project_id: int,
-        db: Session = Depends(session.get_db)):
+def get_project_route(project_id: int, db: Session = Depends(session.get_db)):
     project = db.query(models.Project).filter(models.Project.project_id == project_id).first()
     return project
 
+
 @router.put("/{project_id}/")
-def update_project_route(
-        project_id: int,
-        project_name: str,
-        db: Session = Depends(session.get_db)):
+def update_project_route(project_id: int, project_name: str, db: Session = Depends(session.get_db)):
     project = db.query(models.Project).filter(models.Project.project_id == project_id).first()
     project.project_name = project_name
     db.add(project)
@@ -49,9 +40,7 @@ def update_project_route(
 
 
 @router.delete("/{project_id}/", response_model=DeleteResponse)
-def delete_projects_route(
-        project_id: int,
-        db: Session = Depends(session.get_db)):
+def delete_projects_route(project_id: int, db: Session = Depends(session.get_db)):
     project = db.query(models.Project).filter(models.Project.project_id == project_id).first()
     if not project:
         return {"id": project_id, "deleted": False}

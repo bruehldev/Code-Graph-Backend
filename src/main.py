@@ -7,7 +7,7 @@ from db.session import engine
 from codes.router import router as code_router
 from project.router import router as project_router
 from dataset.router import router as dataset_router
-from src.db.base import Base
+from db.base import Base
 
 app = FastAPI(title="CodeGraph")
 
@@ -16,10 +16,10 @@ app.include_router(dataset_router, prefix="/project/{project_id}/dataset", tags=
 app.include_router(code_router, prefix="/data/{project_id}/codes", tags=["codes"])
 
 
-
 @app.get("/")
 def read_root():
     return {"status": "online"}
+
 
 def init_db():
     Base.metadata.create_all(bind=engine)
@@ -33,7 +33,3 @@ logger = logging.getLogger(__name__)
 if __name__ == "__main__":
     init_db()
     uvicorn.run(app, host=env["host"], port=env["port"])
-
-
-
-
