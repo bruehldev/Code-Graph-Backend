@@ -11,6 +11,10 @@ from dataset.router import router as dataset_router
 from db.base import Base
 from db.session import engine
 
+# Logging configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="CodeGraph")
 
 app.include_router(project_router, prefix="/project", tags=["project"])
@@ -24,11 +28,8 @@ def read_root():
 
 
 def init_db():
+    logger.info(f"Initializing tables: {Base.metadata.tables.keys()}")
     Base.metadata.create_all(bind=engine)
 
-
-# Logging configuration
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 init_db()
