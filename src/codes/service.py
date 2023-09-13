@@ -2,18 +2,8 @@ import json
 import os
 import json
 import logging
-from database.postgresql import (
-    get_session,
-    update_or_create,
-    init_table,
-    get_data as get_all_db,
-    table_has_entries,
-    get_code_table,
-    get_all_codes,
-    get_all_leaf_codes,
-)
 from tqdm import tqdm
-from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
+from data.utils import get_data_file_path
 from data.service import download_few_nerd_dataset
 
 env = {}
@@ -23,87 +13,6 @@ with open("../env.json") as f:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-def get_codes(dataset_name: str):
-    data_path_key = get_path_key("code", dataset_name)
-    code_table = get_code_table(data_path_key)
-    code_data = None
-
-    if table_has_entries(code_table):
-        code_data = get_all_db(code_table)
-    else:
-        # TODO Change form so is flat map after extract
-        code_data = extract_codes(dataset_name)
-
-    return code_data
-
-
-def get_top_level_codes(dataset_name: str):
-    data_path_key = get_path_key("code", dataset_name)
-    code_table = get_code_table(data_path_key)
-    code_data = None
-
-    if table_has_entries(code_table):
-        code_data = get_all_codes(code_table)
-    else:
-        code_data = extract_codes(dataset_name)
-        code_data = get_all_codes(code_table)
-
-    return code_data
-
-
-def get_leaf_codes(dataset_name: str):
-    data_path_key = get_path_key("code", dataset_name)
-    code_table = get_code_table(data_path_key)
-    code_data = None
-
-    if table_has_entries(code_table):
-        code_data = get_all_leaf_codes(code_table)
-    else:
-        code_data = extract_codes(dataset_name)
-        code_data = get_all_leaf_codes(code_table)
-
-    return code_data
-
-
-def save_codes(entries, dataset_name: str):
-    code_table_name = get_path_key("code", dataset_name)
-    code_table = get_code_table(code_table_name)
-    init_table(code_table_name, code_table)
-    stack = [(None, entries)]
-
-    while stack:
-        parent_id, code_data = stack.pop()
-        session = get_session()
-        for _, code_info in code_data.items():
-            update_or_create(session, code_table, data_id=int(code_info["id"]), code=code_info["name"], top_level_code_id=parent_id)
-
-            subcategories = code_info["subcategories"]
-            if subcategories:
-                stack.append((code_info["id"], subcategories))
-
-"""
-def build_category_tree(categories_data, parent_id=None):
-    category_tree = {}
-    for category in categories_data:
-        if category["top_level_code_id"] == parent_id:
-            category_id = category["id"]
-            category_name = category["code"]
-            subcategories = build_category_tree(categories_data, parent_id=category_id)
-            if subcategories:
-                category_tree[category_name] = {
-                    "id": category_id,
-                    "name": category_name,
-                    "subcategories": subcategories,
-                }
-            else:
-                category_tree[category_name] = {
-                    "id": category_id,
-                    "name": category_name,
-                    "subcategories": {},
-                }
-    return category_tree
-"""
 def build_category_tree(codes):
     category_tree = {}
     mapper = {}
@@ -120,7 +29,6 @@ def build_category_tree(codes):
         else:
             category_tree[code.code_id] = mapper[code.code_id]
     return category_tree
-
 
 
 def extract_codes(dataset_name: str):
@@ -160,6 +68,5 @@ def extract_codes(dataset_name: str):
                         nested_obj = add_category(nested_obj, category)
 
     logger.info(f"Extracted and saved annotations for dataset: {dataset_name}")
-    save_codes(annotations, dataset_name)
 
     return annotations
