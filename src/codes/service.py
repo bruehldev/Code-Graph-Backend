@@ -4,7 +4,6 @@ import json
 import logging
 from tqdm import tqdm
 from data.utils import get_data_file_path
-from data.service import download_few_nerd_dataset
 
 env = {}
 with open("../env.json") as f:
@@ -12,6 +11,7 @@ with open("../env.json") as f:
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def build_category_tree(codes):
     category_tree = {}
@@ -25,7 +25,7 @@ def build_category_tree(codes):
         mapper[code.code_id] = temp_code
     for code in codes:
         if code.parent_code_id is not None:
-            mapper[code.parent_code_id]["subcategories"][code.code_id]= mapper[code.code_id]
+            mapper[code.parent_code_id]["subcategories"][code.code_id] = mapper[code.code_id]
         else:
             category_tree[code.code_id] = mapper[code.code_id]
     return category_tree
@@ -49,9 +49,9 @@ def extract_codes(dataset_name: str):
 
     if dataset_name == "few_nerd":
         data_file_path = get_data_file_path(type="data", dataset_name=dataset_name, filename="train.txt")
-        if not os.path.exists(data_file_path):
-            # Download the data if it doesn't exist
-            download_few_nerd_dataset(dataset_name)
+        # if not os.path.exists(data_file_path):
+        # Download the data if it doesn't exist
+        # download_few_nerd_dataset(dataset_name)
         key_id = 1
         with open(data_file_path, "r", encoding="utf8") as f:
             for line in f:
