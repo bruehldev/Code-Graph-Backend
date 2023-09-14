@@ -12,8 +12,8 @@ router = APIRouter()
 
 
 @router.post("/", response_model=ConfigModel)
-def create_config(config: ConfigModel = ConfigManager.get_default_model()):
-    config_manager = ConfigManager()
+def create_config(config: ConfigModel = ConfigManager.get_default_model(), db: Session = Depends(get_db)):
+    config_manager = ConfigManager(db)
 
     config_json = json.dumps(config.dict())
 
@@ -82,3 +82,14 @@ def delete_config(id: int, db: Session = Depends(get_db)):
 
     config_manager.delete_config(id)
     return {"message": f"Config '{id}' deleted successfully."}
+
+
+@router.get("/project/{project_id}")
+def get_project_config(project_id: int, db: Session = Depends(get_db)):
+    config_manager = ConfigManager(db)
+
+    config = config_manager.get_project_config(project_id)
+    if config:
+        return config
+    else:
+        raise HTTPException(status_code=404, detail=f"Config for project '{project_id}' does not exist.")
