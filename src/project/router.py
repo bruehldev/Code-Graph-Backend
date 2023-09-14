@@ -51,3 +51,13 @@ def delete_projects_route(project_id: int, db: Session = Depends(get_db)):
     if project:
         return {"id": project_id, "deleted": False}
     return {"id": project_id, "deleted": True}
+
+
+@router.put("/{project_id}/config/{config_id}/")
+def set_project_config_route(project_id: int, config_id: int, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.project_id == project_id).first()
+    project.config_id = config_id
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    return project

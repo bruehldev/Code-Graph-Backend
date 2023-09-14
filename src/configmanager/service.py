@@ -1,42 +1,47 @@
-import requests
-import zipfile
-import json
-from sklearn.datasets import fetch_20newsgroups
-import os
-import json
 import logging
-from configmanager.schemas import ConfigModel, ConfigModel, EmbeddingConfig, ClusterConfig, ModelConfig
-
+from configmanager.schemas import ConfigModel, EmbeddingConfig, ClusterConfig, ModelConfig
+from db.models import Config
+from sqlalchemy.orm import Session
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-env = {}
-with open("../env.json") as f:
-    env = json.load(f)
-
-
 class ConfigManager:
-    config = None
-
-    def __init__(self, config_file):
-        # Load configurations from file or use default if file does not exist
-        if os.path.exists(env["configs"]):
-            with open(env["configs"], "r") as f:
-                config = json.load(f)
-        self.config_file = config_file
+    def __init__(self, session: Session):
         self.configs = {}
-        self.load_configs()
+        self.session = session
 
-    def load_configs(self):
-        if os.path.exists(self.config_file):
-            with open(self.config_file, "r") as f:
-                self.configs = json.load(f)
+    def get_all_configs(self):
+        configs = self.session.query(Config).all()
+        return configs
 
-    def save_configs(self):
-        with open(self.config_file, "w") as f:
-            json.dump(self.configs, f, indent=4)
+    def get_config(self, id):
+        config = self.session.query(Config).filter_by(config_id=id).first()
+        return config
+
+    def save_config(self, config):
+        self.session.add(config)
+        self.session.commit()
+
+    def update_config(self, id, new_config):
+        config = self.session.query(Config).filter_by(config_id=id).first()
+        if config:
+            config.name = new_config.name
+            config.model_config = new_config.model_config
+            config.embedding_config = new_config.embedding_config
+            config.cluster_config = new_config.cluster_config
+            self.session.commit()
+        else:
+            raise Exception(f"Config '{id}' not found")
+
+    def delete_config(self, id):
+        config = self.session.query(Config).filter_by(config_id=id).first()
+        if config:
+            self.session.delete(config)
+            self.session.commit()
+        else:
+            raise Exception(f"Config '{id}' not found")
 
     @staticmethod
     def get_default_model():

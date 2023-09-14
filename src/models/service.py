@@ -22,7 +22,7 @@ env = {}
 with open("../env.json") as f:
     env = json.load(f)
 config_manager = ConfigManager(env["configs"])
-config = config_manager.get_default_model()
+config = config_manager.get_default_model()  # getconfig(project_id) || get_default_config()
 
 models = {}
 

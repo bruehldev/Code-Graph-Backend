@@ -1,54 +1,84 @@
-from fastapi import APIRouter, Depends
 import json
+from fastapi import APIRouter, Depends, HTTPException
 from configmanager.service import ConfigManager
 from configmanager.schemas import ConfigModel
+from db.models import Config  # Import the Config model
 
-
-env = {}
-
-with open("../env.json") as f:
-    env = json.load(f)
-
-config_manager = ConfigManager(env["configs"])
+# Create a ConfigManager instance with a database session
+from db.session import get_db
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 
 
 @router.post("/", response_model=ConfigModel)
-def create_config(config: ConfigModel):
-    config_manager.configs[config.name] = config.dict()
-    config_manager.save_configs()
-    return config
+def create_config(config: ConfigModel = ConfigManager.get_default_model()):
+    config_manager = ConfigManager()
 
+    config_json = json.dumps(config.dict())
 
-@router.get("/{name}")
-def get_config(name: str):
-    if name in config_manager.configs:
-        return config_manager.configs[name]
-    else:
-        return {"message": f"Config '{name}' does not exist."}
+    new_config = Config(name=config.name, config=config_json)  # Store the JSON string in the 'config' column
+    new_config.model_config = config.model_config
+    new_config.embedding_config = config.embedding_config
+    new_config.cluster_config = config.cluster_config
+    new_config.default_limit = config.default_limit
+
+    config_manager.save_config(new_config)
+
+    return ConfigModel(
+        name=new_config.name,
+        model_config=new_config.model_config,
+        embedding_config=new_config.embedding_config,
+        cluster_config=new_config.cluster_config,
+        default_limit=new_config.default_limit,
+    )
 
 
 @router.get("/")
-def get_all_configs():
-    return config_manager.configs
+def get_all_configs(db: Session = Depends(get_db)):
+    config_manager = ConfigManager(db)
+
+    configs = config_manager.get_all_configs()
+    return configs
 
 
-@router.put("/{name}")
-def update_config(name: str, config: ConfigModel):
-    if name in config_manager.configs:
-        config_manager.configs[name] = config.dict()
-        config_manager.save_configs()
-        return {"message": f"Config '{name}' updated successfully."}
+@router.get("/{id}")
+def get_config(id: int, db: Session = Depends(get_db)):
+    config_manager = ConfigManager(db)
+
+    config = config_manager.get_config(id)
+    if config:
+        return config
     else:
-        return {"message": f"Config '{name}' does not exist."}
+        raise HTTPException(status_code=404, detail=f"Config '{id}' does not exist.")
 
 
-@router.delete("/{name}")
-def delete_config(name: str):
-    if name in config_manager.configs:
-        del config_manager.configs[name]
-        config_manager.save_configs()
-        return {"message": f"Config '{name}' deleted successfully."}
+@router.put("/{id}")
+def update_config(id: int, config: ConfigModel = ConfigManager.get_default_model(), db: Session = Depends(get_db)):
+    config_manager = ConfigManager(db)
+
+    existing_config = config_manager.get_config(id)
+    if existing_config:
+        config_json = json.dumps(config.dict())
+
+        existing_config.name = config.name
+        existing_config.config = config_json  # Update the 'config' JSON string
+
+        existing_config.model_config = config.model_config
+        existing_config.embedding_config = config.embedding_config
+        existing_config.cluster_config = config.cluster_config
+        existing_config.default_limit = config.default_limit
+
+        config_manager.save_config(existing_config)
+
+        return {"message": f"Config '{id}' updated successfully."}
     else:
-        return {"message": f"Config '{name}' does not exist."}
+        raise HTTPException(status_code=404, detail=f"Config '{id}' not found.")
+
+
+@router.delete("/{id}")
+def delete_config(id: int, db: Session = Depends(get_db)):
+    config_manager = ConfigManager(db)
+
+    config_manager.delete_config(id)
+    return {"message": f"Config '{id}' deleted successfully."}

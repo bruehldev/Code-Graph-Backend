@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, LargeBinary, Table, Float, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, LargeBinary, Table, Float, UniqueConstraint, JSON
 from sqlalchemy.orm import relationship
 from db.base import Base
 
@@ -8,10 +8,11 @@ class Project(Base):
 
     project_id = Column(Integer, primary_key=True)
     project_name = Column(String(255), nullable=False)
+    config_id = Column(Integer, ForeignKey("Config.config_id", ondelete="CASCADE"))
 
     datasets = relationship("Dataset", cascade="all, delete, delete-orphan", back_populates="project")
     codes = relationship("Code", cascade="all, delete, delete-orphan", back_populates="project")
-    configs = relationship("Config", cascade="all, delete, delete-orphan", back_populates="project")
+    # config = relationship("Config", cascade="all, delete, delete-orphan", back_populates="project")
     models = relationship("Model", cascade="all, delete, delete-orphan", back_populates="project")
 
 
@@ -59,7 +60,6 @@ class Embedding(Base):
     segment_id = Column(Integer, ForeignKey("Segment.segment_id", ondelete="CASCADE"))
     model_id = Column(Integer, ForeignKey("Model.model_id"))
     embedding_value = Column(LargeBinary, nullable=False)
-    config_id = Column(Integer, ForeignKey("Config.config_id"))
 
     segment = relationship("Segment", back_populates="embedding")
     reduced_embeddings = relationship("ReducedEmbedding", cascade="all, delete, delete-orphan", back_populates="embedding")
@@ -74,7 +74,6 @@ class ReducedEmbedding(Base):
     model_id = Column(Integer, ForeignKey("Model.model_id"))
     pos_x = Column(Float, nullable=False)
     pos_y = Column(Float, nullable=False)
-    config_id = Column(Integer, ForeignKey("Config.config_id"))
 
     embedding = relationship("Embedding", back_populates="reduced_embeddings")
     model = relationship("Model")
@@ -97,8 +96,8 @@ class Model(Base):
 
     model_id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey("Project.project_id", ondelete="CASCADE"))
-    model_name = Column(String(255), nullable=False)
-    model_file = Column(String(1000), nullable=False)
+    model_name = Column(String(255), nullable=False)  # BERT-base-uncased
+    model_file_path = Column(String(1000), nullable=False)  # ../exported/project/{project_id}/model/{model_name}
 
     project = relationship("Project", back_populates="models")
 
@@ -109,11 +108,14 @@ class Config(Base):
     __tablename__ = "Config"
 
     config_id = Column(Integer, primary_key=True)
-    project_id = Column(Integer, ForeignKey("Project.project_id", ondelete="CASCADE"))
+    name = Column(String(255), nullable=False)
+
     embedding_model_id = Column(Integer, ForeignKey("Model.model_id"))
     reduced_embedding_model_id = Column(Integer, ForeignKey("Model.model_id"))
     cluster_model_id = Column(Integer, ForeignKey("Model.model_id"))
 
-    project = relationship("Project", back_populates="configs")
+    # project = relationship("Project", back_populates="config")
     embedding_model = relationship("Model", foreign_keys=[embedding_model_id])
     reduced_embedding_model = relationship("Model", foreign_keys=[reduced_embedding_model_id])
+
+    config = Column(JSON, nullable=False)
