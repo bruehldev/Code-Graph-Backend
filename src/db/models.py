@@ -13,6 +13,7 @@ class Project(Base):
     datasets = relationship("Dataset", cascade="all, delete, delete-orphan", back_populates="project")
     codes = relationship("Code", cascade="all, delete, delete-orphan", back_populates="project")
     # config = relationship("Config", cascade="all, delete, delete-orphan", back_populates="project")
+
     models = relationship("Model", cascade="all, delete, delete-orphan", back_populates="project")
 
 
@@ -96,18 +97,16 @@ class Model(Base):
 
     model_id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey("Project.project_id", ondelete="CASCADE"))
-    model_name = Column(String(255), nullable=False)  # BERT-base-uncased
-    model_file_path = Column(String(1000), nullable=False)  # ../exported/project/{project_id}/model/{model_name}
+    model_hash = Column(String(255), nullable=False)
 
     project = relationship("Project", back_populates="models")
-
-    __table_args__ = (UniqueConstraint("project_id", "model_name", name="_project_modelname_uc"),)
 
 
 class Config(Base):
     __tablename__ = "Config"
 
     config_id = Column(Integer, primary_key=True)
+    # project_id = Column(Integer, ForeignKey("Project.project_id", ondelete="CASCADE"))
     name = Column(String(255), nullable=False)
 
     embedding_model_id = Column(Integer, ForeignKey("Model.model_id"))

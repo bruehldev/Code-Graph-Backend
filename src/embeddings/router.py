@@ -10,7 +10,7 @@ from data.schemas import Experimental_dataset_names
 from models.schemas import Model_names
 from embeddings.schemas import EmbeddingTable, EmbeddingEntry, DataEmbeddingResponse, EmbeddingData
 from db.schemas import DeleteResponse
-from db.models import Segment, Sentence, Dataset, Project, Embedding
+from db.models import Segment, Sentence, Dataset, Project, Embedding, Model
 
 from models_neu.model_definitions import MODELS
 from configmanager.service import ConfigManager
@@ -18,6 +18,7 @@ from db.session import get_db
 from sqlalchemy import not_, and_, exists
 
 from data.utils import get_path_key
+from utilities.string_operations import generate_hash
 
 router = APIRouter()
 
@@ -54,7 +55,16 @@ def extract_embeddings_endpoint(
     config_manager = ConfigManager(db)
     config = config_manager.get_project_config(project_id)
     config_as_json = json.loads(config.config)
+
     model_name = config_as_json["embedding_config"]["model_name"]
+    model_hash = generate_hash({"project_id": project_id, "model": config_as_json["embedding_config"]})
+    model_entry = db.query(Model).filter(Model.model_hash == model_hash).first()
+    if model_entry is None:
+        model_entry = Model(project_id=project_id, model_hash=model_hash)
+        db.add(model_entry)
+        db.commit()
+        db.refresh(model_entry)
+
     embedding_model = MODELS[model_name](config_as_json["embedding_config"]["args"])
 
     subquery = exists().where(and_(Embedding.segment_id == Segment.segment_id, Embedding.model_id == 3))
@@ -73,21 +83,18 @@ def extract_embeddings_endpoint(
 
     ## saving
 
-
-"""
     embedding_mappings = [
-        {"segment_id": segment.segment_id, "ModelID": db_e.ModelID, "EmbeddingValues": pickle.dumps(embedding_value)}
-        for embedding_value, segment in zip(embedding_values, segments)
+        {"segment_id": segment.segment_id, "model_id": model_entry.model_id, "embedding_value": pickle.dumps(embedding_value)}
+        for embedding_value, segment in zip(embeddings, segments)
     ]
 
     # Bulk insert embeddings
-    db.bulk_insert_mappings(models.Embedding, embedding_mappings)
+    db.bulk_insert_mappings(Embedding, embedding_mappings)
     db.commit()
 
     print(embeddings[0])
     return {"config": len(embeddings)}
 
-"""
 
 """
     if all:
