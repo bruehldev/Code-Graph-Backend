@@ -64,14 +64,12 @@ class SemiSupervisedUmap(Umap):
 
 
 class BertEmbeddingModel:
-    arguments: dict = Field({"pretrained_model_name_or_path": "bert-base-uncased"}, description="Arguments for BERT")
+    arguments: dict = {}
     name: str = ""
     fitted: bool = False
-    default_parameters: dict = {"pretrained_model_name_or_path": "bert-base-uncased"}
 
-    def __init__(self, arguments: dict = None):
-        if arguments is not None:
-            self.arguments = arguments
+    def __init__(self, arguments: dict):
+        self.arguments = arguments
 
     def fit(self, segments, sentences):
         print(f"BertEmbedding.fit() from {self.arguments}")
@@ -96,12 +94,9 @@ class BertEmbeddingModel:
             sentence_embedding = self.transform_sentences(unique_sentences)
         with Timer("Calculating Segment Offset Indexes"):
             positions = self.get_segment_positions(segments, sentences, sentence_embedding)
-        return self.segment_embedding([sentence_embedding[s.SentenceID][0] for s in sentences], positions)
+        return self.segment_embedding([sentence_embedding[s.sentence_id][0] for s in sentences], positions)
 
     def transform_sentences(self, sentences):
-        temp = copy.deepcopy(self.default_parameters)
-        temp.update(self.arguments)
-        self.arguments = temp
         tokenizer = BertTokenizerFast.from_pretrained(**self.arguments)
         model = BertModel.from_pretrained(**self.arguments)
         max_input_length = model.config.max_position_embeddings
@@ -112,8 +107,8 @@ class BertEmbeddingModel:
 
         # Das speichern der Satz ids und texte.
         with Timer("Fetching Dataset"):
-            sentences_id = np.array([s.SentenceID for s in sentences])
-            sentences_text = [s.Text for s in sentences]
+            sentences_id = np.array([s.sentence_id for s in sentences])
+            sentences_text = [s.text for s in sentences]
 
         # Tokenization
         with Timer("Tokenization"):
@@ -173,9 +168,9 @@ class BertEmbeddingModel:
 
         results = []
         for i in range(len(segments)):
-            id = sentence[i].SentenceID
-            start = segments[i].StartPosition
-            len_seg = len(segments[i].Text)
+            id = sentence[i].sentence_id
+            start = segments[i].start_position
+            len_seg = len(segments[i].text)
             attention_mask = embeddings[id][2]
             offset = embeddings[id][1]
             valid_length = torch.where(attention_mask == 0)[0][0] if 0 in attention_mask else len(attention_mask)
@@ -183,7 +178,7 @@ class BertEmbeddingModel:
             result = find_subrange((start, start + len_seg), temp_offsets)
             if type(result) != type([]):
                 result = [result]
-            results.append(result)
+            results.append(result)  #
             del valid_length, temp_offsets, start, len_seg
 
         return results
@@ -198,7 +193,7 @@ class BertEmbeddingModel:
         return averaged_embeddings
 
     def get_segment_string(self, segment):
-        sentence = segment.sentence.Text
+        sentence = segment.sentence.text
         return sentence
 
     def __str__(self):
