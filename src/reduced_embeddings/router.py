@@ -10,7 +10,7 @@ from database.postgresql import get as get_in_db, create as create_in_db, update
 from data.utils import get_path_key
 
 from reduced_embeddings.schemas import ReducedEmbeddingTable, ReducedEmbeddingEntry, ReducedEmbeddingData, DataReducedEmbeddingResponse
-from database.schemas import DeleteResponse
+from db.schemas import DeleteResponse
 
 router = APIRouter()
 
