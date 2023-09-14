@@ -1,48 +1,47 @@
 from pydantic import BaseModel
-from enum import Enum
-from typing import List
-from typing import Dict, Any, Optional
+from typing import List, Literal, Dict, Any, Optional, Union
 
 
-class ModelConfig(BaseModel):
-    language: str
-    top_n_words: int
-    n_gram_range: tuple[int, int]
-    min_topic_size: int
-    nr_topics: Optional[int]
-    low_memory: bool
-    calculate_probabilities: bool
-    seed_topic_list: Optional[Any]
-    embedding_model: Optional[Any]
-    umap_model: Optional[Any]
-    hdbscan_model: Optional[Any]
-    vectorizer_model: Optional[Any]
-    ctfidf_model: Optional[Any]
-    representation_model: Optional[Any]
-    verbose: bool
+class BertModelArgs(BaseModel):
+    pretrained_model_name_or_path: str = "dbmdz/bert-large-cased-finetuned-conll03-english"
 
 
 class EmbeddingConfig(BaseModel):
-    n_neighbors: int
-    n_components: int
-    metric: str
-    random_state: int
+    args: BertModelArgs = BertModelArgs()
+    model_name: str = "bert"
+
+
+class UmapArgs(BaseModel):
+    n_neighbors: int = 15
+    n_components: int = 2
+    metric: str = "cosine"
+    random_state: int = 42
+
+
+class ReductionConfig(BaseModel):
+    args: UmapArgs = UmapArgs()
+    model_name: str = "umap"
+
+
+class HDBScanArgs(BaseModel):
+    min_cluster_size: int = 2
+    metric: str = "euclidean"
+    cluster_selection_method: str = "eom"
 
 
 class ClusterConfig(BaseModel):
-    min_cluster_size: int
-    metric: str
-    cluster_selection_method: str
+    args: HDBScanArgs = HDBScanArgs()
+    model_name: str = "hdbscan"
 
 
 class ConfigModel(BaseModel):
     name: str = "default"
-    model_config: ModelConfig
-    embedding_config: EmbeddingConfig
-    cluster_config: ClusterConfig
+    embedding_config: EmbeddingConfig = EmbeddingConfig()
+    reduction_config: ReductionConfig = ReductionConfig()
+    cluster_config: ClusterConfig = ClusterConfig()
     default_limit: Optional[int] = None
+    model_type: Literal["static", "dynamic"] = "static"
 
 
-# model_config source: https://github.com/MaartenGr/BERTopic/blob/master/bertopic/_bertopic.py
-# embedding_config source: https://github.com/lmcinnes/umap/blob/master/umap/umap_.py
-# cluster_config source: https://github.com/scikit-learn-contrib/hdbscan/blob/master/hdbscan/hdbscan_.py
+# umap_config source: https://github.com/lmcinnes/umap/blob/master/umap/umap_.py
+# hdbscan_config source: https://github.com/scikit-learn-contrib/hdbscan/blob/master/hdbscan/hdbscan_.py

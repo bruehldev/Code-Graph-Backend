@@ -156,7 +156,7 @@ def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None, ret
         embeddings_2d_bert = embeddings
     elif dataset_name == "fetch_20newsgroups":
         embeddings = model_service.model(get_data(dataset_name, start, end))
-        umap_model = umap.UMAP(**config.embedding_config.dict())
+        umap_model = umap.UMAP(**config.reduction_config.dict())
         embeddings_2d_bert = umap_model.fit_transform(embeddings)
 
     logger.info(f"Computed embeddings: {dataset_name} / {model_name}")

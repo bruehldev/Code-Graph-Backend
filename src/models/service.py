@@ -15,7 +15,6 @@ import numpy as np
 from urllib.parse import unquote
 from data.utils import get_supervised_path
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 env = {}
@@ -59,7 +58,7 @@ class ModelService:
                     self.model = model
             elif model_name == "BERTopic":
                 if not os.path.exists(os.path.join(model_path, "BERTopic")):
-                    model = BERTopic(**config.model_config.dict())
+                    model = BERTopic(**config.embedding_config.dict())
                     topics, probs = model.fit_transform(get_data(dataset_name))
                     model.save(os.path.join(model_path, "BERTopic"))
                     logger.info(f"Model trained and saved for dataset: {dataset_name}")

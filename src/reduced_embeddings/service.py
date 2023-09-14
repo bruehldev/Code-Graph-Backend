@@ -80,7 +80,7 @@ def extract_embeddings_reduced(dataset_name, model_name, start=0, end=None):
     if reduced_embeddings.ndim == 1:
         reduced_embeddings = reduced_embeddings.reshape(-1, 1)  # Reshape to a column vector
 
-    umap_model = umap.UMAP(**config.embedding_config.dict())
+    umap_model = umap.UMAP(**config.reduction_config.dict())
     embeddings_reduced = umap_model.fit_transform(reduced_embeddings)
 
     save_reduced_embeddings(embeddings_reduced, index_list, dataset_name, model_name)

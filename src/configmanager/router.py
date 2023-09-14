@@ -18,8 +18,8 @@ def create_config(config: ConfigModel = ConfigManager.get_default_model(), db: S
     config_json = json.dumps(config.dict())
 
     new_config = Config(name=config.name, config=config_json)  # Store the JSON string in the 'config' column
-    new_config.model_config = config.model_config
     new_config.embedding_config = config.embedding_config
+    new_config.reduction_config = config.reduction_config
     new_config.cluster_config = config.cluster_config
     new_config.default_limit = config.default_limit
 
@@ -27,8 +27,8 @@ def create_config(config: ConfigModel = ConfigManager.get_default_model(), db: S
 
     return ConfigModel(
         name=new_config.name,
-        model_config=new_config.model_config,
         embedding_config=new_config.embedding_config,
+        reduction_config=new_config.reduction_config,
         cluster_config=new_config.cluster_config,
         default_limit=new_config.default_limit,
     )
@@ -64,8 +64,8 @@ def update_config(id: int, config: ConfigModel = ConfigManager.get_default_model
         existing_config.name = config.name
         existing_config.config = config_json  # Update the 'config' JSON string
 
-        existing_config.model_config = config.model_config
         existing_config.embedding_config = config.embedding_config
+        existing_config.reduction_config = config.reduction_config
         existing_config.cluster_config = config.cluster_config
         existing_config.default_limit = config.default_limit
 
