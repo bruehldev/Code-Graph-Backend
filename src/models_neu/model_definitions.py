@@ -3,7 +3,6 @@ import sys
 import time
 from pprint import pprint
 
-#from cuml import UMAP as cumlUMAP
 from torch.nn.utils.rnn import pad_sequence
 from typing import Union, List, Any
 import torch
@@ -19,18 +18,15 @@ from utilities.timer import Timer
 from db.session import get_db
 
 
-class Model(BaseModel):
-    def fit(self, data):
-        raise NotImplementedError("This method should be implemented in a child class.")
-
-    def transform(self, data):
-        raise NotImplementedError("This method should be implemented in a child class.")
-
-
-class Umap(Model):
+class Umap:
     arguments: dict = Field(dict(), description="Arguments for Umap")
     name: str = ""
     fitted: bool = False
+
+    def __init__(self, arguments: dict = None):
+        if arguments is not None:
+            self.arguments = arguments
+        self._model = None
 
     def fit(self, data: Union[np.ndarray, list]) -> bool:
         if len(data) == 0:
@@ -54,7 +50,6 @@ class Umap(Model):
 
 
 class SemiSupervisedUmap(Umap):
-
     def fit(self, data: Union[np.ndarray, list], labels: np.ndarray = None) -> bool:
         print(f"SemiSupervisedUmap.fit() from {self.arguments}")
         if len(data) == 0:
@@ -68,12 +63,15 @@ class SemiSupervisedUmap(Umap):
         return f"SemiSupervisedUmap({self.arguments})"
 
 
-class BertEmbeddingModel(BaseModel):
-    arguments: dict = Field({"pretrained_model_name_or_path": "bert-base-uncased"},
-                                 description="Arguments for BERT")
+class BertEmbeddingModel:
+    arguments: dict = Field({"pretrained_model_name_or_path": "bert-base-uncased"}, description="Arguments for BERT")
     name: str = ""
     fitted: bool = False
     default_parameters: dict = {"pretrained_model_name_or_path": "bert-base-uncased"}
+
+    def __init__(self, arguments: dict = None):
+        if arguments is not None:
+            self.arguments = arguments
 
     def fit(self, segments, sentences):
         print(f"BertEmbedding.fit() from {self.arguments}")
@@ -110,7 +108,6 @@ class BertEmbeddingModel(BaseModel):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model.to(device)
         if torch.cuda.is_available():
-
             torch.cuda.empty_cache()
 
         # Das speichern der Satz ids und texte.
@@ -120,42 +117,34 @@ class BertEmbeddingModel(BaseModel):
 
         # Tokenization
         with Timer("Tokenization"):
-            inputs = tokenizer(sentences_text, return_tensors="np", return_offsets_mapping=True,
-                               return_attention_mask=True, max_length=max_input_length)
+            inputs = tokenizer(sentences_text, return_tensors="np", return_offsets_mapping=True, return_attention_mask=True, max_length=max_input_length)
 
         # Sortieren der Sätze nach der Länge
         with Timer("Sorting"):
             # sortiert von lang nach kurz, damit es schnell abbricht falls die maximale größe nicht unterstützt wird
-            sorted_indices = np.argsort([-len(ids) for ids in inputs['input_ids']])
-            sorted_input_ids_array = inputs['input_ids'][sorted_indices]
-            sorted_attention_mask_array = inputs['attention_mask'][sorted_indices]
-            sorted_offset_mapping_array = inputs['offset_mapping'][sorted_indices]
+            sorted_indices = np.argsort([-len(ids) for ids in inputs["input_ids"]])
+            sorted_input_ids_array = inputs["input_ids"][sorted_indices]
+            sorted_attention_mask_array = inputs["attention_mask"][sorted_indices]
+            sorted_offset_mapping_array = inputs["offset_mapping"][sorted_indices]
             sorted_sentences_id = sentences_id[sorted_indices]
 
         # Erstellen des Datasets und Dataloader
         with Timer("Creating Dataset and Loader"):
             BATCH_SIZE = 124
-            dataset = np.stack(
-                (sorted_input_ids_array, sorted_attention_mask_array, sorted_offset_mapping_array, sorted_sentences_id),
-                axis=1)
+            dataset = np.stack((sorted_input_ids_array, sorted_attention_mask_array, sorted_offset_mapping_array, sorted_sentences_id), axis=1)
             dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=self.collate_fn)
 
         model.eval()  # Set the model to evaluation mode
 
         all_embeddings = {}
 
-        for i, (batch_input_ids, batch_attention_mask, batch_offset_mapping, batch_sentence_ids) in enumerate(
-                tqdm.tqdm(dataloader)):
-
+        for i, (batch_input_ids, batch_attention_mask, batch_offset_mapping, batch_sentence_ids) in enumerate(tqdm.tqdm(dataloader)):
             # Alle 10 batches die GPU leeren
             if i % 10 == 0:
                 torch.cuda.empty_cache()
 
             # Prepare the batch
-            batch_inputs = {
-                'input_ids': batch_input_ids,
-                'attention_mask': batch_attention_mask
-            }
+            batch_inputs = {"input_ids": batch_input_ids, "attention_mask": batch_attention_mask}
 
             if torch.cuda.is_available():
                 batch_inputs = {key: tensor.to(device) for key, tensor in batch_inputs.items()}
@@ -164,8 +153,12 @@ class BertEmbeddingModel(BaseModel):
                 outputs = model(**batch_inputs)
                 embeddings = outputs.last_hidden_state
                 embeddings = embeddings.cpu().numpy()
-                all_embeddings.update({id: (embedding, offset, mask) for id, embedding, offset, mask in
-                                       zip(batch_sentence_ids, embeddings, batch_offset_mapping, batch_attention_mask)})
+                all_embeddings.update(
+                    {
+                        id: (embedding, offset, mask)
+                        for id, embedding, offset, mask in zip(batch_sentence_ids, embeddings, batch_offset_mapping, batch_attention_mask)
+                    }
+                )
 
         return all_embeddings
 
@@ -185,8 +178,7 @@ class BertEmbeddingModel(BaseModel):
             len_seg = len(segments[i].Text)
             attention_mask = embeddings[id][2]
             offset = embeddings[id][1]
-            valid_length = torch.where(attention_mask == 0)[0][0] if 0 in attention_mask else len(
-                attention_mask)
+            valid_length = torch.where(attention_mask == 0)[0][0] if 0 in attention_mask else len(attention_mask)
             temp_offsets = offset[:valid_length]
             result = find_subrange((start, start + len_seg), temp_offsets)
             if type(result) != type([]):
@@ -219,7 +211,7 @@ MODELS = {
     "umap": Umap,
     "semisupervised_umap": SemiSupervisedUmap,
     "bert": BertEmbeddingModel,
-#    "cuml_umap": C_Umap
+    #    "cuml_umap": C_Umap
 }
 
 
