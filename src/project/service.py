@@ -43,7 +43,8 @@ class ProjectService:
     def get_embedding_hash(self):
         config = self.get_project_config()
         model_hash = generate_hash({"project_id": self.project_id, "model": config["embedding_config"]})
-        return model_hash
+        model_name = config["embedding_config"]["model_name"]
+        return f"embedding_{model_name}_" + model_hash
 
     def get_reduction_hash(self):
         config = self.get_project_config()
@@ -53,7 +54,8 @@ class ProjectService:
                 "model": {"embedding_model": config["embedding_config"], "reduction_model": config["reduction_config"]},
             }
         )
-        return model_hash
+        model_name = config["reduction_config"]["model_name"]
+        return f"reduction_{model_name}_" + model_hash
 
     def get_model_hash(self, model_type):
         if model_type == "embedding_config":
