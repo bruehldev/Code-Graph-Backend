@@ -30,7 +30,7 @@ class ProjectService:
     def get_project_config(self):
         project = self.get_project()
         config = self.db.query(Config).filter_by(config_id=project.config_id).first()
-        return config
+        return json.loads(config.config)
 
     def set_project_config(self, config_id):
         project = self.get_project()
@@ -40,34 +40,58 @@ class ProjectService:
         self.db.refresh(project)
         return project
 
-    def get_embedding_model(self):
+    def get_embedding_hash(self):
         config = self.get_project_config()
-        model_name = config.config["embedding_config"]["model_name"]
-        model_hash = generate_hash({"project_id": self.project_id, "model": config.config["embedding_config"]})
-        model_entry = self.db.query(Model).filter(Model.model_hash == model_hash).first()
-        # Check if model exists
-        model_path = get_file_path(self.project_id, "models", f"{model_hash}.pkl")
+        model_hash = generate_hash({"project_id": self.project_id, "model": config["embedding_config"]})
+        return model_hash
 
+    def get_reduction_hash(self):
+        config = self.get_project_config()
+        model_hash = generate_hash(
+            {
+                "project_id": self.project_id,
+                "model": {"embedding_model": config["embedding_config"], "reduction_model": config["reduction_config"]},
+            }
+        )
+        return model_hash
+
+    def get_model_hash(self, model_type):
+        if model_type == "embedding_config":
+            model_hash = self.get_embedding_hash()
+        elif model_type == "reduction_config":
+            model_hash = self.get_reduction_hash()
+        return model_hash
+
+    def get_model_entry(self, model_type):
+        model_hash = self.get_model_hash(model_type)
+        model_entry = self.db.query(Model).filter(Model.model_hash == model_hash).first()
+        return model_entry
+
+    def get_model(self, model_type):
+        config = self.get_project_config()
+        model_hash = self.get_model_hash(model_type)
+        model_entry = self.db.query(Model).filter(Model.model_hash == model_hash).first()
+        model_name = config[model_type]["model_name"]
+        model_path = get_file_path(self.project_id, "models", f"{model_hash}.pkl")
         if not os.path.exists(model_path):
-            embedding_model = MODELS[model_name](config.config["embedding_config"]["args"])
+            model = MODELS[model_name](config[model_type]["args"])
             logger.info(f"Created new model for project {self.project_id}/{model_hash}")
         else:
             with open(model_path, "rb") as f:
-                embedding_model = pickle.load(f)
+                model = pickle.load(f)
             logger.info(f"Loaded model from file {model_path}")
-
         if model_entry is None:
             model_entry = Model(project_id=self.project_id, model_hash=model_hash)
             self.db.add(model_entry)
             self.db.commit()
             self.db.refresh(model_entry)
 
-        return model_entry, embedding_model
+        return model_entry, model
 
-    def save_embedding_model(self, embedding_model):
+    def save_model(self, model_type, model):
         config = self.get_project_config()
-        model_hash = generate_hash({"project_id": self.project_id, "model": config.config["embedding_config"]})
+        model_hash = self.get_model_hash(model_type)
         model_path = get_file_path(self.project_id, "models", f"{model_hash}.pkl")
         with open(model_path, "wb") as f:
-            pickle.dump(embedding_model, f)
+            pickle.dump(model, f)
         logger.info(f"Saved model to file {model_path}")

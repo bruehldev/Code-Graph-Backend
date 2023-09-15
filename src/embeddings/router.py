@@ -26,6 +26,7 @@ router = APIRouter()
 
 @router.get("/")
 def get_embeddings_endpoint(
+    project_id: int,
     all: bool = False,
     page: int = 1,
     page_size: int = 100,
@@ -34,11 +35,13 @@ def get_embeddings_endpoint(
 ):
     return_dict = {"reduced_length": reduce_length}
     embeddings = []
+    project = ProjectService(project_id, db)
+    model_entry = project.get_model_entry("embedding_config")
 
     if all:
-        embeddings = db.query(Embedding).all()
+        embeddings = db.query(Embedding).filter(Embedding.model_id == model_entry.model_id).all()
     else:
-        embeddings = db.query(Embedding).offset(page * page_size).limit(page_size).all()
+        embeddings = db.query(Embedding).filter(Embedding.model_id == model_entry.model_id).offset(page * page_size).limit(page_size).all()
         return_dict.update({"page": page, "page_size": page_size})
 
     result = limit_embeddings_length(
@@ -60,7 +63,7 @@ def extract_embeddings_endpoint(
 ):
     embeddings = []
     project = ProjectService(project_id, db)
-    model_entry, embedding_model = project.get_embedding_model()
+    model_entry, embedding_model = project.get_model("embedding_config")
     subquery = exists().where(and_(Embedding.segment_id == Segment.segment_id, Embedding.model_id == model_entry.model_id))
 
     segments_and_sentences = (
@@ -88,7 +91,7 @@ def extract_embeddings_endpoint(
 
         db.bulk_insert_mappings(Embedding, embedding_mappings)
         db.commit()
-        project.save_embedding_model(embedding_model)
+        project.save_model("embedding_config", embedding_model)
 
     return {"data": len(embeddings)}
 
