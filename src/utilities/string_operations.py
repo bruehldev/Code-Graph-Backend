@@ -1,4 +1,22 @@
 import hashlib
+import os
+import json
+from urllib.parse import unquote
+from typing import Literal
+
+env = {}
+with open("../env.json") as f:
+    env = json.load(f)
+
+
+def get_root_path(project_id: int, type: Literal["models"]):
+    path = os.path.join(env["exported_folder"], "projects", str(project_id), type)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def get_file_path(project_id: int, type: Literal["models"], file_name: str):
+    return os.path.join(get_root_path(project_id, type), file_name)
 
 
 def generate_hash(model_dict: dict):

@@ -16,7 +16,8 @@ from models_neu.model_definitions import MODELS
 from configmanager.service import ConfigManager
 from db.session import get_db
 from sqlalchemy import not_, and_, exists
-
+from project.service import ProjectService
+from sqlalchemy.orm import Session
 from data.utils import get_path_key
 from utilities.string_operations import generate_hash
 
@@ -25,20 +26,27 @@ router = APIRouter()
 
 @router.get("/")
 def get_embeddings_endpoint(
-    dataset_name: Experimental_dataset_names,
-    model_name: Model_names,
     all: bool = False,
     page: int = 1,
     page_size: int = 100,
     reduce_length: int = 3,
-) -> EmbeddingTable:
+    db: Session = Depends(get_db),
+):
+    return_dict = {"reduced_length": reduce_length}
     embeddings = []
+
     if all:
-        embeddings = limit_embeddings_length(get_embeddings(dataset_name, model_name), reduce_length)
-        return {"length": len(embeddings), "data": embeddings, "reduce_length": reduce_length}
+        embeddings = db.query(Embedding).all()
     else:
-        embeddings = limit_embeddings_length(get_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size), reduce_length)
-        return {"length": len(embeddings), "page": page, "page_size": page_size, "reduce_length": reduce_length, "data": embeddings}
+        embeddings = db.query(Embedding).offset(page * page_size).limit(page_size).all()
+        return_dict.update({"page": page, "page_size": page_size})
+
+    result = limit_embeddings_length(
+        [{"id": embedding.embedding_id, "embedding": pickle.loads(embedding.embedding_value).tolist()} for embedding in embeddings], reduce_length
+    )
+    return_dict.update({"length": len(result), "data": result})
+
+    return return_dict
 
 
 @router.get("/extract")
@@ -46,28 +54,14 @@ def extract_embeddings_endpoint(
     page: int = 1,
     page_size: int = 100,
     project_id: int = None,
-    id=None,
     reduce_length: int = 3,
     return_data: bool = False,
-    db=Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     embeddings = []
-    config_manager = ConfigManager(db)
-    config = config_manager.get_project_config(project_id)
-    config_as_json = json.loads(config.config)
-
-    model_name = config_as_json["embedding_config"]["model_name"]
-    model_hash = generate_hash({"project_id": project_id, "model": config_as_json["embedding_config"]})
-    model_entry = db.query(Model).filter(Model.model_hash == model_hash).first()
-    if model_entry is None:
-        model_entry = Model(project_id=project_id, model_hash=model_hash)
-        db.add(model_entry)
-        db.commit()
-        db.refresh(model_entry)
-
-    embedding_model = MODELS[model_name](config_as_json["embedding_config"]["args"])
-
-    subquery = exists().where(and_(Embedding.segment_id == Segment.segment_id, Embedding.model_id == 3))
+    project = ProjectService(project_id, db)
+    model_entry, embedding_model = project.get_embedding_model()
+    subquery = exists().where(and_(Embedding.segment_id == Segment.segment_id, Embedding.model_id == model_entry.model_id))
 
     segments_and_sentences = (
         db.query(Segment, Sentence)
@@ -78,22 +72,25 @@ def extract_embeddings_endpoint(
         .filter(not_(subquery))
         .all()
     )
-    segments, sentences = zip(*segments_and_sentences)
-    embeddings = embedding_model.transform(segments, sentences)
 
-    ## saving
+    if not len(segments_and_sentences) == 0:
+        segments, sentences = zip(*segments_and_sentences)
+        embeddings = embedding_model.transform(segments, sentences)
 
-    embedding_mappings = [
-        {"segment_id": segment.segment_id, "model_id": model_entry.model_id, "embedding_value": pickle.dumps(embedding_value)}
-        for embedding_value, segment in zip(embeddings, segments)
-    ]
+        ## saving
 
-    # Bulk insert embeddings
-    db.bulk_insert_mappings(Embedding, embedding_mappings)
-    db.commit()
+        embedding_mappings = [
+            {"segment_id": segment.segment_id, "model_id": model_entry.model_id, "embedding_value": pickle.dumps(embedding_value)}
+            for embedding_value, segment in zip(embeddings, segments)
+        ]
 
-    print(embeddings[0])
-    return {"config": len(embeddings)}
+        # Bulk insert embeddings
+
+        db.bulk_insert_mappings(Embedding, embedding_mappings)
+        db.commit()
+        project.save_embedding_model(embedding_model)
+
+    return {"data": len(embeddings)}
 
 
 """

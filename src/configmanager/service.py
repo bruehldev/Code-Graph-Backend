@@ -43,14 +43,6 @@ class ConfigManager:
         else:
             raise Exception(f"Config '{id}' not found")
 
-    def get_project_config(self, project_id):
-        project = self.session.query(Project).filter_by(project_id=project_id).first()
-        if project:
-            config = self.session.query(Config).filter_by(config_id=project.config_id).first()
-            return config
-        else:
-            raise Exception(f"Project '{project_id}' not found")
-
     @staticmethod
     def get_default_model():
         return ConfigModel()
