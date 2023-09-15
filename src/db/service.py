@@ -13,6 +13,8 @@ from sqlalchemy.exc import NoSuchTableError
 from db.base import Base
 from db.models import Project, Dataset, Sentence, Segment, Embedding, ReducedEmbedding, Code, Model, Config
 from db.session import get_session, get_engine
+from utilities.string_operations import get_root_path
+import shutil
 
 engine = get_engine()
 metadata = Base.metadata
@@ -65,6 +67,13 @@ def delete_all_tables():
 
     for table_name in table_names:
         results.append({"name": table_name, "deleted": delete_table(table_name)})
+
+    init_db()
+    # delete all files
+    root_path = get_root_path()
+
+    shutil.rmtree(root_path)
+    logger.info(f"Deleting all files in {root_path}")
 
     return results
 
