@@ -14,7 +14,8 @@ import numpy as np
 import umap
 import tqdm
 from utilities.timer import Timer
-
+from sklearn.cluster import DBSCAN
+from hdbscan import HDBSCAN
 from db.session import get_db
 
 
@@ -48,6 +49,45 @@ class Umap:
     def __str__(self):
         return f"Umap({self.arguments})"
 
+
+class Hdbscan:
+    arguments: dict = Field(dict(), description="Arguments for Umap")
+    name: str = ""
+    fitted: bool = True
+    def __init__(self, arguments: dict = None):
+        if arguments is None:
+            arguments = {}
+        self.arguments = arguments
+
+    def fit(self):
+        return True
+
+    def transform(self, data: Union[np.ndarray, list]) -> np.ndarray:
+        if len(data) == 0:
+            raise ValueError("The data is empty.")
+
+        model = HDBSCAN(**self.arguments)
+        return model.fit_predict(data)
+
+
+class Dbscan:
+    arguments: dict = Field(dict(), description="Arguments for Umap")
+    name: str = ""
+    fitted: bool = True
+    def __init__(self, arguments: dict = None):
+        if arguments is None:
+            arguments = {}
+        self.arguments = arguments
+
+    def fit(self):
+        return True
+
+    def transform(self, data: Union[np.ndarray, list]) -> np.ndarray:
+        if len(data) == 0:
+            raise ValueError("The data is empty.")
+
+        model = DBSCAN(**self.arguments)
+        return model.fit_predict(data)
 
 class SemiSupervisedUmap(Umap):
     def fit(self, data: Union[np.ndarray, list], labels: np.ndarray = None) -> bool:
@@ -206,6 +246,8 @@ MODELS = {
     "umap": Umap,
     "semisupervised_umap": SemiSupervisedUmap,
     "bert": BertEmbeddingModel,
+    "dbscan": Dbscan,
+    "hdbscan": Hdbscan,
     #    "cuml_umap": C_Umap
 }
 
