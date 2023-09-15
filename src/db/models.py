@@ -109,12 +109,4 @@ class Config(Base):
     # project_id = Column(Integer, ForeignKey("Project.project_id", ondelete="CASCADE"))
     name = Column(String(255), nullable=False)
 
-    embedding_model_id = Column(Integer, ForeignKey("Model.model_id"))
-    reduced_embedding_model_id = Column(Integer, ForeignKey("Model.model_id"))
-    cluster_model_id = Column(Integer, ForeignKey("Model.model_id"))
-
-    # project = relationship("Project", back_populates="config")
-    embedding_model = relationship("Model", foreign_keys=[embedding_model_id])
-    reduced_embedding_model = relationship("Model", foreign_keys=[reduced_embedding_model_id])
-
     config = Column(JSON, nullable=False)
