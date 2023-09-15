@@ -62,7 +62,11 @@ class ProjectService:
         model_hash = generate_hash(
             {
                 "project_id": self.project_id,
-                "model": {"reduction_model": config["reduction_config"], "cluster_model": config["cluster_config"]},
+                "model": {
+                    "embedding_model": config["embedding_config"],
+                    "reduction_model": config["reduction_config"],
+                    "cluster_model": config["cluster_config"],
+                },
             }
         )
         model_name = config["cluster_config"]["model_name"]
