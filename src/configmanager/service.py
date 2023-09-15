@@ -1,4 +1,5 @@
 import logging
+import json
 from configmanager.schemas import ConfigModel, ReductionConfig, ClusterConfig, EmbeddingConfig
 from db.models import Config, Project
 from sqlalchemy.orm import Session
@@ -14,11 +15,19 @@ class ConfigManager:
 
     def get_all_configs(self):
         configs = self.session.query(Config).all()
+        # parse each config.config in json
+        for config in configs:
+            self.session.expunge(config)
+            config.config = json.loads(config.config)
+
         return configs
 
     def get_config(self, id):
         config = self.session.query(Config).filter_by(config_id=id).first()
-        return config
+        self.session.expunge(config)
+        if config:
+            config.config = json.loads(config.config)
+            return config
 
     def save_config(self, config):
         self.session.add(config)
