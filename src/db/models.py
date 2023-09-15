@@ -102,6 +102,15 @@ class Model(Base):
     project = relationship("Project", back_populates="models")
 
 
+class Cluster(Base):
+    __tablename__ = "Cluster"
+
+    cluster_id = Column(Integer, primary_key=True)
+    reduced_embedding_id = Column(Integer, ForeignKey("ReducedEmbedding.reduced_embedding_id", ondelete="CASCADE"))
+    model_id = Column(Integer, ForeignKey("Model.model_id"))
+    cluster = Column("cluster", Integer)
+
+
 class Config(Base):
     __tablename__ = "Config"
 
