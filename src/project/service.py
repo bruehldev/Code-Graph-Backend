@@ -91,7 +91,6 @@ class ProjectService:
         return model_entry, model
 
     def save_model(self, model_type, model):
-        config = self.get_project_config()
         model_hash = self.get_model_hash(model_type)
         model_path = get_file_path(self.project_id, "models", f"{model_hash}.pkl")
         with open(model_path, "wb") as f:
