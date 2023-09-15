@@ -15,7 +15,13 @@ from database.postgresql import (
 from data.utils import get_path_key
 
 from clusters.schemas import DataClusterResponse, ClusterTable, ClusterEntry, ClusterData
-from database.schemas import DeleteResponse
+from db.schemas import DeleteResponse
+from project.service import ProjectService
+from db.session import get_db
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from db.models import Cluster, Model, Project, ReducedEmbedding
+from sqlalchemy import not_, and_, exists
 
 router = APIRouter()
 
@@ -27,8 +33,32 @@ class ClustersTableResponse(BaseModel):
 
 @router.get("/extract")
 def extract_clusters_endpoint(
-    dataset_name: Experimental_dataset_names, model_name: Model_names, all: bool = False, page: int = 1, page_size: int = 100, return_data: bool = False
-) -> ClusterTable:
+    project_id: int, all: bool = False, page: int = 1, page_size: int = 100, return_data: bool = False, db: Session = Depends(get_db)
+):
+    clusters = []
+    project: ProjectService = ProjectService(project_id, db)
+    model_entry, cluster_model = project.get_model("cluster_config")
+    cluster_hash = project.get_embedding_hash()
+    cluster_model_entry = db.query(Model).filter(Model.model_hash == cluster_hash).first()
+
+    reduced_embeddings_todo = (
+        db.query(ReducedEmbedding)
+        .join(Model, Model.model_id == ReducedEmbedding.model_id)
+        .join(Project, Project.project_id == Model.project_id)
+        .filter(and_(Project.project_id == project_id, Model.model_id == cluster_model_entry.model_id))
+        .filter(not_(exists().where(and_(Cluster.reduced_embedding_id == ReducedEmbedding.reduced_embedding_id, Cluster.model_id == model_entry.model_id))))
+        .all()
+    )
+    if not len(reduced_embeddings_todo) == 0:
+        print(
+            reduced_embeddings_todo[0].reduced_embedding_id,
+            reduced_embeddings_todo[0].model_id,
+            reduced_embeddings_todo[0].pos_x,
+            reduced_embeddings_todo[0].pos_y,
+        )
+        cluster_model.transform(reduced_embeddings_todo)
+
+    """
     if all:
         clusters = extract_clusters(dataset_name, model_name)
         if return_data:
@@ -40,7 +70,7 @@ def extract_clusters_endpoint(
         if return_data:
             return {"data": clusters, "length": len(clusters), "page": page, "page_size": page_size}
         else:
-            return {"data": [], "length": len(clusters), "page": page, "page_size": page_size}
+            return {"data": [], "length": len(clusters), "page": page, "page_size": page_size}"""
 
 
 @router.get("/")

@@ -57,11 +57,24 @@ class ProjectService:
         model_name = config["reduction_config"]["model_name"]
         return f"reduction_{model_name}_" + model_hash
 
+    def get_cluster_hash(self):
+        config = self.get_project_config()
+        model_hash = generate_hash(
+            {
+                "project_id": self.project_id,
+                "model": {"reduction_model": config["reduction_config"], "cluster_model": config["cluster_config"]},
+            }
+        )
+        model_name = config["cluster_config"]["model_name"]
+        return f"cluster_{model_name}_" + model_hash
+
     def get_model_hash(self, model_type):
         if model_type == "embedding_config":
             model_hash = self.get_embedding_hash()
         elif model_type == "reduction_config":
             model_hash = self.get_reduction_hash()
+        elif model_type == "cluster_config":
+            model_hash = self.get_cluster_hash()
         return model_hash
 
     def get_model_entry(self, model_type):
