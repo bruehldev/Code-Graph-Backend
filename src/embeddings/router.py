@@ -54,13 +54,11 @@ def get_embeddings_endpoint(
 
 @router.get("/extract")
 def extract_embeddings_endpoint(
-    page: int = 1,
-    page_size: int = 100,
     project_id: int = None,
-    reduce_length: int = 3,
-    return_data: bool = False,
     db: Session = Depends(get_db),
 ):
+    print("Extracting embeddings")
+    print(f"Project {project_id}")
     embeddings = []
     project = ProjectService(project_id, db)
     model_entry, embedding_model = project.get_model("embedding_config")

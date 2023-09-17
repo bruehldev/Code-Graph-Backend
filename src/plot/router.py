@@ -21,7 +21,10 @@ from db.session import get_db
 from sqlalchemy.orm import Session, aliased
 from fastapi import Depends
 from db.models import Cluster, Model, Project, ReducedEmbedding, Segment, Sentence, Code, Embedding
-
+from embeddings.router import extract_embeddings_endpoint
+from reduced_embeddings.router import extract_embeddings_reduced_endpoint
+from clusters.router import extract_clusters_endpoint
+# TODO: dont use the router, move stuff to services
 router = APIRouter()
 
 
@@ -33,8 +36,12 @@ def get_plot_endpoint(
     page_size: int = 100,
     db: Session = Depends(get_db),
 ):
+    print("plot_router")
+    extract_embeddings_endpoint(project_id, db=db)
+    extract_embeddings_reduced_endpoint(project_id, db=db)
+    extract_clusters_endpoint(project_id, db=db)
     plots = []
-    project = ProjectService(project_id, db)
+    project = ProjectService(project_id, db=db)
     model_entry = project.get_model_entry("cluster_config")
     return_dict = {}
 
