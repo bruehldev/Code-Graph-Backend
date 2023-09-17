@@ -34,7 +34,12 @@ class ClustersTableResponse(BaseModel):
 
 @router.get("/extract")
 def extract_clusters_endpoint(
-    project_id: int, all: bool = False, page: int = 1, page_size: int = 100, return_data: bool = False, db: Session = Depends(get_db)
+    project_id: int,
+    all: bool = False,
+    page: int = 1,
+    page_size: int = 100,
+    return_data: bool = False,
+    db: Session = Depends(get_db)
 ):
     clusters = []
     project: ProjectService = ProjectService(project_id, db)
@@ -63,7 +68,16 @@ def extract_clusters_endpoint(
         db.bulk_insert_mappings(Cluster, cluster_mappings)
         db.commit()
 
-    return {"data": cluster_mappings, "length": len(clusters)}
+    return_dict = {"extracted": len(reduced_embeddings_todo)}
+    if return_data:
+        if all:
+            clusters = db.query(Cluster).filter(Cluster.model_id == model_entry.model_id).all()
+        else:
+            clusters = db.query(Cluster).filter(Cluster.model_id == model_entry.model_id).offset(page * page_size).limit(page_size).all()
+            return_dict.update({"page": page, "page_size": page_size})
+        return_dict.update({"length": len(clusters), "data": clusters})
+
+    return return_dict
 
 
 @router.get("/")

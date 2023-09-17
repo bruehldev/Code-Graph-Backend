@@ -32,6 +32,8 @@ class ConfigManager:
     def save_config(self, config):
         self.session.add(config)
         self.session.commit()
+        self.session.refresh(config)
+        return config
 
     def update_config(self, id, new_config):
         config = self.session.query(Config).filter_by(config_id=id).first()

@@ -12,27 +12,29 @@ from sqlalchemy.orm import Session
 router = APIRouter()
 
 
-@router.post("/", response_model=ConfigModel)
+@router.post("/") #, response_model=ConfigModel)
 def create_config(config: ConfigModel = ConfigManager.get_default_model(), db: Session = Depends(get_db)):
     config_manager = ConfigManager(db)
 
     config_json = json.dumps(config.dict())
 
     new_config = Config(name=config.name, config=config_json)  # Store the JSON string in the 'config' column
-    new_config.embedding_config = config.embedding_config
+    """new_config.embedding_config = config.embedding_config
     new_config.reduction_config = config.reduction_config
     new_config.cluster_config = config.cluster_config
-    new_config.default_limit = config.default_limit
+    new_config.default_limit = config.default_limit"""
 
-    config_manager.save_config(new_config)
-
-    return ConfigModel(
+    db_config = config_manager.save_config(new_config)
+    db.expunge(db_config)
+    db_config.config = json.loads(db_config.config)
+    return db_config
+    """ConfigModel(
         name=new_config.name,
         embedding_config=new_config.embedding_config,
         reduction_config=new_config.reduction_config,
         cluster_config=new_config.cluster_config,
         default_limit=new_config.default_limit,
-    )
+    )"""
 
 
 @router.get("/")
