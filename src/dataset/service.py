@@ -85,9 +85,7 @@ def add_data_to_db(project_id, database_name, json_data, session):
     start_time = time.time()
     project = session.query(Project).filter(and_(Project.project_id == project_id)).first()
     if not project:
-        print("Project not found in the database!")
-        session.close()
-        return
+        raise Exception("Project not found in the database!")
 
     dataset = Dataset(
         project_id=project.project_id,
