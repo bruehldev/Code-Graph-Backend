@@ -17,6 +17,7 @@ from utilities.timer import Timer
 from sklearn.cluster import DBSCAN
 from hdbscan import HDBSCAN
 from db.session import get_db
+from umap_pytorch import PUMAP
 
 
 class Umap:
@@ -241,6 +242,52 @@ class BertEmbeddingModel:
         temp.update(self.arguments)
         return f"BertEmbeddingModel({temp})"
 
+class DynamicBertModel(BertEmbeddingModel):
+    is_dynamic: bool = True
+    train: bool = False
+
+    def __str__(self):
+        temp = copy.deepcopy(self.default_parameters)
+        temp.update(self.arguments)
+        return f"DynamicBertEmbeddingModel({temp})"
+
+
+class DynamicUmap:
+    arguments: dict = Field(dict(), description="Arguments for PUMAP")
+    name: str = ""
+    fitted: bool = False
+    is_dynamic: bool = True
+    train: bool = False
+
+    def __init__(self, arguments: dict = None):
+        if arguments is not None:
+            self.arguments = arguments
+        self._model = None
+
+    def fit(self, data: Union[np.ndarray, list]) -> bool:
+        if len(data) == 0:
+            raise ValueError("The data is empty.")
+        self._model = PUMAP(**self.arguments)
+        if type(data) == type(np.ndarray([])):
+            data = torch.tensor(data)
+        self._model.fit(data)
+        self.fitted = True
+        return True
+
+    def transform(self, data: Union[np.ndarray, list]) -> np.ndarray:
+        if len(data) == 0:
+            return np.array([])
+        print(f"Umap.transform() with #{len(data)} embeddings")
+        if self._model is None:
+            raise ValueError("The UMAP model has not been fitted yet.")
+        transformed_data = self._model.transform(data)
+        return transformed_data
+
+    def __str__(self):
+        return f"DynamicUmap({self.arguments})"
+
+
+
 
 MODELS = {
     "umap": Umap,
@@ -248,7 +295,8 @@ MODELS = {
     "bert": BertEmbeddingModel,
     "dbscan": Dbscan,
     "hdbscan": Hdbscan,
-    #    "cuml_umap": C_Umap
+    "dynamic_bert": DynamicBertModel,
+    "dynamic_umap": DynamicUmap
 }
 
 

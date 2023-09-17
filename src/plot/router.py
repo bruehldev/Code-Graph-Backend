@@ -44,9 +44,7 @@ def get_plot_endpoint(
     SentenceAlias = aliased(Sentence)
     CodeAlias = aliased(Code)
     ProjectAlias = aliased(Project)
-
-    if all:
-        query = (
+    query = (
             db.query(
                 Cluster,
                 ReducedEmbeddingAlias,
@@ -63,8 +61,13 @@ def get_plot_endpoint(
             .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
             .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
             .filter(Cluster.model_id == model_entry.model_id)
-            .all()
         )
+    if all:
+        plots = query.all()
+
+    else:
+        plots = query.offset(page * page_size).limit(page_size).all()
+
         result_dicts = [
             {
                 "id": row[3].segment_id,
@@ -74,11 +77,8 @@ def get_plot_endpoint(
                 "reduced_embedding": {"x": row[1].pos_x, "y": row[1].pos_y},
                 "cluster": row[0].cluster,
             }
-            for row in query
+            for row in plots
         ]
-
-        print(result_dicts)
-
         return {"data": result_dicts, "length": len(result_dicts)}
     """
     else: TODO: Implement pagination
