@@ -11,9 +11,16 @@ from clusters.router import router as clusters_router
 from plot.router import router as plot_router
 
 from db.service import init_db
+from fastapi.middleware.cors import CORSMiddleware
 
-
-app = FastAPI(title="CodeGraph")
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(project_router, prefix="/projects", tags=["projects"])
 app.include_router(dataset_router, prefix="/projects/{project_id}/datasets", tags=["datasets"])
