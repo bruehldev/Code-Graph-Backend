@@ -7,7 +7,7 @@ from db.session import get_db
 from configmanager.service import ConfigManager
 from fastapi import HTTPException
 from project.service import ProjectService
-
+from configmanager.router import create_config
 router = APIRouter()
 
 
@@ -17,7 +17,9 @@ def create_project_route(project_name: str, db: Session = Depends(get_db)):
     db.add(new_project)
     db.commit()
     db.refresh(new_project)
-
+    created_config = create_config(db=db)
+    print(created_config)
+    set_project_config_route(new_project.project_id, created_config.config_id, db=db)
     return new_project
 
 

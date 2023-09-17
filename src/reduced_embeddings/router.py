@@ -45,7 +45,7 @@ def get_reduced_embeddings_endpoint(project_id: int, all: bool = False, page: in
 
 @router.get("/extract")
 def extract_embeddings_reduced_endpoint(
-    project_id: int, all: bool = True, page: int = 1, page_size: int = 100, return_data: bool = True, db: Session = Depends(get_db)
+    project_id: int, db: Session = Depends(get_db)
 ):
     reduced_embeddings = []
     project: ProjectService = ProjectService(project_id, db)
