@@ -103,7 +103,7 @@ def add_data_to_db(project_id, database_name, json_data, session):
     sentence_ids = [row[0] for row in session.execute(insert_stmt).fetchall()]
 
     segment_dicts = []
-    annotations_dict = {a.text: a.code_id for a in session.query(Code).filter_by(project_id=project.project_id).all()}
+    annotations_dict = {(a.text, a.parent_code_id): a for a in session.query(Code).filter_by(project_id=project.project_id).all()}
     new_annotations = set()
 
     for item, sentence_id in zip(json_data["data"], sentence_ids):
@@ -111,29 +111,33 @@ def add_data_to_db(project_id, database_name, json_data, session):
             labels = entity["label"]
             if not isinstance(labels, list):
                 labels = [labels]
+            print(entity)
             last_id = None
             for i, label in enumerate(labels):
-                annotation_id = annotations_dict.get(label)
-
+                annotation = annotations_dict.get((label, last_id))
+                print(annotation)
+                annotation_id = annotation.code_id if annotation else None
                 # If the annotation doesn't exist, add it to the database and the dictionary
-                if annotation_id is None:
-                    if label not in new_annotations:
+                if annotation is None or annotation.parent_code_id != last_id:
+                    if (label, last_id) not in new_annotations:
                         new_annotation = Code(text=label, project_id=project.project_id, parent_code_id=last_id)
                         session.add(new_annotation)
                         session.commit()
                         annotation_id = new_annotation.code_id
-                        annotations_dict[label] = annotation_id
-                        new_annotations.add(label)
+                        annotations_dict[(label, last_id)] = new_annotation
+                        new_annotations.add((label, last_id))
+
                 last_id = annotation_id
 
-                segment_dict = {
-                    "sentence_id": sentence_id,
-                    "text": item["text"][entity["start"] : entity["end"]],
-                    "start_position": entity["start"],
-                    "code_id": annotation_id,
-                }
+            segment_dict = {
+                "sentence_id": sentence_id,
+                "text": item["text"][entity["start"] : entity["end"]],
+                "start_position": entity["start"],
+                "code_id": annotation_id,
+            }
+            print(segment_dict)
 
-                segment_dicts.append(segment_dict)
+            segment_dicts.append(segment_dict)
 
     if segment_dicts:
         session.bulk_insert_mappings(Segment, segment_dicts)
