@@ -93,3 +93,35 @@ def delete_datasets_route(project_id: int, dataset_id: int, db: Session = Depend
     db.delete(dataset)
     db.commit()
     return {"id": dataset_id, "deleted": True}
+
+
+@router.get("/{dataset_id}/entries/")
+def get_sentences_segments_route(
+    project_id: int,
+    dataset_id: int,
+    db: Session = Depends(session.get_db),
+):
+    # Get sentences with their segments
+    dataset = db.query(models.Dataset).filter(models.Dataset.project_id == project_id, models.Dataset.dataset_id == dataset_id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
+
+    # Query for sentences with segments
+    sentences_with_segments = (
+        db.query(models.Sentence, models.Segment)
+        .filter(models.Sentence.dataset_id == dataset_id)
+        .join(models.Segment, models.Segment.sentence_id == models.Sentence.sentence_id)
+        .all()
+    )
+
+    # Organize the data into a dictionary with sentences and their associated segments
+    sentences_data = {}
+    for sentence, segment in sentences_with_segments:
+        if sentence not in sentences_data:
+            sentences_data[sentence] = {"segments": []}
+        sentences_data[sentence]["segments"].append(segment)
+
+    # Convert the dictionary values to a list to return as JSON
+    sentences = [{"sentence": sentence, "segments": data["segments"]} for sentence, data in sentences_data.items()]
+
+    return sentences
