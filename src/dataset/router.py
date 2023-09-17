@@ -10,7 +10,7 @@ from dataset.service import text_to_json, add_data_to_db
 from pprint import pprint
 
 from db.schemas import DeleteResponse
-
+from sqlalchemy import not_, and_, exists
 router = APIRouter()
 
 
@@ -87,7 +87,7 @@ def update_dataset_route(project_id: int, dataset_id: int, dataset_name: str, db
 
 @router.delete("/{dataset_id}/", response_model=DeleteResponse)
 def delete_datasets_route(project_id: int, dataset_id: int, db: Session = Depends(session.get_db)):
-    dataset = db.query(models.Dataset).filter(models.Dataset.project_id == project_id and models.Dataset.dataset_id == dataset_id).first()
+    dataset = db.query(models.Dataset).filter(and_(models.Dataset.project_id == project_id, models.Dataset.dataset_id == dataset_id)).first()
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
     db.delete(dataset)

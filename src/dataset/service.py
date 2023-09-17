@@ -63,7 +63,7 @@ def text_to_json(input_text, options=None):
                 elif label.startswith("I-") and not in_entity:
                     # Continuation of an entity but we missed the beginning
                     start = start_pos
-                    entity_label = label[2:]
+                    entity_label = label[2:].split(options.label_split)
                     in_entity = True
                 elif label.startswith("O") and in_entity:
                     # End of the current entity
@@ -77,7 +77,10 @@ def text_to_json(input_text, options=None):
                 entities.append({"start": start, "end": start_pos - 1, "label": entity_label})
 
             results.append({"text": text, "entities": entities})
-
+    if options.label_split:
+        for item in results:
+            for entity in item["entities"]:
+                entity["label"] = entity["label"].split(options.label_split)
     return {"data": results}
 
 
@@ -105,28 +108,32 @@ def add_data_to_db(project_id, database_name, json_data, session):
 
     for item, sentence_id in zip(json_data["data"], sentence_ids):
         for entity in item["entities"]:
-            label = entity["label"]
+            labels = entity["label"]
+            if not isinstance(labels, list):
+                labels = [labels]
+            last_id = None
+            for i, label in enumerate(labels):
+                annotation_id = annotations_dict.get(label)
 
-            annotation_id = annotations_dict.get(label)
+                # If the annotation doesn't exist, add it to the database and the dictionary
+                if annotation_id is None:
+                    if label not in new_annotations:
+                        new_annotation = Code(text=label, project_id=project.project_id, parent_code_id=last_id)
+                        session.add(new_annotation)
+                        session.commit()
+                        annotation_id = new_annotation.code_id
+                        annotations_dict[label] = annotation_id
+                        new_annotations.add(label)
+                last_id = annotation_id
 
-            # If the annotation doesn't exist, add it to the database and the dictionary
-            if annotation_id is None:
-                if label not in new_annotations:
-                    new_annotation = Code(text=label, project_id=project.project_id)
-                    session.add(new_annotation)
-                    session.commit()
-                    annotation_id = new_annotation.code_id
-                    annotations_dict[label] = annotation_id
-                    new_annotations.add(label)
+                segment_dict = {
+                    "sentence_id": sentence_id,
+                    "text": item["text"][entity["start"] : entity["end"]],
+                    "start_position": entity["start"],
+                    "code_id": annotation_id,
+                }
 
-            segment_dict = {
-                "sentence_id": sentence_id,
-                "text": item["text"][entity["start"] : entity["end"]],
-                "start_position": entity["start"],
-                "code_id": annotation_id,
-            }
-
-            segment_dicts.append(segment_dict)
+                segment_dicts.append(segment_dict)
 
     if segment_dicts:
         session.bulk_insert_mappings(Segment, segment_dicts)

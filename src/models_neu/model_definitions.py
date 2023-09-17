@@ -280,6 +280,8 @@ class DynamicUmap:
         print(f"Umap.transform() with #{len(data)} embeddings")
         if self._model is None:
             raise ValueError("The UMAP model has not been fitted yet.")
+        if type(data) != type(torch.tensor([])):
+            data = torch.tensor(data)
         transformed_data = self._model.transform(data)
         return transformed_data
 

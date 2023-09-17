@@ -32,7 +32,7 @@ router = APIRouter()
 def get_plot_endpoint(
     project_id: int,
     all: bool = False,
-    page: int = 1,
+    page: int = 0,
     page_size: int = 100,
     db: Session = Depends(get_db),
 ):
@@ -75,18 +75,18 @@ def get_plot_endpoint(
     else:
         plots = query.offset(page * page_size).limit(page_size).all()
 
-        result_dicts = [
-            {
-                "id": row[3].segment_id,
-                "sentence": row[4].text,
-                "segment": row[3].text,
-                "code": row[5].code_id,
-                "reduced_embedding": {"x": row[1].pos_x, "y": row[1].pos_y},
-                "cluster": row[0].cluster,
-            }
-            for row in plots
-        ]
-        return {"data": result_dicts, "length": len(result_dicts)}
+    result_dicts = [
+        {
+            "id": row[3].segment_id,
+            "sentence": row[4].text,
+            "segment": row[3].text,
+            "code": row[5].code_id,
+            "reduced_embedding": {"x": row[1].pos_x, "y": row[1].pos_y},
+            "cluster": row[0].cluster,
+        }
+        for row in plots
+    ]
+    return {"data": result_dicts, "length": len(result_dicts)}
     """
     else: TODO: Implement pagination
         start = (page - 1) * page_size
