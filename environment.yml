@@ -2,6 +2,7 @@ name: CodeGraph
 channels:
   - conda-forge
   - defaults
+  - pytorch
 dependencies:
   - conda-forge::python=3.10.11
   - conda-forge::hdbscan=0.8.30=py310h278f3c1_0
@@ -20,3 +21,6 @@ dependencies:
   - pip
   - pip:
     - umap_pytorch
+    - torch
+    - torchvision
+    - torchaudio
