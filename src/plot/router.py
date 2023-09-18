@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile
 from plot.service import get_plot
 from plot.file_operations import extract_plot
 from data.schemas import Experimental_dataset_names, Dataset_names
@@ -99,17 +99,17 @@ def get_plot_endpoint(
 
 
 @router.get("/test/")
-def setup_test_environment(project_id: int, db: Session = Depends(get_db)):
-    # use few_nerd_reduced.txt
-    file = open("dataset/examples/few_nerd_reduced.txt", "r")
-    file_content = file.read()
+async def setup_test_environment(project_id: int, db: Session = Depends(get_db)):
+    file_os = open("dataset/examples/few_nerd_reduced.txt", "rb")
+
+    file = UploadFile(file_os)
     project = create_project_route(project_name="Test", db=db)
     project_id = project.project_id
-    upload_dataset(project_id, dataset_name="few_nerd_reduced", file=file_content, db=db)
+    await upload_dataset(project_id, dataset_name="few_nerd_reduced", file=file, db=db)
     extract_embeddings_endpoint(project_id, db=db)
     extract_embeddings_reduced_endpoint(project_id, db=db)
     extract_clusters_endpoint(project_id, db=db)
-    return {"message": "Test environment setup successfully"}
+    return {"message": "Test environment setup successfully", "project_id": project_id}
 
 
 @router.get("/sentence/")

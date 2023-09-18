@@ -10,6 +10,7 @@ with open("../env.json") as f:
 
 
 def get_root_path():
+    os.makedirs(env["exported_folder"], exist_ok=True)
     return env["exported_folder"]
 
 
