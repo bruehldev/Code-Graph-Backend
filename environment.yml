@@ -2,24 +2,21 @@ name: CodeGraph
 channels:
   - conda-forge
   - defaults
-  - pytorch
 dependencies:
-  - python=3.10.11
-  - hdbscan=0.8.30=py310h278f3c1_0
-  - bertopic=0.15.0
-  - pytorch>=1.10.0
-  - torch >=2.0.1
-  - torchaudio>=2.0.0
-  - torchvision>=0.16.0
-  - numba=0.57.1
-  - pandas=1.5.3
-  - numpy=1.23.5
-  - pydantic=1.10.10
-  - scikit-learn=1.2.0
-  - fastapi=0.96.0
-  - uvicorn=0.22.0
-  - sqlalchemy=2.0.19
-  - psycopg2=2.9.6
+  - conda-forge::python=3.10.11
+  - conda-forge::hdbscan=0.8.30=py310h278f3c1_0
+  - conda-forge::bertopic=0.15.0
+  - conda-forge::numba=0.57.1
+  - conda-forge::pandas=1.5.3
+  - conda-forge::numpy=1.23.5
+  - conda-forge:pydantic=1.10.10
+  - anaconda::scikit-learn=1.2.0
+  - conda-forge::fastapi=0.96.0
+  - conda-forge::uvicorn=0.22.0
+  - conda-forge::sqlalchemy=2.0.19
+  - conda-forge::psycopg2=2.9.6
+  - conda-forge::python-multipart
+  - conda-forge::black>=23.3.0
   - pip
   - pip:
     - umap_pytorch
