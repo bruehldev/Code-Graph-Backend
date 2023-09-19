@@ -2,7 +2,8 @@ import json
 import os
 import json
 import logging
-from tqdm import tqdm
+
+
 from data.utils import get_data_file_path
 
 env = {}
@@ -70,3 +71,5 @@ def extract_codes(dataset_name: str):
     logger.info(f"Extracted and saved annotations for dataset: {dataset_name}")
 
     return annotations
+
+

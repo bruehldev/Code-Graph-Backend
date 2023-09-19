@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 from data.schemas import Experimental_dataset_names
@@ -21,7 +23,7 @@ from db.models import Embedding, Model, Project, ReducedEmbedding
 import numpy as np
 
 router = APIRouter()
-
+logger = logging.getLogger(__name__)
 
 @router.get("/")
 def get_reduced_embeddings_endpoint(project_id: int, all: bool = False, page: int = 1, page_size: int = 100, db: Session = Depends(get_db)):
@@ -64,7 +66,6 @@ def extract_embeddings_reduced_endpoint(
         .all()
     )
     if not len(embeddings_todo) == 0:
-        embeddings_arrays = np.array([])
         embeddings_arrays = np.stack([pickle.loads(embedding.embedding_value) for embedding in embeddings_todo])
         if not reduction_model.fitted:
             reduction_model.fit(embeddings_arrays)
@@ -76,6 +77,7 @@ def extract_embeddings_reduced_endpoint(
         db.bulk_insert_mappings(ReducedEmbedding, position_mappings)
         db.commit()
         project.save_model("reduction_config", reduction_model)
+        logger.info(f"Extracted {len(embeddings_todo)} reduced embeddings")
 
     return {"data": len(reduced_embeddings)}
 

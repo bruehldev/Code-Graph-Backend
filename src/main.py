@@ -9,6 +9,7 @@ from embeddings.router import router as embeddings_router
 from reduced_embeddings.router import router as reduced_embeddings_router
 from clusters.router import router as clusters_router
 from plot.router import router as plot_router
+from dynamic.router import router as dynamic_router
 
 from db.service import init_db
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,16 +22,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.include_router(db_router, prefix="/databases", tags=["databases"])
 app.include_router(project_router, prefix="/projects", tags=["projects"])
 app.include_router(dataset_router, prefix="/projects/{project_id}/datasets", tags=["datasets"])
+app.include_router(plot_router, prefix="/projects/{project_id}/plots", tags=["plots"])
 app.include_router(code_router, prefix="/projects/{project_id}/codes", tags=["codes"])
+app.include_router(dynamic_router, prefix="/projects/{project_id}/dynamic", tags=["dynamic"])
+
+
 app.include_router(embeddings_router, prefix="/projects/{project_id}/embeddings", tags=["embeddings"])
 app.include_router(reduced_embeddings_router, prefix="/projects/{project_id}/reduced_embeddings", tags=["reduced_embeddings"])
 app.include_router(clusters_router, prefix="/projects/{project_id}/clusters", tags=["clusters"])
-app.include_router(plot_router, prefix="/projects/{project_id}/plots", tags=["plots"])
 
-app.include_router(db_router, prefix="/databases", tags=["databases"])
+
+
 app.include_router(config_router, prefix="/configs", tags=["configs"])
 
 
