@@ -11,6 +11,7 @@ from pprint import pprint
 
 from db.schemas import DeleteResponse
 from sqlalchemy import not_, and_, exists
+
 router = APIRouter()
 
 
@@ -41,12 +42,15 @@ async def upload_dataset(
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found or you don't have permission to access it.")
-
     file_content = await file.read()
     file_content = file_content.decode("utf-8")
 
     # 1. By MIME Type
-    extension = file.filename.split(".")[-1]
+    if file.filename:
+        extension = file.filename.split(".")[-1]
+    else:
+        extension = "txt"
+
     if extension == "txt":
         file_type = "PlainText"
         temp_dictionary = text_to_json(file_content, options)
@@ -125,3 +129,26 @@ def get_sentences_segments_route(
     sentences = [{"sentence": sentence, "segments": data["segments"]} for sentence, data in sentences_data.items()]
 
     return sentences
+
+
+@router.delete("/{dataset_id}/sentence/")
+def delete_sentence_route(
+    project_id: int,
+    dataset_id: int,
+    sentence_id: int,
+    db: Session = Depends(session.get_db),
+):
+    # Get sentences with their segments
+    dataset = db.query(models.Dataset).filter(models.Dataset.project_id == project_id, models.Dataset.dataset_id == dataset_id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
+
+    # Query for sentences with segments
+    sentence = db.query(models.Sentence).filter(models.Sentence.sentence_id == sentence_id).first()
+    if not sentence:
+        raise HTTPException(status_code=404, detail="Sentence not found or you don't have permission to access it.")
+
+    db.delete(sentence)
+    db.commit()
+
+    return {"id": sentence_id, "deleted": True}

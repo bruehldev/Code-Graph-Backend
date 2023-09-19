@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile
 from plot.service import get_plot
 from plot.file_operations import extract_plot
 from data.schemas import Experimental_dataset_names, Dataset_names
@@ -7,7 +7,6 @@ from plot.schemas import PlotData, PlotEntry, PlotTable, DataPlotResponse
 from data.utils import get_path_key
 from database.postgresql import (
     get_segment_table,
-    plot_search_sentenc,
     get_reduced_embedding_table,
     get_cluster_table,
     plot_search_annotion,
@@ -24,6 +23,9 @@ from db.models import Cluster, Model, Project, ReducedEmbedding, Segment, Senten
 from embeddings.router import extract_embeddings_endpoint
 from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 from clusters.router import extract_clusters_endpoint
+from dataset.router import upload_dataset
+from project.router import create_project_route
+
 # TODO: dont use the router, move stuff to services
 router = APIRouter()
 
@@ -52,23 +54,23 @@ def get_plot_endpoint(
     CodeAlias = aliased(Code)
     ProjectAlias = aliased(Project)
     query = (
-            db.query(
-                Cluster,
-                ReducedEmbeddingAlias,
-                EmbeddingAlias,
-                SegmentAlias,
-                SentenceAlias,
-                CodeAlias,
-                ProjectAlias,
-            )
-            .join(ReducedEmbeddingAlias, Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
-            .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
-            .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
-            .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
-            .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
-            .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
-            .filter(Cluster.model_id == model_entry.model_id)
+        db.query(
+            Cluster,
+            ReducedEmbeddingAlias,
+            EmbeddingAlias,
+            SegmentAlias,
+            SentenceAlias,
+            CodeAlias,
+            ProjectAlias,
         )
+        .join(ReducedEmbeddingAlias, Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
+        .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
+        .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
+        .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
+        .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
+        .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
+        .filter(Cluster.model_id == model_entry.model_id)
+    )
     if all:
         plots = query.all()
 
@@ -96,15 +98,28 @@ def get_plot_endpoint(
     """
 
 
+@router.get("/test/")
+async def setup_test_environment(project_id: int, db: Session = Depends(get_db)):
+    file_os = open("dataset/examples/few_nerd_reduced.txt", "rb")
+
+    file = UploadFile(file_os)
+    project = create_project_route(project_name="Test", db=db)
+    project_id = project.project_id
+    await upload_dataset(project_id, dataset_name="few_nerd_reduced", file=file, db=db)
+    extract_embeddings_endpoint(project_id, db=db)
+    extract_embeddings_reduced_endpoint(project_id, db=db)
+    extract_clusters_endpoint(project_id, db=db)
+    return {"message": "Test environment setup successfully", "project_id": project_id}
+
+
 @router.get("/sentence/")
-def search_segments_route(dataset_name: Dataset_names, model_name: Model_names, query: str, limit: int = 100) -> PlotTable:
-    segment_table_name = get_path_key("segments", dataset_name)
-    segment_table = get_segment_table(segment_table_name)
-    reduced_embedding_table = get_reduced_embedding_table(get_path_key("reduced_embedding", dataset_name, model_name), segment_table_name)
-    cluster_table = get_cluster_table(get_path_key("clusters", dataset_name, model_name), segment_table_name)
-
-    plots = plot_search_sentenc(segment_table, reduced_embedding_table, cluster_table, query, as_dict=True, limit=limit)
-
+def search_segments_route(
+    project_id: int,
+    query: str,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+) -> PlotTable:
+    plots = db
     return {
         "data": plots,
         "length": len(plots),
