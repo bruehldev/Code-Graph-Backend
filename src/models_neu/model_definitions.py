@@ -1,7 +1,7 @@
 import copy
 import sys
 import time
-from pprint import pprint
+import logging
 from typing import Any, List, Union
 
 import numpy as np
@@ -19,6 +19,8 @@ from umap_pytorch import PUMAP
 
 from db.session import get_db
 from utilities.timer import Timer
+
+logger = logging.getLogger(__name__)
 
 
 class Umap:
@@ -42,7 +44,7 @@ class Umap:
     def transform(self, data: Union[np.ndarray, list]) -> np.ndarray:
         if len(data) == 0:
             return np.array([])
-        print(f"Umap.transform() with #{len(data)} embeddings")
+        logger.info(f"Umap.transform() with #{len(data)} embeddings")
         if self._model is None:
             raise ValueError("The UMAP model has not been fitted yet.")
         transformed_data = self._model.transform(data)
@@ -96,7 +98,7 @@ class Dbscan:
 
 class SemiSupervisedUmap(Umap):
     def fit(self, data: Union[np.ndarray, list], labels: np.ndarray = None) -> bool:
-        print(f"SemiSupervisedUmap.fit() from {self.arguments}")
+        logger.info(f"SemiSupervisedUmap.fit() from {self.arguments}")
         if len(data) == 0:
             raise ValueError("The data is empty.")
         self._model = umap.UMAP(**self.arguments)
@@ -117,7 +119,7 @@ class BertEmbeddingModel:
         self.arguments = arguments
 
     def fit(self, segments, sentences):
-        print(f"BertEmbedding.fit() from {self.arguments}")
+        logger.info(f"BertEmbedding.fit() from {self.arguments}")
         if segments is None or sentences is None:
             raise ValueError("The data is empty.")
         self.fitted = True
@@ -132,7 +134,7 @@ class BertEmbeddingModel:
 
     def transform(self, segments, sentences):
         unique_sentences = list(set(sentences))
-        print(f"BertEmbedding.transform() with #{len(segments)} segments")
+        logger.info(f"BertEmbedding.transform() with #{len(segments)} segments")
         if len(segments) == 0:
             return np.array([])
         with Timer("Calculate Sentence Embeddings"):
@@ -282,7 +284,7 @@ class DynamicUmap:
     def transform(self, data: Union[np.ndarray, list]) -> np.ndarray:
         if len(data) == 0:
             return np.array([])
-        print(f"Umap.transform() with #{len(data)} embeddings")
+        logger.info(f"Umap.transform() with #{len(data)} embeddings")
         if self._model is None:
             raise ValueError("The UMAP model has not been fitted yet.")
         if type(data) != type(torch.tensor([])):

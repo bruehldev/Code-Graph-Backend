@@ -23,7 +23,6 @@ def get_plot_endpoint(
     page_size: int = 100,
     db: Session = Depends(get_db),
 ) -> PlotTable:
-    print("plot_router")
     extract_embeddings_endpoint(project_id, db=db)
     extract_embeddings_reduced_endpoint(project_id, db=db)
     extract_clusters_endpoint(project_id, db=db)

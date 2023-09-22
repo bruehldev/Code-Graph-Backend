@@ -1,4 +1,5 @@
 import pickle
+import logging
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import and_, exists, not_
@@ -11,6 +12,7 @@ from models_neu.model_definitions import MODELS
 from project.service import ProjectService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/")
@@ -46,8 +48,7 @@ def extract_embeddings_endpoint(
     project_id: int = None,
     db: Session = Depends(get_db),
 ):
-    print("Extracting embeddings")
-    print(f"Project {project_id}")
+    logger.info(f"Extracting embeddings: Project {project_id}")
     embeddings = []
     project = ProjectService(project_id, db)
     model_entry, embedding_model = project.get_model("embedding_config")

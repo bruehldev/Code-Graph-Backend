@@ -1,4 +1,5 @@
 import pickle
+import logging
 from typing import Dict, List
 
 import pandas as pd
@@ -7,8 +8,7 @@ from sqlalchemy import and_
 from sqlalchemy.orm import Session, aliased
 from tqdm import tqdm
 
-from db.models import (Cluster, Code, Embedding, Project, ReducedEmbedding,
-                       Segment, Sentence)
+from db.models import Cluster, Code, Embedding, Project, ReducedEmbedding, Segment, Sentence
 from db.session import get_db
 from dynamic.service import train_clusters
 from embeddings.router import extract_embeddings_endpoint
@@ -17,6 +17,7 @@ from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 from utilities.timer import Timer
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/cluster")
@@ -56,19 +57,19 @@ def train_for_clusters(
 
         data = pd.DataFrame(training_dicts)
     for epoch in range(epochs):
-        print(f"Training epoch {epoch}")
+        logger.info(f"Training epoch {epoch}")
         new_model = train_clusters(data, dyn_red_model, ids)
         dyn_red_model = new_model
         # recalculate reduced_embeddings and clusters TODO
 
     data_to_replace = db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).all()
-    print("Deleting old reduced embeddings")
+    logger.info("Deleting old reduced embeddings")
     db.query(Cluster).filter(
         Cluster.reduced_embedding_id.in_(db.query(ReducedEmbedding.embedding_id).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id))
     ).delete(synchronize_session=False)
     db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).delete(synchronize_session=False)
     db.commit()
-    print("Adding new reduced embeddings")
+    logger.info("Adding new reduced embeddings")
     project.save_model("reduction_config", dyn_red_model)
     extract_embeddings_reduced_endpoint(project_id, db=db)
     return True
@@ -110,19 +111,19 @@ def train_for_correction(
 
         data = pd.DataFrame(training_dicts)
     for epoch in range(epochs):
-        print(f"Training epoch {epoch}")
+        logger.info(f"Training epoch {epoch}")
         new_model = train_points(data, dyn_red_model, correction)
         dyn_red_model = new_model
         # recalculate reduced_embeddings and clusters TODO
 
     data_to_replace = db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).all()
-    print("Deleting old reduced embeddings")
+    logger.info("Deleting old reduced embeddings")
     db.query(Cluster).filter(
         Cluster.reduced_embedding_id.in_(db.query(ReducedEmbedding.embedding_id).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id))
     ).delete(synchronize_session=False)
     db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).delete(synchronize_session=False)
     db.commit()
-    print("Adding new reduced embeddings")
+    logger.info("Adding new reduced embeddings")
     project.save_model("reduction_config", dyn_red_model)
     extract_embeddings_reduced_endpoint(project_id, db=db)
     return True

@@ -9,8 +9,7 @@ from sqlalchemy.orm import Session, aliased
 
 from configmanager.service import ConfigManager
 from db import models, session
-from db.models import (Dataset, Embedding, Project, ReducedEmbedding, Segment,
-                       Sentence)
+from db.models import Dataset, Embedding, Project, ReducedEmbedding, Segment, Sentence
 from db.session import SessionLocal, get_db
 from models_neu.model_definitions import MODELS
 from utilities.timer import Timer
@@ -23,7 +22,6 @@ config = config_manager.get_default_model()  # getconfig(project_id) || get_defa
 
 def get_model(model_data: ModelDefinition, project_id, username, db: Session = Depends(get_db), name_prefix=""):
     def get_model_db(model_name, project_id):
-        print(model_name, project_id)
         return (
             db.query(models.CombinedModel)
             .join(models.Project, models.CombinedModel.ProjectID == models.Project.ProjectID)
