@@ -1,11 +1,12 @@
 import json
-from sklearn.datasets import fetch_20newsgroups
-import os
-import json
 import logging
-from data.utils import get_data_file_path, get_root_path, get_supervised_path
-from data.file_operations import download_few_nerd_dataset
+import os
+
+from sklearn.datasets import fetch_20newsgroups
+
 from codes.service import extract_codes
+from data.file_operations import download_few_nerd_dataset
+from data.utils import get_data_file_path, get_root_path, get_supervised_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

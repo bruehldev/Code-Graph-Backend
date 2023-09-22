@@ -1,9 +1,9 @@
-from db.models import Segment, Code, Sentence, Project, Dataset
-from sqlalchemy import and_
-from sqlalchemy.dialects.postgresql import insert
 import time
 
-from db.models import Code
+from sqlalchemy import and_
+from sqlalchemy.dialects.postgresql import insert
+
+from db.models import Code, Dataset, Project, Segment, Sentence
 
 
 def text_to_json(input_text, options=None):

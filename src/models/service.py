@@ -1,18 +1,19 @@
 import json
-import os
-import json
 import logging
-import torch
-from fastapi import Depends
+import os
 from typing import List
-from bertopic import BERTopic
-from transformers import BertModel, BertTokenizerFast
-import pandas as pd
-from data.service import get_data
-from configmanager.service import ConfigManager
-from tqdm import tqdm
-import numpy as np
 from urllib.parse import unquote
+
+import numpy as np
+import pandas as pd
+import torch
+from bertopic import BERTopic
+from fastapi import Depends
+from tqdm import tqdm
+from transformers import BertModel, BertTokenizerFast
+
+from configmanager.service import ConfigManager
+from data.service import get_data
 from data.utils import get_supervised_path
 
 logging.basicConfig(level=logging.INFO)

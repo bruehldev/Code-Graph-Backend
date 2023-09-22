@@ -1,27 +1,22 @@
-import os
 import json
 import logging
+import os
 import pickle
-import logging
+from typing import List
+
 import numpy as np
 import umap
 
-from typing import List
-from data.utils import get_model_file_path, get_supervised_path, get_path_key
 from configmanager.service import ConfigManager
-from database.postgresql import (
-    get_reduced_embedding_table,
-    get_segment_table,
-    init_table,
-    create as create_in_db,
-    get_data as get_all_db,
-    table_has_entries,
-    update_or_create as update_or_create_db,
-    get_session,
-    ReducedEmbeddingTable,
-)
+from data.utils import get_model_file_path, get_path_key, get_supervised_path
+from database.postgresql import ReducedEmbeddingTable
+from database.postgresql import create as create_in_db
+from database.postgresql import get_data as get_all_db
+from database.postgresql import (get_reduced_embedding_table,
+                                 get_segment_table, get_session, init_table,
+                                 table_has_entries)
+from database.postgresql import update_or_create as update_or_create_db
 from embeddings.service import get_embeddings
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

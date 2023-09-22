@@ -1,12 +1,10 @@
 import json
-import json
 import logging
 
-from reduced_embeddings.service import get_reduced_embeddings
-from segments.service import get_segments
 from clusters.service import get_clusters
 from data.few_nerd import FINE_NER_TAGS_DICT
-
+from reduced_embeddings.service import get_reduced_embeddings
+from segments.service import get_segments
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

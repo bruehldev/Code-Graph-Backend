@@ -1,18 +1,17 @@
 import json
-import os
-import json
 import logging
-from database.postgresql import (
-    init_table,
-    get_data as get_all_db,
-    table_has_entries,
-    get_segment_table,
-    get_session,
-    batch_insert,
-)
+import os
+
 from tqdm import tqdm
-from data.utils import get_path_key, get_data_file_path, get_root_path, get_supervised_path
-from data.file_operations import download_few_nerd_dataset, save_segments_file, get_segments_file
+
+from data.file_operations import (download_few_nerd_dataset, get_segments_file,
+                                  save_segments_file)
+from data.utils import (get_data_file_path, get_path_key, get_root_path,
+                        get_supervised_path)
+from database.postgresql import batch_insert
+from database.postgresql import get_data as get_all_db
+from database.postgresql import (get_segment_table, get_session, init_table,
+                                 table_has_entries)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

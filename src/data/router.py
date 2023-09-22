@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends
 from typing import List
-from pydantic import BaseModel
-from data.service import (
-    get_data,
-)
-from data.file_operations import download_few_nerd_dataset
-from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
 
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+
+from data.file_operations import download_few_nerd_dataset
+from data.schemas import (DataResponse, Dataset_names,
+                          Experimental_dataset_names)
+from data.service import get_data
 
 router = APIRouter()
 

@@ -1,12 +1,11 @@
-import json
-import os
+import csv
 import json
 import logging
-import csv
+import os
 
+from clusters.service import get_clusters
 from reduced_embeddings.service import get_reduced_embeddings
 from segments.service import get_segments
-from clusters.service import get_clusters
 from utilities.string_operations import get_project_path
 
 logging.basicConfig(level=logging.INFO)

@@ -1,17 +1,14 @@
 import json
+import logging
 import os
-import json
-import logging
 from typing import List
-from reduced_embeddings.service import get_reduced_embeddings
-from data.utils import get_supervised_path, get_data_file_path
 
-import logging
-import numpy as np
 import hdbscan
-
+import numpy as np
 
 from configmanager.service import ConfigManager
+from data.utils import get_data_file_path, get_supervised_path
+from reduced_embeddings.service import get_reduced_embeddings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

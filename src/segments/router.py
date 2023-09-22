@@ -1,21 +1,21 @@
-from fastapi import APIRouter, HTTPException, status
 from typing import List
-from segments.service import get_segments, extract_segments
-from database.schemas import DeleteResponse
-from database.postgresql import (
-    get_data as get_all_db,
-    get as get_in_db,
-    create as create_in_db,
-    update as update_in_db,
-    delete as delete_in_db,
-    get_segment_table,
-    get_table_length,
-    table_has_entries,
-)
-from data.utils import get_path_key
 
-from data.schemas import DataResponse, Dataset_names, Experimental_dataset_names
-from segments.schemas import SegmentTable, DataSegmentResponse, SegmentEntry, SegmentData
+from fastapi import APIRouter, HTTPException, status
+
+from data.schemas import (DataResponse, Dataset_names,
+                          Experimental_dataset_names)
+from data.utils import get_path_key
+from database.postgresql import create as create_in_db
+from database.postgresql import delete as delete_in_db
+from database.postgresql import get as get_in_db
+from database.postgresql import get_data as get_all_db
+from database.postgresql import (get_segment_table, get_table_length,
+                                 table_has_entries)
+from database.postgresql import update as update_in_db
+from database.schemas import DeleteResponse
+from segments.schemas import (DataSegmentResponse, SegmentData, SegmentEntry,
+                              SegmentTable)
+from segments.service import extract_segments, get_segments
 
 router = APIRouter()
 

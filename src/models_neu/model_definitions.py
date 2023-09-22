@@ -2,22 +2,23 @@ import copy
 import sys
 import time
 from pprint import pprint
+from typing import Any, List, Union
 
-from torch.nn.utils.rnn import pad_sequence
-from typing import Union, List, Any
-import torch
-from fastapi import Depends
-from torch.utils.data import TensorDataset, DataLoader
-from transformers import BertTokenizerFast, BertModel
-from pydantic import BaseModel, Field
 import numpy as np
-import umap
+import torch
 import tqdm
-from utilities.timer import Timer
-from sklearn.cluster import DBSCAN
+import umap
+from fastapi import Depends
 from hdbscan import HDBSCAN
-from db.session import get_db
+from pydantic import BaseModel, Field
+from sklearn.cluster import DBSCAN
+from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import DataLoader, TensorDataset
+from transformers import BertModel, BertTokenizerFast
 from umap_pytorch import PUMAP
+
+from db.session import get_db
+from utilities.timer import Timer
 
 
 class Umap:

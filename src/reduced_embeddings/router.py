@@ -1,26 +1,30 @@
 import logging
-
-from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List
-from data.schemas import Experimental_dataset_names
-from models.schemas import Model_names
-from reduced_embeddings.service import (
-    get_reduced_embeddings,
-    extract_embeddings_reduced,
-)
-from database.postgresql import get as get_in_db, create as create_in_db, update as update_in_db, delete as delete_in_db, get_reduced_embedding_table
-from data.utils import get_path_key
-
-from reduced_embeddings.schemas import ReducedEmbeddingTable, ReducedEmbeddingEntry, ReducedEmbeddingData, DataReducedEmbeddingResponse
-from db.schema import DeleteResponse
-from project.service import ProjectService
-from db.session import get_db
-from sqlalchemy.orm import Session
 import pickle
-from sqlalchemy import not_, and_, exists
-from db.models import Embedding, Model, Project, ReducedEmbedding
+from typing import List
 
 import numpy as np
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import and_, exists, not_
+from sqlalchemy.orm import Session
+
+from data.schemas import Experimental_dataset_names
+from data.utils import get_path_key
+from database.postgresql import create as create_in_db
+from database.postgresql import delete as delete_in_db
+from database.postgresql import get as get_in_db
+from database.postgresql import get_reduced_embedding_table
+from database.postgresql import update as update_in_db
+from db.models import Embedding, Model, Project, ReducedEmbedding
+from db.schema import DeleteResponse
+from db.session import get_db
+from models.schemas import Model_names
+from project.service import ProjectService
+from reduced_embeddings.schemas import (DataReducedEmbeddingResponse,
+                                        ReducedEmbeddingData,
+                                        ReducedEmbeddingEntry,
+                                        ReducedEmbeddingTable)
+from reduced_embeddings.service import (extract_embeddings_reduced,
+                                        get_reduced_embeddings)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

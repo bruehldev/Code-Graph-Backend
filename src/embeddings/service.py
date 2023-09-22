@@ -1,31 +1,24 @@
-import os
 import json
 import logging
+import os
 import pickle
-import logging
+from typing import List
+
 import numpy as np
 import umap
-
-from typing import List
-from data.service import get_data
-from segments.service import get_segments
-from models.service import ModelService
-from data.utils import get_model_file_path, get_supervised_path, get_path_key
-from configmanager.service import ConfigManager
-from database.postgresql import (
-    get_segment_table,
-    get as get_in_db,
-    get_embedding_table,
-    init_table,
-    get_session,
-    batch_insert,
-    EmbeddingTable,
-    update_or_create,
-    table_has_entries,
-    get_data as get_all_db,
-)
 from tqdm import tqdm
 
+from configmanager.service import ConfigManager
+from data.service import get_data
+from data.utils import get_model_file_path, get_path_key, get_supervised_path
+from database.postgresql import EmbeddingTable, batch_insert
+from database.postgresql import get as get_in_db
+from database.postgresql import get_data as get_all_db
+from database.postgresql import (get_embedding_table, get_segment_table,
+                                 get_session, init_table, table_has_entries,
+                                 update_or_create)
+from models.service import ModelService
+from segments.service import get_segments
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

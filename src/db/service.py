@@ -1,20 +1,21 @@
 import json
 import logging
+import shutil
 from typing import List
-from fastapi import Depends
 
-from sqlalchemy import Table
-from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry, aliased, mapper, Session
-from sqlalchemy.schema import DropTable
-from sqlalchemy.ext.compiler import compiles
+from fastapi import Depends
+from sqlalchemy import Table, create_engine, inspect, text
 from sqlalchemy.exc import NoSuchTableError
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.orm import (Session, aliased, mapper, registry, relationship,
+                            scoped_session, sessionmaker)
+from sqlalchemy.schema import DropTable
 
 from db.base import Base
-from db.models import Project, Dataset, Sentence, Segment, Embedding, ReducedEmbedding, Code, Model, Config
+from db.models import (Code, Config, Dataset, Embedding, Model, Project,
+                       ReducedEmbedding, Segment, Sentence)
 from db.session import get_db, get_engine
 from utilities.string_operations import get_root_path
-import shutil
 
 engine = get_engine()
 metadata = Base.metadata

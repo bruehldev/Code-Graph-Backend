@@ -1,12 +1,13 @@
-import os
-import zipfile
-import requests
 import json
 import logging
+import os
+import zipfile
+
 import pandas as pd
+import requests
 from tqdm import tqdm
 
-from data.utils import get_root_path, get_supervised_path, get_data_file_path
+from data.utils import get_data_file_path, get_root_path, get_supervised_path
 
 logger = logging.getLogger(__name__)
 

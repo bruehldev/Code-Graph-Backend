@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, LargeBinary, Table, Float, UniqueConstraint, JSON, Computed
-from sqlalchemy.orm import relationship
-from db.base import Base
+from sqlalchemy import (JSON, Column, Computed, Float, ForeignKey, Integer,
+                        LargeBinary, String, Table, Text, UniqueConstraint)
 from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.orm import relationship
+
+from db.base import Base
 
 
 class Project(Base):

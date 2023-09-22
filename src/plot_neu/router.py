@@ -1,18 +1,18 @@
 import logging
 import pickle
+import time
 
 import numpy as np
 from fastapi import APIRouter, Body, Depends
-from sqlalchemy import not_, and_, exists
+from sqlalchemy import and_, exists, not_
 from sqlalchemy.orm import Session, aliased
 
 from configmanager.service import ConfigManager
-from db import session, models
+from db import models, session
+from db.models import (Dataset, Embedding, Project, ReducedEmbedding, Segment,
+                       Sentence)
+from db.session import SessionLocal, get_db
 from models_neu.model_definitions import MODELS
-from db.models import Embedding, Segment, Sentence, Dataset, Project, ReducedEmbedding
-from db.session import get_db, SessionLocal
-import time
-
 from utilities.timer import Timer
 
 router = APIRouter()

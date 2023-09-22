@@ -1,8 +1,8 @@
 import hashlib
-import os
 import json
-from urllib.parse import unquote
+import os
 from typing import Literal
+from urllib.parse import unquote
 
 env = {}
 with open("../env.json") as f:

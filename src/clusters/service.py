@@ -1,25 +1,18 @@
 import json
 import logging
 from typing import List
-from reduced_embeddings.service import get_reduced_embeddings
-from database.postgresql import (
-    get_cluster_table,
-    table_has_entries,
-    get_data as get_all_db,
-    init_table,
-    update_or_create as update_or_create_db,
-    get_session,
-    get_segment_table,
-    ClusterTable,
-)
-from data.utils import get_path_key
 
-import logging
-import numpy as np
 import hdbscan
-
+import numpy as np
 
 from configmanager.service import ConfigManager
+from data.utils import get_path_key
+from database.postgresql import ClusterTable, get_cluster_table
+from database.postgresql import get_data as get_all_db
+from database.postgresql import (get_segment_table, get_session, init_table,
+                                 table_has_entries)
+from database.postgresql import update_or_create as update_or_create_db
+from reduced_embeddings.service import get_reduced_embeddings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

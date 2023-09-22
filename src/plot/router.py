@@ -1,29 +1,26 @@
 from fastapi import APIRouter, Depends, UploadFile
-from plot.service import get_plot
-from plot.file_operations import extract_plot
-from data.schemas import Experimental_dataset_names, Dataset_names
-from models.schemas import Model_names
-from plot.schemas import PlotData, PlotEntry, PlotTable, DataPlotResponse
-from data.utils import get_path_key
-from database.postgresql import (
-    get_segment_table,
-    get_reduced_embedding_table,
-    get_cluster_table,
-    plot_search_cluster,
-    plot_search_segment,
-)
-from plot.schemas import PlotData, PlotEntry, PlotTable, DataPlotResponse
-from db.schema import DeleteResponse
-from project.service import ProjectService
-from db.session import get_db
 from sqlalchemy.orm import Session, aliased
-from fastapi import Depends
-from db.models import Cluster, Model, Project, ReducedEmbedding, Segment, Sentence, Code, Embedding, Dataset
-from embeddings.router import extract_embeddings_endpoint
-from reduced_embeddings.router import extract_embeddings_reduced_endpoint
+
 from clusters.router import extract_clusters_endpoint
+from data.schemas import Dataset_names, Experimental_dataset_names
+from data.utils import get_path_key
+from database.postgresql import (get_cluster_table,
+                                 get_reduced_embedding_table,
+                                 get_segment_table, plot_search_cluster,
+                                 plot_search_segment)
 from dataset.router import upload_dataset
+from db.models import (Cluster, Code, Dataset, Embedding, Model, Project,
+                       ReducedEmbedding, Segment, Sentence)
+from db.schema import DeleteResponse
+from db.session import get_db
+from embeddings.router import extract_embeddings_endpoint
+from models.schemas import Model_names
+from plot.file_operations import extract_plot
+from plot.schemas import DataPlotResponse, PlotData, PlotEntry, PlotTable
+from plot.service import get_plot
 from project.router import create_project_route
+from project.service import ProjectService
+from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 
 # TODO: dont use the router, move stuff to services
 router = APIRouter()

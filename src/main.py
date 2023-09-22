@@ -1,18 +1,17 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from clusters.router import router as clusters_router
 from codes.router import router as code_router
-from project.router import router as project_router
+from configmanager.router import router as config_router
 from dataset.router import router as dataset_router
 from db.router import router as db_router
-from configmanager.router import router as config_router
-from embeddings.router import router as embeddings_router
-from reduced_embeddings.router import router as reduced_embeddings_router
-from clusters.router import router as clusters_router
-from plot.router import router as plot_router
-from dynamic.router import router as dynamic_router
-
 from db.service import init_db
-from fastapi.middleware.cors import CORSMiddleware
+from dynamic.router import router as dynamic_router
+from embeddings.router import router as embeddings_router
+from plot.router import router as plot_router
+from project.router import router as project_router
+from reduced_embeddings.router import router as reduced_embeddings_router
 
 app = FastAPI()
 app.add_middleware(

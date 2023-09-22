@@ -1,8 +1,8 @@
 from random import choices
 
 import torch
-from torch import optim, nn
-from torch.utils.data import Dataset, DataLoader
+from torch import nn, optim
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
 from models_neu.model_definitions import DynamicUmap

@@ -1,8 +1,6 @@
 import json
-import os
-import json
 import logging
-
+import os
 
 from data.utils import get_data_file_path
 

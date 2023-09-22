@@ -1,5 +1,5 @@
 import pickle
-from typing import List, Dict
+from typing import Dict, List
 
 import pandas as pd
 from fastapi import APIRouter, Depends
@@ -7,7 +7,8 @@ from sqlalchemy import and_
 from sqlalchemy.orm import Session, aliased
 from tqdm import tqdm
 
-from db.models import ReducedEmbedding, Embedding, Segment, Sentence, Code, Project, Cluster
+from db.models import (Cluster, Code, Embedding, Project, ReducedEmbedding,
+                       Segment, Sentence)
 from db.session import get_db
 from dynamic.service import train_clusters
 from embeddings.router import extract_embeddings_endpoint

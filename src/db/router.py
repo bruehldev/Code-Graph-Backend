@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends
 from typing import List
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-
-from db.service import delete_table, get_table_names, delete_all_tables, get_table_info, init_db
-from db.session import get_db, get_engine
-
+from sqlalchemy import Column, Integer, MetaData, Table, text
 from sqlalchemy.orm import Session
-from sqlalchemy import text, MetaData, Table
-from sqlalchemy import MetaData, Table, Column, Integer
+
+from db.service import (delete_all_tables, delete_table, get_table_info,
+                        get_table_names, init_db)
+from db.session import get_db, get_engine
 
 router = APIRouter()
 

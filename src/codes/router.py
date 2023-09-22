@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List, Union, Optional
+from typing import List, Optional, Union
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from codes.service import extract_codes, build_category_tree
-from db import session, models
+from codes.service import build_category_tree, extract_codes
 from data.schemas import DataResponse
+from db import models, session
 from db.schema import DeleteResponse
 
 router = APIRouter()

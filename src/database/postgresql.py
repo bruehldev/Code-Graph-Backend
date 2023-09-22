@@ -1,34 +1,22 @@
 import json
 import logging
-
-from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    String,
-    Text,
-    ARRAY,
-    inspect,
-    MetaData,
-    ForeignKey,
-    Table,
-    text,
-    func,
-    exists,
-    CheckConstraint,
-    insert as insert_sql,
-    delete as delete_sql,
-    update as update_sql,
-    select as select_sql,
-    Computed,
-    text,
-)
-from sqlalchemy.types import Float
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry, aliased, mapper, Session
-from sqlalchemy.dialects.postgresql import ARRAY, insert as insert_dialect, TSVECTOR, BYTEA
 from collections import defaultdict
 
+from sqlalchemy import (ARRAY, CheckConstraint, Column, Computed, ForeignKey,
+                        Integer, MetaData, String, Table, Text, create_engine)
+from sqlalchemy import delete as delete_sql
+from sqlalchemy import exists, func
+from sqlalchemy import insert as insert_sql
+from sqlalchemy import inspect
+from sqlalchemy import select as select_sql
+from sqlalchemy import text
+from sqlalchemy import update as update_sql
+from sqlalchemy.dialects.postgresql import ARRAY, BYTEA, TSVECTOR
+from sqlalchemy.dialects.postgresql import insert as insert_dialect
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import (Session, aliased, mapper, registry, relationship,
+                            scoped_session, sessionmaker)
+from sqlalchemy.types import Float
 
 env = {}
 with open("../env.json") as f:
