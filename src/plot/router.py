@@ -319,10 +319,11 @@ def search_segment_route(project_id: int, search_segment_query: str, limit: int 
 
 
 # extract plot route
-@router.get("/exportJSON/")
+@router.get("/exportToFiles/")
 def extract_plot_endpoint(
-    dataset_name: Experimental_dataset_names,
-    model_name: Model_names,
+    project_id: int,
+    db: Session = Depends(get_db),
 ):
-    extract_plot(dataset_name, model_name)
+    plots = get_plot_endpoint(project_id=project_id, all=True, db=db)
+    extract_plot(project_id=project_id, plots=plots["data"])
     return {"message": "Plot data extracted successfully"}

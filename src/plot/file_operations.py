@@ -7,16 +7,10 @@ import csv
 from reduced_embeddings.service import get_reduced_embeddings
 from segments.service import get_segments
 from clusters.service import get_clusters
-from data.few_nerd import FINE_NER_TAGS_DICT
-from data.utils import get_supervised_path
-
+from utilities.string_operations import get_project_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-env = {}
-with open("../env.json") as f:
-    env = json.load(f)
 
 
 def get_plot(dataset_name: str, model_name: str, start: int = 0, end: int = None):
@@ -38,26 +32,14 @@ def get_plot(dataset_name: str, model_name: str, start: int = 0, end: int = None
     return segments
 
 
-def extract_plot(dataset_name: str, model_name: str):
+def extract_plot(project_id: str, plots):
     # Convert index, data, embedding, and topic to JSON structure
-    json_plot_file = get_plot_file(dataset_name, model_name, suffix="json")
-    csv_plot_file = get_plot_file(dataset_name, model_name, suffix="csv")
-    segments = get_segments(dataset_name)
-    embeddings = get_reduced_embeddings(dataset_name, model_name)
-    clusters = get_clusters(dataset_name, model_name)
+    json_plot_file = get_plot_file(project_id, suffix="json")
+    csv_plot_file = get_plot_file(project_id, suffix="csv")
 
-    for segment, embedding, cluster in zip(segments, embeddings, clusters):
-        # Check if ids are equal
-        assert segment["id"] == embedding["id"] == cluster["id"]
-
-        segment["reduced_embedding"] = embedding["reduced_embedding"]
-        segment["cluster"] = cluster["cluster"]
-        segment["annotation"] = segment["annotation"]
-
-    logger.info(f"Extracted and saved plot to file for dataset: {dataset_name}")
-    save_plot_json(segments, json_plot_file)
-    save_plot_csv(segments, csv_plot_file)
-    return segments
+    save_plot_json(plots, json_plot_file)
+    save_plot_csv(plots, csv_plot_file)
+    return plots
 
 
 def save_plot_csv(plot_data, plot_file):
@@ -65,18 +47,22 @@ def save_plot_csv(plot_data, plot_file):
         csv_writer = csv.writer(file)
 
         # Write header row
-        header = ["id", "sentence", "reduced_embedding", "cluster", "annotation"]
+        header = ["id", "sentence", "segment", "cluster", "x", "y", "code"]
         csv_writer.writerow(header)
 
         # Write plot data rows
-        for segment in plot_data:
-            index = segment["id"]
-            data = segment["sentence"]
-            embedding = segment["reduced_embedding"]
-            cluster = segment["cluster"]
-            annotation = segment["annotation"]
-
-            csv_writer.writerow([index, data, embedding, cluster, annotation])
+        for plot in plot_data:
+            csv_writer.writerow(
+                [
+                    int(plot["id"]),
+                    plot["sentence"],
+                    plot["segment"],
+                    plot["cluster"],
+                    plot["reduced_embedding"]["x"],
+                    plot["reduced_embedding"]["y"],
+                    plot["code"],
+                ]
+            )
 
 
 def load_plot(plot_file, start=0, end=None):
@@ -90,9 +76,9 @@ def save_plot_json(plot_data, plot_file):
         json.dump(plot_data, file)
 
 
-def get_plot_file(dataset_name: str, model_name: str, suffix="json"):
-    directory = get_supervised_path("plot", dataset_name, model_name)
+def get_plot_file(project_id, suffix="json"):
+    directory = get_project_path(project_id=project_id, type="plots")
     # plot_directory = get_model_file_path("plot", dataset_name, model_name, )
 
     os.makedirs(directory, exist_ok=True)
-    return os.path.join(directory, f"plot_{dataset_name}.{suffix}")
+    return os.path.join(directory, f"plot_{project_id}.{suffix}")
