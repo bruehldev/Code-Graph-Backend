@@ -17,6 +17,7 @@ class UmapArgs(BaseModel):
     n_components: int = 2
     metric: str = "cosine"
     random_state: int = 42
+    n_jobs: int = 1
 
 
 class ReductionConfig(BaseModel):
