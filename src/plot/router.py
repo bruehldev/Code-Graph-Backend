@@ -99,7 +99,7 @@ def get_plot_endpoint(
 
 
 @router.get("/test/")
-async def setup_test_environment(project_id: int, db: Session = Depends(get_db)):
+async def setup_test_environment(db: Session = Depends(get_db)):
     file_os = open("dataset/examples/few_nerd_reduced.txt", "rb")
 
     file = UploadFile(file_os)
