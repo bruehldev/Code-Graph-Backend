@@ -106,8 +106,8 @@ def add_data_to_db(project_id, database_name, json_data, session):
     sentence_ids = [row[0] for row in session.execute(insert_stmt).fetchall()]
 
     segment_dicts = []
-    annotations_dict = {(a.text, a.parent_code_id): a for a in session.query(Code).filter_by(project_id=project.project_id).all()}
-    new_annotations = set()
+    codes_dict = {(a.text, a.parent_code_id): a for a in session.query(Code).filter_by(project_id=project.project_id).all()}
+    new_codes = set()
 
     for item, sentence_id in zip(json_data["data"], sentence_ids):
         for entity in item["entities"]:
@@ -116,25 +116,25 @@ def add_data_to_db(project_id, database_name, json_data, session):
                 labels = [labels]
             last_id = None
             for i, label in enumerate(labels):
-                annotation = annotations_dict.get((label, last_id))
-                annotation_id = annotation.code_id if annotation else None
-                # If the annotation doesn't exist, add it to the database and the dictionary
-                if annotation is None or annotation.parent_code_id != last_id:
-                    if (label, last_id) not in new_annotations:
-                        new_annotation = Code(text=label, project_id=project.project_id, parent_code_id=last_id)
-                        session.add(new_annotation)
+                code = codes_dict.get((label, last_id))
+                code_id = code.code_id if code else None
+                # If the code doesn't exist, add it to the database and the dictionary
+                if code is None or code.parent_code_id != last_id:
+                    if (label, last_id) not in new_codes:
+                        new_code = Code(text=label, project_id=project.project_id, parent_code_id=last_id)
+                        session.add(new_code)
                         session.commit()
-                        annotation_id = new_annotation.code_id
-                        annotations_dict[(label, last_id)] = new_annotation
-                        new_annotations.add((label, last_id))
+                        code_id = new_code.code_id
+                        codes_dict[(label, last_id)] = new_code
+                        new_codes.add((label, last_id))
 
-                last_id = annotation_id
+                last_id = code_id
 
             segment_dict = {
                 "sentence_id": sentence_id,
                 "text": item["text"][entity["start"] : entity["end"]],
                 "start_position": entity["start"],
-                "code_id": annotation_id,
+                "code_id": code_id,
             }
 
             segment_dicts.append(segment_dict)
