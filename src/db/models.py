@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, LargeBinary, Table, Float, UniqueConstraint, JSON
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, LargeBinary, Table, Float, UniqueConstraint, JSON, Computed
 from sqlalchemy.orm import relationship
 from db.base import Base
+from sqlalchemy.dialects.postgresql import TSVECTOR
 
 
 class Project(Base):
@@ -33,6 +34,8 @@ class Sentence(Base):
 
     sentence_id = Column(Integer, primary_key=True)
     text = Column(Text, nullable=False)
+    text_tsv = Column("sentence_tsv", TSVECTOR, Computed("to_tsvector('english', text)"))
+
     dataset_id = Column(Integer, ForeignKey("Dataset.dataset_id", ondelete="CASCADE"))
     position_in_dataset = Column(Integer)
 
@@ -46,6 +49,8 @@ class Segment(Base):
     segment_id = Column(Integer, primary_key=True)
     sentence_id = Column(Integer, ForeignKey("Sentence.sentence_id", ondelete="CASCADE"))
     text = Column(Text, nullable=False)
+    text_tsv = Column("sentence_tsv", TSVECTOR, Computed("to_tsvector('english', text)"))
+
     start_position = Column(Integer, nullable=False)
     code_id = Column(Integer, ForeignKey("Code.code_id", ondelete="CASCADE"))
 

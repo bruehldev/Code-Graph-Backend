@@ -19,7 +19,7 @@ from project.service import ProjectService
 from db.session import get_db
 from sqlalchemy.orm import Session, aliased
 from fastapi import Depends
-from db.models import Cluster, Model, Project, ReducedEmbedding, Segment, Sentence, Code, Embedding
+from db.models import Cluster, Model, Project, ReducedEmbedding, Segment, Sentence, Code, Embedding, Dataset
 from embeddings.router import extract_embeddings_endpoint
 from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 from clusters.router import extract_clusters_endpoint
@@ -43,9 +43,6 @@ def get_plot_endpoint(
     extract_embeddings_reduced_endpoint(project_id, db=db)
     extract_clusters_endpoint(project_id, db=db)
     plots = []
-    project = ProjectService(project_id, db=db)
-    model_entry = project.get_model_entry("cluster_config")
-    return_dict = {}
 
     ReducedEmbeddingAlias = aliased(ReducedEmbedding)
     EmbeddingAlias = aliased(Embedding)
@@ -63,13 +60,14 @@ def get_plot_endpoint(
             CodeAlias,
             ProjectAlias,
         )
+        .filter(ProjectAlias.project_id == project_id)
         .join(ReducedEmbeddingAlias, Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
         .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
         .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
         .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
         .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
         .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
-        .filter(Cluster.model_id == model_entry.model_id)
+        .limit(page_size)
     )
     if all:
         plots = query.all()
@@ -115,16 +113,57 @@ async def setup_test_environment(db: Session = Depends(get_db)):
 @router.get("/sentence/")
 def search_segments_route(
     project_id: int,
-    query: str,
+    search_query: str,
     limit: int = 100,
     db: Session = Depends(get_db),
-) -> PlotTable:
-    plots = db
-    return {
-        "data": plots,
-        "length": len(plots),
-        "limit": limit,
-    }
+):
+    plots = []
+    ProjectAlias = aliased(Project)
+    SentenceAlias = aliased(Sentence)
+    SegmentAlias = aliased(Segment)
+    DatasetAlias = aliased(Dataset)
+    ReducedEmbeddingAlias = aliased(ReducedEmbedding)
+    EmbeddingAlias = aliased(Embedding)
+    CodeAlias = aliased(Code)
+    ClusterAlias = aliased(Cluster)
+
+    datasets = db.query(DatasetAlias).filter(DatasetAlias.project_id == project_id).all()
+    dataset_ids = [dataset.dataset_id for dataset in datasets]
+    query = (
+        db.query(
+            ClusterAlias,
+            ReducedEmbeddingAlias,
+            EmbeddingAlias,
+            SegmentAlias,
+            SentenceAlias,
+            CodeAlias,
+            ProjectAlias,
+        )
+        .filter(ProjectAlias.project_id == project_id)
+        .filter(SentenceAlias.dataset_id.in_(dataset_ids))
+        .where(SentenceAlias.text_tsv.match(search_query, postgresql_regconfig="english"))
+        .join(ReducedEmbeddingAlias, ClusterAlias.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
+        .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
+        .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
+        .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
+        .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
+        .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
+        .limit(limit)
+    )
+
+    plots = query.all()
+    result_dicts = [
+        {
+            "id": row[3].segment_id,
+            "sentence": row[4].text,
+            "segment": row[3].text,
+            "code": row[5].code_id,
+            "reduced_embedding": {"x": row[1].pos_x, "y": row[1].pos_y},
+            "cluster": row[0].cluster,
+        }
+        for row in plots
+    ]
+    return {"data": result_dicts, "length": len(result_dicts), "limit": limit}
 
 
 @router.get("/annotation/")
