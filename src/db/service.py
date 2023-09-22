@@ -12,7 +12,7 @@ from sqlalchemy.exc import NoSuchTableError
 
 from db.base import Base
 from db.models import Project, Dataset, Sentence, Segment, Embedding, ReducedEmbedding, Code, Model, Config
-from db.session import get_session, get_engine
+from db.session import get_db, get_engine
 from utilities.string_operations import get_root_path
 import shutil
 
@@ -78,17 +78,14 @@ def delete_all_tables():
     return results
 
 
-def get_table_info():
+def get_table_info(db):
     table_names = get_table_names()
     results = []
-    session = get_session()
 
     for table_name in table_names:
         model_class = table_to_model.get(table_name)
         if model_class:
-            count = session.query(model_class).count()
+            count = db.query(model_class).count()
             results.append({"name": table_name, "count": count})
-
-    session.close()
 
     return results

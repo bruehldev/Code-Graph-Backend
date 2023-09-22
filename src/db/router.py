@@ -28,8 +28,8 @@ def delete_all_tables_route():
 
 
 @router.get("/tables/infos")
-def get_table_info_route():
-    return get_table_info()
+def get_table_info_route(db: Session = Depends(get_db)):
+    return get_table_info(db)
 
 
 @router.delete("/{table_name}")
