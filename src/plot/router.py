@@ -89,7 +89,7 @@ async def setup_test_environment(db: Session = Depends(get_db)):
 
     file = UploadFile(file_os)
     project = create_project_route(project_name="Test", db=db)
-    project_id = project.project_id
+    project_id = project.data.project_id
     await upload_dataset(project_id, dataset_name="few_nerd_reduced", file=file, db=db)
     extract_embeddings_endpoint(project_id, db=db)
     extract_embeddings_reduced_endpoint(project_id, db=db)
