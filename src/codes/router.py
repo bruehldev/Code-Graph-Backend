@@ -4,8 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from codes.service import build_category_tree, extract_codes
-from data.schemas import DataResponse
+from codes.service import build_category_tree
 from db import models, session
 from db.schema import DeleteResponse
 
@@ -21,27 +20,6 @@ class DataTableResponse(BaseModel):
 class DataRes(BaseModel):
     code: str
     top_level_code_id: Union[int, None]
-
-
-@router.get("/extract")
-def extract_codes_route(dataset_name: str, project_id: int, db: Session = Depends(session.get_db)):
-    codes = db.query(models.Code).filter(models.Code.project_id == project_id).all()
-
-    if not codes:
-        codes = extract_codes(dataset_name)
-        stack = [(None, codes)]
-        while stack:
-            parent_id, code_data = stack.pop()
-            for _, code_info in code_data.items():
-                new_code = models.Code(parent_code_id=parent_id, project_id=project_id, text=code_info["name"])
-                db.add(new_code)
-                subcategories = code_info["subcategories"]
-                if subcategories:
-                    stack.append((code_info["id"], subcategories))
-        db.commit()
-        return {"message": "Codes extracted successfully"}
-    else:
-        raise HTTPException(status_code=400, detail="Codes already extracted")
 
 
 @router.get("/")
