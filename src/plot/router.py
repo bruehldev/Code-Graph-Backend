@@ -68,7 +68,7 @@ def get_plot_endpoint(
         .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
         .limit(page_size)
     )
-    response = {}
+    response: PlotTable = {}
     if all:
         plots = query.all()
     else:
