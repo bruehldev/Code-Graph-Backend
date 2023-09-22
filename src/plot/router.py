@@ -36,7 +36,7 @@ def get_plot_endpoint(
     page: int = 0,
     page_size: int = 100,
     db: Session = Depends(get_db),
-):
+) -> PlotTable:
     print("plot_router")
     extract_embeddings_endpoint(project_id, db=db)
     extract_embeddings_reduced_endpoint(project_id, db=db)
@@ -68,12 +68,12 @@ def get_plot_endpoint(
         .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
         .limit(page_size)
     )
+    response = {}
     if all:
         plots = query.all()
-
     else:
         plots = query.offset(page * page_size).limit(page_size).all()
-
+        response.update({"page": page, "page_size": page_size})
     result_dicts = [
         {
             "id": row[3].segment_id,
@@ -85,7 +85,9 @@ def get_plot_endpoint(
         }
         for row in plots
     ]
-    return {"data": result_dicts, "length": len(result_dicts)}
+    response.update({"data": result_dicts, "length": len(result_dicts)})
+
+    return response
     """
     else: TODO: Implement pagination
         start = (page - 1) * page_size
