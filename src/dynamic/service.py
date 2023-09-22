@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from models_neu.model_definitions import DynamicUmap
 
+
 class CustomDataset(Dataset):
     def __init__(self, dataframe):
         self.dataframe = dataframe
@@ -18,19 +19,21 @@ class CustomDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        embedding = torch.tensor(self.dataframe.iloc[idx]['embedding'], dtype=torch.float32)
-        label = torch.tensor(self.dataframe.iloc[idx]['label'], dtype=torch.long)
+        embedding = torch.tensor(self.dataframe.iloc[idx]["embedding"], dtype=torch.float32)
+        label = torch.tensor(self.dataframe.iloc[idx]["label"], dtype=torch.long)
 
-        sample = {'embedding': embedding, 'label': label}
+        sample = {"embedding": embedding, "label": label}
 
         return sample
+
+
 def form_triplets(outputs, labels, num_triplets=10):
     anchors, positives, negatives = [], [], []
     unique_labels = torch.unique(labels)
 
     for label in unique_labels:
-        label_mask = (labels == label)
-        other_label_mask = (labels != label)
+        label_mask = labels == label
+        other_label_mask = labels != label
         label_indices = torch.nonzero(label_mask).squeeze(1)
         other_label_indices = torch.nonzero(other_label_mask).squeeze(1)
 
@@ -48,6 +51,7 @@ def form_triplets(outputs, labels, num_triplets=10):
 
     return anchors, positives, negatives
 
+
 def train_clusters(data, model: DynamicUmap, focus_ids):
     # create data loader
     dataset = CustomDataset(data)
@@ -60,8 +64,8 @@ def train_clusters(data, model: DynamicUmap, focus_ids):
     optimizer = optim.Adam(params=neural_net.parameters(), lr=0.0003)
     triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
     for batch in tqdm(dataloader):
-        outputs = neural_net(batch['embedding'])
-        anchors, positives, negatives = form_triplets(outputs, batch['label'])
+        outputs = neural_net(batch["embedding"])
+        anchors, positives, negatives = form_triplets(outputs, batch["label"])
         loss = triplet_loss(anchors, positives, negatives)
         optimizer.zero_grad()
         loss.backward()
@@ -80,21 +84,22 @@ class CustomDatasetPoint(Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-        embedding = torch.tensor(self.dataframe.iloc[idx]['embedding'], dtype=torch.float32)
-        label = torch.tensor(self.dataframe.iloc[idx]['label'], dtype=torch.long)
-        id = torch.tensor(self.dataframe.iloc[idx]['id'], dtype=torch.long)
+        embedding = torch.tensor(self.dataframe.iloc[idx]["embedding"], dtype=torch.float32)
+        label = torch.tensor(self.dataframe.iloc[idx]["label"], dtype=torch.long)
+        id = torch.tensor(self.dataframe.iloc[idx]["id"], dtype=torch.long)
 
-        sample = {'id': id, 'embedding': embedding, 'label': label}
+        sample = {"id": id, "embedding": embedding, "label": label}
 
         return sample
+
 
 def custom_loss(output, target_dicts, original, lam=0.1):
     # Initialize MSE loss function
     mse_loss = nn.MSELoss()
 
     # Extract the IDs and positions from the target list of dictionaries
-    target_ids = [d['batch_id'] for d in target_dicts]
-    target_pos = [d['pos'] for d in target_dicts]
+    target_ids = [d["batch_id"] for d in target_dicts]
+    target_pos = [d["pos"] for d in target_dicts]
 
     # Create tensors from the extracted values
     target_ids_tensor = torch.tensor(target_ids, dtype=torch.long)
@@ -125,15 +130,17 @@ def custom_loss(output, target_dicts, original, lam=0.1):
 
     return total_loss
 
+
 def collate_fn(batch, corrections):
     relevant_corrections = []
 
     for idx, item in enumerate(batch):
         for correction in corrections:
-            if correction['id'] == item.get('id'):
+            if correction["id"] == item.get("id"):
                 correction["batch_idx"] = idx
                 relevant_corrections.append(correction)
-    return {'id': batch["id"], 'embedding': batch["embedding"], 'label': batch["label"], 'corrections': relevant_corrections}
+    return {"id": batch["id"], "embedding": batch["embedding"], "label": batch["label"], "corrections": relevant_corrections}
+
 
 def train_points(data, model, correction):
     dataset = CustomDataset(data)
@@ -143,8 +150,8 @@ def train_points(data, model, correction):
     optimizer = optim.Adam(params=neural_net.parameters(), lr=0.00005)
     triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
     for batch in tqdm(dataloader):
-        outputs = neural_net(batch['embedding'])
-        loss = custom_loss(outputs, batch['corrections'], batch['embedding'])
+        outputs = neural_net(batch["embedding"])
+        loss = custom_loss(outputs, batch["corrections"], batch["embedding"])
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()

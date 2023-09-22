@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 router = APIRouter()
 
 
-@router.post("/") #, response_model=ConfigModel)
+@router.post("/")  # , response_model=ConfigModel)
 def create_config(config: ConfigModel = ConfigManager.get_default_model(), db: Session = Depends(get_db)):
     config_manager = ConfigManager(db)
 

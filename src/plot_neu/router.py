@@ -59,50 +59,36 @@ def save_model(model_data, model, project_id, user, db: Session = Depends(get_db
         ProjectID=project_id,
         ModelName=model_data.name,
         ModelFile=filename,
-
     )
     db.add(db_model)
     db.commit()
 
 
 @router.post("/create")
-def create_view(
-        project_id: int,
-        db: Session = Depends(get_db)
-):
-    result = (
-        db.query(models.Project)
-        .filter(
-            models.Project.ProjectID == project_id
-        )
-        .all()
-    )
+def create_view(project_id: int, db: Session = Depends(get_db)):
+    result = db.query(models.Project).filter(models.Project.ProjectID == project_id).all()
     if len(result) == 0:
         return {"error": "Project not found"}
     # initialize, so get the models necessary
     with Timer("Get embedding and reduction models"):
         embedding_model, db_e = get_model(embedding_model_data, project_id, current_user.username, db)
-        reduction_model, db_r = get_model(reduction_model_data, project_id, current_user.username, db,
-                                          name_prefix=db_e.ModelName + "_")
+        reduction_model, db_r = get_model(reduction_model_data, project_id, current_user.username, db, name_prefix=db_e.ModelName + "_")
 
     # get any segments that don't have embeddings
     # get both the segments and their corresponding sentence
     with Timer("Get segments and sentences to embed"):
-        subquery = exists().where(
-            and_(
-                Embedding.SegmentID == Segment.SegmentID,
-                Embedding.ModelID == db_e.ModelID
-            )
-        )
+        subquery = exists().where(and_(Embedding.SegmentID == Segment.SegmentID, Embedding.ModelID == db_e.ModelID))
 
         # Initialize the query for Segments and corresponding Sentences
-        segments_and_sentences = db.query(Segment, Sentence). \
-            join(Sentence, Sentence.SentenceID == Segment.SentenceID). \
-            join(Dataset, Dataset.DatasetID == Sentence.DatasetID). \
-            join(Project, Project.ProjectID == Dataset.ProjectID). \
-            filter(Project.ProjectID == project_id). \
-            filter(not_(subquery)). \
-            all()
+        segments_and_sentences = (
+            db.query(Segment, Sentence)
+            .join(Sentence, Sentence.SentenceID == Segment.SentenceID)
+            .join(Dataset, Dataset.DatasetID == Sentence.DatasetID)
+            .join(Project, Project.ProjectID == Dataset.ProjectID)
+            .filter(Project.ProjectID == project_id)
+            .filter(not_(subquery))
+            .all()
+        )
         segments, sentences = [], []
         logging.log(logging.INFO, f"Segments and Sentences: #{len(segments_and_sentences)}")
         if len(segments_and_sentences) > 0:
@@ -115,11 +101,7 @@ def create_view(
             embedding_values = embedding_model.transform(segments, sentences)
         with Timer("Insert Embeddings"):
             embedding_mappings = [
-                {
-                    "SegmentID": segment.SegmentID,
-                    "ModelID": db_e.ModelID,
-                    "EmbeddingValues": pickle.dumps(embedding_value)
-                }
+                {"SegmentID": segment.SegmentID, "ModelID": db_e.ModelID, "EmbeddingValues": pickle.dumps(embedding_value)}
                 for embedding_value, segment in zip(embedding_values, segments)
             ]
 
@@ -129,32 +111,17 @@ def create_view(
     del segments
     del sentences
     with Timer("Get embeddings to reduce"):
-        subquery = (
-            db.query(models.Position.EmbeddingID)
-            .filter(models.Position.ModelID == db_r.ModelID)
-            .subquery()
-        )
+        subquery = db.query(models.Position.EmbeddingID).filter(models.Position.ModelID == db_r.ModelID).subquery()
 
         # Main query to find embeddings
-        embeddings_todo = db.query(Embedding). \
-            join(CombinedModel, CombinedModel.ModelID == Embedding.ModelID). \
-            join(Project, Project.ProjectID == CombinedModel.ProjectID). \
-            filter(
-            and_(
-                Project.ProjectID == project_id,
-                CombinedModel.ModelID == db_e.ModelID
-            )
-        ). \
-            filter(
-            not_(
-                exists().where(
-                    and_(
-                        Position.EmbeddingID == Embedding.EmbeddingID,
-                        Position.ModelID == db_r.ModelID
-                    )
-                )
-            )
-        ).all()
+        embeddings_todo = (
+            db.query(Embedding)
+            .join(CombinedModel, CombinedModel.ModelID == Embedding.ModelID)
+            .join(Project, Project.ProjectID == CombinedModel.ProjectID)
+            .filter(and_(Project.ProjectID == project_id, CombinedModel.ModelID == db_e.ModelID))
+            .filter(not_(exists().where(and_(Position.EmbeddingID == Embedding.EmbeddingID, Position.ModelID == db_r.ModelID))))
+            .all()
+        )
         logging.log(logging.INFO, f"Embeddings: #{len(embeddings_todo)}")
         embeddings_arrays = np.array([])
         if len(embeddings_todo) > 0:
@@ -166,23 +133,14 @@ def create_view(
             position_values = reduction_model.transform(embeddings_arrays)
         with Timer("Insert Positions"):
             position_mappings = [
-                {
-                    "EmbeddingID": embedding.EmbeddingID,
-                    "ModelID": db_r.ModelID,
-                    "Posx": float(position_value[0]),
-                    "Posy": float(position_value[1])
-                }
+                {"EmbeddingID": embedding.EmbeddingID, "ModelID": db_r.ModelID, "Posx": float(position_value[0]), "Posy": float(position_value[1])}
                 for position_value, embedding in zip(position_values, embeddings_todo)
             ]
             db.bulk_insert_mappings(models.Position, position_mappings)
             db.commit()
 
     with Timer("Create View"):
-        new_view = models.View(
-            ProjectID=project_id,
-            EmbeddingModelID=db_e.ModelID,
-            ReductionModelID=db_r.ModelID
-        )
+        new_view = models.View(ProjectID=project_id, EmbeddingModelID=db_e.ModelID, ReductionModelID=db_r.ModelID)
         db.add(new_view)
         db.commit()
     update_model(embedding_model_data, embedding_model, project_id, current_user.username)
@@ -191,7 +149,7 @@ def create_view(
         "ViewID": new_view.ViewID,
         "ProjectID": new_view.ProjectID,
         "EmbeddingModelID": new_view.EmbeddingModelID,
-        "ReductionModelID": new_view.ReductionModelID
+        "ReductionModelID": new_view.ReductionModelID,
     }
     db.close()
     del embeddings_todo

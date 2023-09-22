@@ -71,5 +71,3 @@ def extract_codes(dataset_name: str):
     logger.info(f"Extracted and saved annotations for dataset: {dataset_name}")
 
     return annotations
-
-

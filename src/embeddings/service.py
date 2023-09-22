@@ -75,6 +75,7 @@ def save_embeddings(embeddings: np.ndarray, dataset_name: str, model_name: str):
 
     session.commit()
 
+
 def extract_embeddings(dataset_name, model_name, start=0, end=None, id=None) -> List:
     model_service = ModelService(dataset_name, model_name)
     logger.info(f"Extract embeddings: {dataset_name} / {model_name} start: {start} end: {end}, id: {id}")

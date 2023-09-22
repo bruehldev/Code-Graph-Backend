@@ -55,6 +55,7 @@ class Hdbscan:
     arguments: dict = Field(dict(), description="Arguments for Umap")
     name: str = ""
     fitted: bool = True
+
     def __init__(self, arguments: dict = None):
         if arguments is None:
             arguments = {}
@@ -75,6 +76,7 @@ class Dbscan:
     arguments: dict = Field(dict(), description="Arguments for Umap")
     name: str = ""
     fitted: bool = True
+
     def __init__(self, arguments: dict = None):
         if arguments is None:
             arguments = {}
@@ -89,6 +91,7 @@ class Dbscan:
 
         model = DBSCAN(**self.arguments)
         return model.fit_predict(data)
+
 
 class SemiSupervisedUmap(Umap):
     def fit(self, data: Union[np.ndarray, list], labels: np.ndarray = None) -> bool:
@@ -242,6 +245,7 @@ class BertEmbeddingModel:
         temp.update(self.arguments)
         return f"BertEmbeddingModel({temp})"
 
+
 class DynamicBertModel(BertEmbeddingModel):
     is_dynamic: bool = True
     train: bool = False
@@ -289,8 +293,6 @@ class DynamicUmap:
         return f"DynamicUmap({self.arguments})"
 
 
-
-
 MODELS = {
     "umap": Umap,
     "semisupervised_umap": SemiSupervisedUmap,
@@ -298,7 +300,7 @@ MODELS = {
     "dbscan": Dbscan,
     "hdbscan": Hdbscan,
     "dynamic_bert": DynamicBertModel,
-    "dynamic_umap": DynamicUmap
+    "dynamic_umap": DynamicUmap,
 }
 
 

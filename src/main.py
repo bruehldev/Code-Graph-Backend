@@ -35,7 +35,6 @@ app.include_router(reduced_embeddings_router, prefix="/projects/{project_id}/red
 app.include_router(clusters_router, prefix="/projects/{project_id}/clusters", tags=["clusters"])
 
 
-
 app.include_router(config_router, prefix="/configs", tags=["configs"])
 
 
