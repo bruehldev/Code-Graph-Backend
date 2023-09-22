@@ -9,7 +9,7 @@ from embeddings.service import get_embeddings, extract_embeddings
 from data.schemas import Experimental_dataset_names
 from models.schemas import Model_names
 from embeddings.schemas import EmbeddingTable, EmbeddingEntry, DataEmbeddingResponse, EmbeddingData
-from db.schemas import DeleteResponse
+from db.schema import DeleteResponse
 from db.models import Segment, Sentence, Dataset, Project, Embedding, Model
 
 from models_neu.model_definitions import MODELS

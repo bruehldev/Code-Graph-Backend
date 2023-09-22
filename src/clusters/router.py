@@ -15,7 +15,7 @@ from database.postgresql import (
 from data.utils import get_path_key
 
 from clusters.schemas import DataClusterResponse, ClusterTable, ClusterEntry, ClusterData
-from db.schemas import DeleteResponse
+from db.schema import DeleteResponse
 from project.service import ProjectService
 from db.session import get_db
 from sqlalchemy.orm import Session
@@ -34,12 +34,7 @@ class ClustersTableResponse(BaseModel):
 
 @router.get("/extract")
 def extract_clusters_endpoint(
-    project_id: int,
-    all: bool = False,
-    page: int = 1,
-    page_size: int = 100,
-    return_data: bool = False,
-    db: Session = Depends(get_db)
+    project_id: int, all: bool = False, page: int = 1, page_size: int = 100, return_data: bool = False, db: Session = Depends(get_db)
 ):
     clusters = []
     project: ProjectService = ProjectService(project_id, db)

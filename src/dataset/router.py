@@ -9,7 +9,7 @@ from dataset.service import text_to_json, add_data_to_db
 
 from pprint import pprint
 
-from db.schemas import DeleteResponse
+from db.schema import DeleteResponse
 from sqlalchemy import not_, and_, exists
 
 router = APIRouter()

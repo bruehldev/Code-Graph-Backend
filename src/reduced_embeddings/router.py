@@ -12,7 +12,7 @@ from database.postgresql import get as get_in_db, create as create_in_db, update
 from data.utils import get_path_key
 
 from reduced_embeddings.schemas import ReducedEmbeddingTable, ReducedEmbeddingEntry, ReducedEmbeddingData, DataReducedEmbeddingResponse
-from db.schemas import DeleteResponse
+from db.schema import DeleteResponse
 from project.service import ProjectService
 from db.session import get_db
 from sqlalchemy.orm import Session
@@ -24,6 +24,7 @@ import numpy as np
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
 
 @router.get("/")
 def get_reduced_embeddings_endpoint(project_id: int, all: bool = False, page: int = 1, page_size: int = 100, db: Session = Depends(get_db)):
@@ -46,9 +47,7 @@ def get_reduced_embeddings_endpoint(project_id: int, all: bool = False, page: in
 
 
 @router.get("/extract")
-def extract_embeddings_reduced_endpoint(
-    project_id: int, db: Session = Depends(get_db)
-):
+def extract_embeddings_reduced_endpoint(project_id: int, db: Session = Depends(get_db)):
     reduced_embeddings = []
     project: ProjectService = ProjectService(project_id, db)
 

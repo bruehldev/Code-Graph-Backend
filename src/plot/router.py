@@ -13,7 +13,7 @@ from database.postgresql import (
     plot_search_segment,
 )
 from plot.schemas import PlotData, PlotEntry, PlotTable, DataPlotResponse
-from db.schemas import DeleteResponse
+from db.schema import DeleteResponse
 from project.service import ProjectService
 from db.session import get_db
 from sqlalchemy.orm import Session, aliased

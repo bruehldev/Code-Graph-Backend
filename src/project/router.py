@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from db.schemas import DeleteResponse
 
 from db.models import Project
 from db.session import get_db
-from fastapi import HTTPException
+from db.schema import DeleteResponse
 from project.service import ProjectService
-from configmanager.router import create_config, get_config
 from project.schema import ProjectData, ProjectsData, ProjectEntry
+
+from configmanager.router import create_config, get_config
 
 router = APIRouter()
 
