@@ -3,32 +3,10 @@ import json
 import logging
 import os
 
-from clusters.service import get_clusters
-from reduced_embeddings.service import get_reduced_embeddings
-from segments.service import get_segments
 from utilities.string_operations import get_project_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-def get_plot(dataset_name: str, model_name: str, start: int = 0, end: int = None):
-    plot_file = get_plot_file(dataset_name, model_name, suffix="json")
-    segments = []
-    if os.path.exists(plot_file):
-        try:
-            segments = load_plot(plot_file, start, end)
-            logger.info(f"Loaded plot from file for dataset: {dataset_name}")
-        except Exception as e:
-            logger.error(f"Error loading plot from file for dataset: {dataset_name}")
-            logger.error(str(e))
-            raise
-    else:
-        segments = extract_plot(dataset_name, model_name)
-        segments = segments[start:end]
-
-    logger.info(f"Retrieved plot for dataset: {dataset_name}")
-    return segments
 
 
 def extract_plot(project_id: str, plots):
