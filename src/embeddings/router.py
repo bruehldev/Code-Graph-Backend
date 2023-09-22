@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from db.models import Dataset, Embedding, Model, Project, Segment, Sentence
 from db.schema import DeleteResponse
 from db.session import get_db
-from models_neu.model_definitions import MODELS
 from project.service import ProjectService
 
 router = APIRouter()
