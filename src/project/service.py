@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from db.models import Config, Model, Project
-from models_neu.model_definitions import MODELS
+from models.model_definitions import MODELS
 from utilities.string_operations import generate_hash, get_file_path
 
 logger = logging.getLogger(__name__)

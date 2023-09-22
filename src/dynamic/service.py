@@ -5,7 +5,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from models_neu.model_definitions import DynamicUmap
+from models.model_definitions import DynamicUmap
 
 
 class CustomDataset(Dataset):

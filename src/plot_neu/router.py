@@ -11,7 +11,7 @@ from configmanager.service import ConfigManager
 from db import models, session
 from db.models import Dataset, Embedding, Project, ReducedEmbedding, Segment, Sentence
 from db.session import SessionLocal, get_db
-from models_neu.model_definitions import MODELS
+from models.model_definitions import MODELS
 from utilities.timer import Timer
 
 router = APIRouter()
