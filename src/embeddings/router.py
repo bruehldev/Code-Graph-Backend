@@ -46,6 +46,8 @@ def get_embeddings_endpoint(
 def extract_embeddings_endpoint(
     project_id: int = None,
     db: Session = Depends(get_db),
+    batch_size: int = 124,
+    use_disk_storage: bool = False,
 ):
     logger.info(f"Extracting embeddings: Project {project_id}")
     embeddings = []
@@ -65,7 +67,12 @@ def extract_embeddings_endpoint(
 
     if not len(segments_and_sentences) == 0:
         segments, sentences = zip(*segments_and_sentences)
-        embeddings = embedding_model.transform(segments, sentences)
+        embeddings = embedding_model.transform(
+            segments,
+            sentences,
+            batch_size=batch_size,
+            use_disk_storage=use_disk_storage,
+        )
 
         ## saving
 
