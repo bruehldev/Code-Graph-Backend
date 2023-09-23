@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 @router.post("/cluster")
 def train_for_clusters(
     project_id: int,
-    all: bool = False,
     ids: List[int] = None,
     epochs: int = 10,
     db: Session = Depends(get_db),
