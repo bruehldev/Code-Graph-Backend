@@ -206,6 +206,7 @@ class BertEmbeddingModel:
                         }
                     )
         else:
+            # Important Note: Using disc storage can double the time needed for the embedding calculation.
             all_embeddings_list = []
             export_folder = os.path.join(get_root_path(), "tmp")
             os.makedirs(export_folder, exist_ok=True)
