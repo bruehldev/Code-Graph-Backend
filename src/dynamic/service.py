@@ -6,6 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 
 from models_neu.model_definitions import DynamicUmap
+import numpy as np
 
 class CustomDataset(Dataset):
     def __init__(self, dataframe):
@@ -93,7 +94,7 @@ def custom_loss(output, target_dicts, original, lam=0.1):
     mse_loss = nn.MSELoss()
 
     # Extract the IDs and positions from the target list of dictionaries
-    target_ids = [d['batch_id'] for d in target_dicts]
+    target_ids = [d['batch_idx'] for d in target_dicts]
     target_pos = [d['pos'] for d in target_dicts]
 
     # Create tensors from the extracted values
@@ -102,10 +103,16 @@ def custom_loss(output, target_dicts, original, lam=0.1):
 
     # Gather the corresponding output values using the IDs
     selected_output = torch.index_select(output, 0, target_ids_tensor)
-
+    #print("selected o")
+    #print(selected_output)
+    #print("target")
+    #print(target_pos_tensor)
     # Calculate MSE loss for selected indices
-    mse_loss_selected = mse_loss(selected_output, target_pos_tensor)
-
+    if selected_output.nelement() == 0 or target_pos_tensor.nelement() == 0:
+        mse_loss_selected = torch.tensor(0.0, dtype=output.dtype).to(output.device)
+    else:
+        # Calculate MSE loss for selected indices
+        mse_loss_selected = mse_loss(selected_output, target_pos_tensor)
     # Create a mask to find indices that are NOT in the target list
     full_indices = torch.arange(output.size(0))
     mask_non_target = torch.ones(output.size(0), dtype=torch.bool)
@@ -116,7 +123,10 @@ def custom_loss(output, target_dicts, original, lam=0.1):
     # Gather the corresponding original and output values using the non-target IDs
     selected_original = torch.index_select(original, 0, non_target_indices)
     selected_output_non_target = torch.index_select(output, 0, non_target_indices)
-
+    #print("selected_non")
+    #print(selected_output_non_target)
+    #print("selected_orig")
+    #print(selected_original)
     # Calculate MSE loss for non-target indices with regularization
     mse_loss_non_target = mse_loss(selected_output_non_target, selected_original)
 
@@ -127,24 +137,28 @@ def custom_loss(output, target_dicts, original, lam=0.1):
 
 def collate_fn(batch, corrections):
     relevant_corrections = []
+    batch_dict= {k: np.array([dic[k] for dic in batch]) for k in batch[0]}
 
     for idx, item in enumerate(batch):
         for correction in corrections:
             if correction['id'] == item.get('id'):
                 correction["batch_idx"] = idx
                 relevant_corrections.append(correction)
-    return {'id': batch["id"], 'embedding': batch["embedding"], 'label': batch["label"], 'corrections': relevant_corrections}
+    return {'id': batch_dict["id"], 'embedding': torch.stack(batch_dict["embedding"].tolist()), 'label': batch_dict["label"], 'corrections': relevant_corrections}
 
 def train_points(data, model, correction):
-    dataset = CustomDataset(data)
+    dataset = CustomDatasetPoint(data)
     dataloader = DataLoader(dataset, batch_size=32, shuffle=True, collate_fn=lambda batch: collate_fn(batch, correction))
     # TODO add get neural net:
     neural_net = model._model.model.encoder
     optimizer = optim.Adam(params=neural_net.parameters(), lr=0.00005)
-    triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
+    #outputs = neural_net(batch['embedding'])
+    #original = outputs.detach()
     for batch in tqdm(dataloader):
         outputs = neural_net(batch['embedding'])
-        loss = custom_loss(outputs, batch['corrections'], batch['embedding'])
+        alpha = 0.95
+        #original = alpha * original + (1 - alpha) * output.detach()
+        loss = custom_loss(outputs, batch['corrections'], outputs)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()

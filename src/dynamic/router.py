@@ -1,5 +1,5 @@
 import pickle
-from typing import List, Dict
+from typing import List, Dict, Union
 
 import pandas as pd
 from fastapi import APIRouter, Depends
@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from db.models import ReducedEmbedding, Embedding, Segment, Sentence, Code, Project, Cluster
 from db.session import get_db
-from dynamic.service import train_clusters
+from dynamic.service import train_clusters, train_points
 from embeddings.router import extract_embeddings_endpoint
 from project.service import ProjectService
 from reduced_embeddings.router import extract_embeddings_reduced_endpoint
@@ -84,7 +84,7 @@ def train_for_clusters(
 @router.post("/correction")
 def train_for_correction(
     project_id: int,
-    correction: List[Dict[str, List[float]]] = None,
+    correction: List[Dict[str, Union[int, List[float]]]] = None,
     epochs: int = 10,
     db: Session = Depends(get_db),
 ):
