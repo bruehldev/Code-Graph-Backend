@@ -1,8 +1,12 @@
-import logging
 import json
-from configmanager.schemas import ConfigModel, ReductionConfig, ClusterConfig, EmbeddingConfig
-from db.models import Config, Project
+import logging
+
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
+
+from configmanager.schemas import (ClusterConfig, ConfigModel, EmbeddingConfig,
+                                   ReductionConfig)
+from db.models import Config, Project
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,10 +28,12 @@ class ConfigManager:
 
     def get_config(self, id):
         config = self.session.query(Config).filter_by(config_id=id).first()
-        self.session.expunge(config)
         if config:
+            self.session.expunge(config)
             config.config = json.loads(config.config)
             return config
+        else:
+            raise HTTPException(status_code=404, detail=f"Config '{id}' does not exist.")
 
     def save_config(self, config):
         self.session.add(config)

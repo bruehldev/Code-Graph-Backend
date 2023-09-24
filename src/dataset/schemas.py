@@ -2,6 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+
 class DatasetCreate(BaseModel):
     name: str
     file_path: str
@@ -14,5 +15,3 @@ class DatasetTextOptions(BaseModel):
     label_split: str = "None"
     label_idx: int = 0
     type: str = "B-I-O"
-
-

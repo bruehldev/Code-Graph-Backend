@@ -1,20 +1,21 @@
 import json
 import logging
+import shutil
 from typing import List
-from fastapi import Depends
 
-from sqlalchemy import Table
-from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship, registry, aliased, mapper, Session
-from sqlalchemy.schema import DropTable
-from sqlalchemy.ext.compiler import compiles
+from fastapi import Depends
+from sqlalchemy import Table, create_engine, inspect, text
 from sqlalchemy.exc import NoSuchTableError
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.orm import (Session, aliased, mapper, registry, relationship,
+                            scoped_session, sessionmaker)
+from sqlalchemy.schema import DropTable
 
 from db.base import Base
-from db.models import Project, Dataset, Sentence, Segment, Embedding, ReducedEmbedding, Code, Model, Config
-from db.session import get_session, get_engine
+from db.models import (Code, Config, Dataset, Embedding, Model, Project,
+                       ReducedEmbedding, Segment, Sentence)
+from db.session import get_db, get_engine
 from utilities.string_operations import get_root_path
-import shutil
 
 engine = get_engine()
 metadata = Base.metadata
@@ -78,17 +79,14 @@ def delete_all_tables():
     return results
 
 
-def get_table_info():
+def get_table_info(db):
     table_names = get_table_names()
     results = []
-    session = get_session()
 
     for table_name in table_names:
         model_class = table_to_model.get(table_name)
         if model_class:
-            count = session.query(model_class).count()
+            count = db.query(model_class).count()
             results.append({"name": table_name, "count": count})
-
-    session.close()
 
     return results

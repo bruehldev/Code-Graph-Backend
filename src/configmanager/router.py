@@ -1,18 +1,19 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException
-from configmanager.service import ConfigManager
-from configmanager.schemas import ConfigModel
-from db.models import Config  # Import the Config model
-from project.service import ProjectService
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from configmanager.schemas import ConfigModel
+from configmanager.service import ConfigManager
+from db.models import Config  # Import the Config model
 # Create a ConfigManager instance with a database session
 from db.session import get_db
-from sqlalchemy.orm import Session
+from project.service import ProjectService
 
 router = APIRouter()
 
 
-@router.post("/") #, response_model=ConfigModel)
+@router.post("/")  # , response_model=ConfigModel)
 def create_config(config: ConfigModel = ConfigManager.get_default_model(), db: Session = Depends(get_db)):
     config_manager = ConfigManager(db)
 

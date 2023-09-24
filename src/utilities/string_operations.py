@@ -1,8 +1,8 @@
 import hashlib
-import os
 import json
-from urllib.parse import unquote
+import os
 from typing import Literal
+from urllib.parse import unquote
 
 env = {}
 with open("../env.json") as f:
@@ -14,7 +14,7 @@ def get_root_path():
     return env["exported_folder"]
 
 
-def get_project_path(project_id: int, type: Literal["models"]):
+def get_project_path(project_id: int, type: Literal["models", "plots"]):
     path = os.path.join(env["exported_folder"], "projects", str(project_id), type)
     os.makedirs(path, exist_ok=True)
     return path

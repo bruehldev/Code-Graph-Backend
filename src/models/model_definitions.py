@@ -1,23 +1,29 @@
+import os
 import copy
 import sys
 import time
-from pprint import pprint
+import pickle
+import logging
+from typing import Any, List, Union
 
-from torch.nn.utils.rnn import pad_sequence
-from typing import Union, List, Any
-import torch
-from fastapi import Depends
-from torch.utils.data import TensorDataset, DataLoader
-from transformers import BertTokenizerFast, BertModel
-from pydantic import BaseModel, Field
 import numpy as np
-import umap
+import torch
 import tqdm
-from utilities.timer import Timer
-from sklearn.cluster import DBSCAN
+import umap
+from fastapi import Depends
 from hdbscan import HDBSCAN
-from db.session import get_db
+from pydantic import BaseModel, Field
+from sklearn.cluster import DBSCAN
+from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import DataLoader, TensorDataset
+from transformers import BertModel, BertTokenizerFast
 from umap_pytorch import PUMAP
+
+from db.session import get_db
+from utilities.string_operations import get_root_path
+from utilities.timer import Timer
+
+logger = logging.getLogger(__name__)
 
 
 class Umap:
@@ -41,7 +47,7 @@ class Umap:
     def transform(self, data: Union[np.ndarray, list]) -> np.ndarray:
         if len(data) == 0:
             return np.array([])
-        print(f"Umap.transform() with #{len(data)} embeddings")
+        logger.info(f"Umap.transform() with #{len(data)} embeddings")
         if self._model is None:
             raise ValueError("The UMAP model has not been fitted yet.")
         transformed_data = self._model.transform(data)
@@ -55,6 +61,7 @@ class Hdbscan:
     arguments: dict = Field(dict(), description="Arguments for Umap")
     name: str = ""
     fitted: bool = True
+
     def __init__(self, arguments: dict = None):
         if arguments is None:
             arguments = {}
@@ -75,6 +82,7 @@ class Dbscan:
     arguments: dict = Field(dict(), description="Arguments for Umap")
     name: str = ""
     fitted: bool = True
+
     def __init__(self, arguments: dict = None):
         if arguments is None:
             arguments = {}
@@ -90,9 +98,10 @@ class Dbscan:
         model = DBSCAN(**self.arguments)
         return model.fit_predict(data)
 
+
 class SemiSupervisedUmap(Umap):
     def fit(self, data: Union[np.ndarray, list], labels: np.ndarray = None) -> bool:
-        print(f"SemiSupervisedUmap.fit() from {self.arguments}")
+        logger.info(f"SemiSupervisedUmap.fit() from {self.arguments}")
         if len(data) == 0:
             raise ValueError("The data is empty.")
         self._model = umap.UMAP(**self.arguments)
@@ -113,7 +122,7 @@ class BertEmbeddingModel:
         self.arguments = arguments
 
     def fit(self, segments, sentences):
-        print(f"BertEmbedding.fit() from {self.arguments}")
+        logger.info(f"BertEmbedding.fit() from {self.arguments}")
         if segments is None or sentences is None:
             raise ValueError("The data is empty.")
         self.fitted = True
@@ -126,18 +135,18 @@ class BertEmbeddingModel:
         attention_mask = pad_sequence(attention_mask, batch_first=True, padding_value=0)
         return input_ids, attention_mask, offset_mapping, sentence_id
 
-    def transform(self, segments, sentences):
+    def transform(self, segments, sentences, batch_size, use_disk_storage):
         unique_sentences = list(set(sentences))
-        print(f"BertEmbedding.transform() with #{len(segments)} segments")
+        logger.info(f"BertEmbedding.transform() with #{len(segments)} segments")
         if len(segments) == 0:
             return np.array([])
         with Timer("Calculate Sentence Embeddings"):
-            sentence_embedding = self.transform_sentences(unique_sentences)
+            sentence_embedding = self.transform_sentences(unique_sentences, batch_size=batch_size, use_disk_storage=use_disk_storage)
         with Timer("Calculating Segment Offset Indexes"):
             positions = self.get_segment_positions(segments, sentences, sentence_embedding)
         return self.segment_embedding([sentence_embedding[s.sentence_id][0] for s in sentences], positions)
 
-    def transform_sentences(self, sentences):
+    def transform_sentences(self, sentences, batch_size=124, use_disk_storage=False):
         tokenizer = BertTokenizerFast.from_pretrained(**self.arguments)
         model = BertModel.from_pretrained(**self.arguments)
         max_input_length = model.config.max_position_embeddings
@@ -166,35 +175,70 @@ class BertEmbeddingModel:
 
         # Erstellen des Datasets und Dataloader
         with Timer("Creating Dataset and Loader"):
-            BATCH_SIZE = 124
+            # Torch Approach Note: Be carefull with large batch size, to large files for torch.save can crash operating system. Using pickle instead.
             dataset = np.stack((sorted_input_ids_array, sorted_attention_mask_array, sorted_offset_mapping_array, sorted_sentences_id), axis=1)
-            dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=self.collate_fn)
+            dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=self.collate_fn)
 
         model.eval()  # Set the model to evaluation mode
 
         all_embeddings = {}
 
-        for i, (batch_input_ids, batch_attention_mask, batch_offset_mapping, batch_sentence_ids) in enumerate(tqdm.tqdm(dataloader)):
-            # Alle 10 batches die GPU leeren
-            if i % 10 == 0:
-                torch.cuda.empty_cache()
+        if not use_disk_storage:
+            for i, (batch_input_ids, batch_attention_mask, batch_offset_mapping, batch_sentence_ids) in enumerate(tqdm.tqdm(dataloader)):
+                # Alle 10 batches die GPU leeren
+                if i % 10 == 0:
+                    torch.cuda.empty_cache()
 
-            # Prepare the batch
-            batch_inputs = {"input_ids": batch_input_ids, "attention_mask": batch_attention_mask}
+                # Prepare the batch
+                batch_inputs = {"input_ids": batch_input_ids, "attention_mask": batch_attention_mask}
 
-            if torch.cuda.is_available():
-                batch_inputs = {key: tensor.to(device) for key, tensor in batch_inputs.items()}
+                if torch.cuda.is_available():
+                    batch_inputs = {key: tensor.to(device) for key, tensor in batch_inputs.items()}
 
-            with torch.no_grad():
-                outputs = model(**batch_inputs)
-                embeddings = outputs.last_hidden_state
-                embeddings = embeddings.cpu().numpy()
-                all_embeddings.update(
-                    {
-                        id: (embedding, offset, mask)
-                        for id, embedding, offset, mask in zip(batch_sentence_ids, embeddings, batch_offset_mapping, batch_attention_mask)
-                    }
-                )
+                with torch.no_grad():
+                    outputs = model(**batch_inputs)
+                    embeddings = outputs.last_hidden_state
+                    embeddings = embeddings.cpu().numpy()
+                    all_embeddings.update(
+                        {
+                            id: (embedding, offset, mask)
+                            for id, embedding, offset, mask in zip(batch_sentence_ids, embeddings, batch_offset_mapping, batch_attention_mask)
+                        }
+                    )
+        else:
+            # Important Note: Using disc storage can double the time needed for the embedding calculation.
+            all_embeddings_list = []
+            export_folder = os.path.join(get_root_path(), "tmp")
+            os.makedirs(export_folder, exist_ok=True)
+
+            for i, (batch_input_ids, batch_attention_mask, batch_offset_mapping, batch_sentence_ids) in enumerate(tqdm.tqdm(dataloader)):
+                # Alle 10 batches die GPU leeren
+                if i % 10 == 0:
+                    torch.cuda.empty_cache()
+
+                # Prepare the batch
+                batch_inputs = {"input_ids": batch_input_ids, "attention_mask": batch_attention_mask}
+
+                if torch.cuda.is_available():
+                    batch_inputs = {key: tensor.to(device) for key, tensor in batch_inputs.items()}
+
+                with torch.no_grad():
+                    outputs = model(**batch_inputs)
+                    embeddings = outputs.last_hidden_state
+                    embeddings = embeddings.cpu().numpy()
+                    all_embeddings_list.append([batch_sentence_ids, embeddings, batch_offset_mapping, batch_attention_mask])
+                pickle.dump(all_embeddings_list, open(export_folder + f"/{i}.pkl", "wb"))
+                all_embeddings_list = []
+
+            # load all embeddings
+            for i in range(len(dataloader)):
+                pickle_array = pickle.load(open(export_folder + f"/{i}.pkl", "rb"))[0]
+                for id, embedding, offset, mask in zip(*pickle_array):
+                    all_embeddings[id] = (embedding, offset, mask)
+
+            # delete all files
+            for i in range(len(dataloader)):
+                os.remove(export_folder + f"/{i}.pkl")
 
         return all_embeddings
 
@@ -242,6 +286,7 @@ class BertEmbeddingModel:
         temp.update(self.arguments)
         return f"BertEmbeddingModel({temp})"
 
+
 class DynamicBertModel(BertEmbeddingModel):
     is_dynamic: bool = True
     train: bool = False
@@ -277,7 +322,7 @@ class DynamicUmap:
     def transform(self, data: Union[np.ndarray, list]) -> np.ndarray:
         if len(data) == 0:
             return np.array([])
-        print(f"Umap.transform() with #{len(data)} embeddings")
+        logger.info(f"Umap.transform() with #{len(data)} embeddings")
         if self._model is None:
             raise ValueError("The UMAP model has not been fitted yet.")
         if type(data) != type(torch.tensor([])):
@@ -289,8 +334,6 @@ class DynamicUmap:
         return f"DynamicUmap({self.arguments})"
 
 
-
-
 MODELS = {
     "umap": Umap,
     "semisupervised_umap": SemiSupervisedUmap,
@@ -298,7 +341,7 @@ MODELS = {
     "dbscan": Dbscan,
     "hdbscan": Hdbscan,
     "dynamic_bert": DynamicBertModel,
-    "dynamic_umap": DynamicUmap
+    "dynamic_umap": DynamicUmap,
 }
 
 

@@ -1,16 +1,15 @@
 import json
 import shutil
-from fastapi import APIRouter, Depends, UploadFile, HTTPException, File, Body
+
+from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlalchemy import and_, exists, not_
 from sqlalchemy.orm import Session
-from db import session, models
+
 from dataset.schemas import DatasetCreate, DatasetTextOptions
-from dataset.service import text_to_json, add_data_to_db
-
-from pprint import pprint
-
-from db.schemas import DeleteResponse
-from sqlalchemy import not_, and_, exists
+from dataset.service import add_data_to_db, text_to_json
+from db import models, session
+from db.schema import DeleteResponse
 
 router = APIRouter()
 
@@ -103,6 +102,8 @@ def delete_datasets_route(project_id: int, dataset_id: int, db: Session = Depend
 def get_sentences_segments_route(
     project_id: int,
     dataset_id: int,
+    page: int = 1,
+    page_size: int = 10,
     db: Session = Depends(session.get_db),
 ):
     # Get sentences with their segments
@@ -115,6 +116,8 @@ def get_sentences_segments_route(
         db.query(models.Sentence, models.Segment)
         .filter(models.Sentence.dataset_id == dataset_id)
         .join(models.Segment, models.Segment.sentence_id == models.Sentence.sentence_id)
+        .offset(page * page_size)
+        .limit(page_size)
         .all()
     )
 
@@ -139,7 +142,7 @@ def delete_sentence_route(
     db: Session = Depends(session.get_db),
 ):
     # Get sentences with their segments
-    dataset = db.query(models.Dataset).filter(models.Dataset.project_id == project_id, models.Dataset.dataset_id == dataset_id).first()
+    dataset = db.query(models.Dataset).filter(models.Dataset.project_id == project_id, models.Dataset.dataset_id == dataset_id).all()
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
 

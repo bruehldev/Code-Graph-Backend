@@ -1,27 +1,17 @@
 import pickle
-import json
-from typing import List, Optional
-from fastapi import APIRouter, HTTPException, status, Depends
+import logging
 
-from database.postgresql import get as get_in_db, create as create_in_db, update as update_in_db, delete as delete_in_db, get_embedding_table
-from embeddings.service import get_embeddings, extract_embeddings
-
-from data.schemas import Experimental_dataset_names
-from models.schemas import Model_names
-from embeddings.schemas import EmbeddingTable, EmbeddingEntry, DataEmbeddingResponse, EmbeddingData
-from db.schemas import DeleteResponse
-from db.models import Segment, Sentence, Dataset, Project, Embedding, Model
-
-from models_neu.model_definitions import MODELS
-from configmanager.service import ConfigManager
-from db.session import get_db
-from sqlalchemy import not_, and_, exists
-from project.service import ProjectService
+from fastapi import APIRouter, Depends
+from sqlalchemy import and_, exists, not_
 from sqlalchemy.orm import Session
-from data.utils import get_path_key
-from utilities.string_operations import generate_hash
+
+from db.models import Dataset, Embedding, Model, Project, Segment, Sentence
+from db.schema import DeleteResponse
+from db.session import get_db
+from project.service import ProjectService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/")
@@ -56,9 +46,10 @@ def get_embeddings_endpoint(
 def extract_embeddings_endpoint(
     project_id: int = None,
     db: Session = Depends(get_db),
+    batch_size: int = 124,
+    use_disk_storage: bool = False,
 ):
-    print("Extracting embeddings")
-    print(f"Project {project_id}")
+    logger.info(f"Extracting embeddings: Project {project_id}")
     embeddings = []
     project = ProjectService(project_id, db)
     model_entry, embedding_model = project.get_model("embedding_config")
@@ -76,7 +67,12 @@ def extract_embeddings_endpoint(
 
     if not len(segments_and_sentences) == 0:
         segments, sentences = zip(*segments_and_sentences)
-        embeddings = embedding_model.transform(segments, sentences)
+        embeddings = embedding_model.transform(
+            segments,
+            sentences,
+            batch_size=batch_size,
+            use_disk_storage=use_disk_storage,
+        )
 
         ## saving
 
@@ -94,85 +90,7 @@ def extract_embeddings_endpoint(
     return {"data": len(embeddings)}
 
 
-"""
-    if all:
-        embeddings = extract_embeddings(dataset_name, model_name)
-        if return_data:
-            embeddings = limit_embeddings_length(embeddings, reduce_length)
-            return {"length": len(embeddings), "data": embeddings, "reduce_length": reduce_length}
-    else:
-        embeddings = extract_embeddings(dataset_name, model_name, start=(page - 1) * page_size, end=page * page_size, id=id)
-        embeddings = limit_embeddings_length(embeddings, reduce_length)
-        if return_data:
-            if id is None:
-                return {"length": len(embeddings), "page": page, "page_size": page_size, "data": embeddings, "reduce_length": reduce_length}
-            else:
-                return {"length": len(embeddings), "id": id, "data": embeddings, "reduce_length": reduce_length}
-    return {"length": len(embeddings), "page": page, "page_size": page_size, "reduce_length": reduce_length, "data": []}
-"""
-
-
 def limit_embeddings_length(embeddings, reduce_length):
     embeddings = [{"id": embedding["id"], "embedding": embedding["embedding"][:reduce_length]} for embedding in embeddings]
 
     return embeddings
-
-
-@router.get("/{id}")
-def get_data_route(
-    dataset_name: Experimental_dataset_names,
-    model_name: Model_names,
-    id: int,
-) -> DataEmbeddingResponse:
-    embedding_table_name = get_path_key("embeddings", dataset_name, model_name)
-    segment_table_name = get_path_key("segments", dataset_name)
-    embeddings_table = get_embedding_table(embedding_table_name, segment_table_name)
-    data = None
-    try:
-        data = get_in_db(embeddings_table, id)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"{str(e)}")
-    if data is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
-    data["embedding"] = pickle.loads(data["embedding"])
-    return {"data": data}
-
-
-@router.delete("/{id}", response_model=DeleteResponse)
-def delete_data_route(
-    dataset_name: Experimental_dataset_names,
-    model_name: Model_names,
-    id: int,
-):
-    embedding_table_name = get_path_key("embeddings", dataset_name, model_name)
-    segment_table_name = get_path_key("segments", dataset_name)
-    embeddings_table = get_embedding_table(embedding_table_name, segment_table_name)
-    data = None
-    try:
-        return {"id": id, "deleted": delete_in_db(embeddings_table, id)}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"{str(e)}")
-
-
-@router.put("/{id}")
-def update_data_route(
-    dataset_name: Experimental_dataset_names,
-    model_name: Model_names,
-    id: int,
-    data: EmbeddingData = {"embedding": [0.1, 0.1, 0.1, 0.1]},
-) -> DataEmbeddingResponse:
-    embedding_table_name = get_path_key("embeddings", dataset_name, model_name)
-    segment_table_name = get_path_key("segments", dataset_name)
-    embeddings_table = get_embedding_table(embedding_table_name, segment_table_name)
-
-    response = None
-    try:
-        embedding_data = data.dict()
-        embedding_data = {"embedding": pickle.dumps(embedding_data["embedding"])}
-        response = update_in_db(embeddings_table, id, embedding_data)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"{str(e)}")
-    if response is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Data not found")
-    response = {"id": response["id"], "embedding": pickle.loads(response["embedding"])}
-    return {"data": response}

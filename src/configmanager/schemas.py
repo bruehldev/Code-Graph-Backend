@@ -1,5 +1,6 @@
+from typing import Any, Dict, List, Literal, Optional, Union
+
 from pydantic import BaseModel
-from typing import List, Literal, Dict, Any, Optional, Union
 
 
 class BertModelArgs(BaseModel):
@@ -16,6 +17,7 @@ class UmapArgs(BaseModel):
     n_components: int = 2
     metric: str = "cosine"
     random_state: int = 42
+    n_jobs: int = 1
 
 
 class ReductionConfig(BaseModel):

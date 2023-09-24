@@ -1,12 +1,12 @@
 from random import choices
 
 import torch
-from torch import optim, nn
-from torch.utils.data import Dataset, DataLoader
+from torch import nn, optim
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from models_neu.model_definitions import DynamicUmap
-import numpy as np
+from models.model_definitions import DynamicUmap
+
 
 class CustomDataset(Dataset):
     def __init__(self, dataframe):
@@ -19,12 +19,14 @@ class CustomDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        embedding = torch.tensor(self.dataframe.iloc[idx]['embedding'], dtype=torch.float32)
-        label = torch.tensor(self.dataframe.iloc[idx]['label'], dtype=torch.long)
+        embedding = torch.tensor(self.dataframe.iloc[idx]["embedding"], dtype=torch.float32)
+        label = torch.tensor(self.dataframe.iloc[idx]["label"], dtype=torch.long)
 
-        sample = {'embedding': embedding, 'label': label}
+        sample = {"embedding": embedding, "label": label}
 
         return sample
+
+
 def form_triplets(outputs, labels, num_triplets=10):
     anchors, positives, negatives = [], [], []
     unique_labels = torch.unique(labels)
@@ -49,6 +51,7 @@ def form_triplets(outputs, labels, num_triplets=10):
 
     return anchors, positives, negatives
 
+
 def train_clusters(data, model: DynamicUmap, focus_ids):
     # create data loader
     dataset = CustomDataset(data)
@@ -61,8 +64,8 @@ def train_clusters(data, model: DynamicUmap, focus_ids):
     optimizer = optim.Adam(params=neural_net.parameters(), lr=0.0003)
     triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
     for batch in tqdm(dataloader):
-        outputs = neural_net(batch['embedding'])
-        anchors, positives, negatives = form_triplets(outputs, batch['label'])
+        outputs = neural_net(batch["embedding"])
+        anchors, positives, negatives = form_triplets(outputs, batch["label"])
         loss = triplet_loss(anchors, positives, negatives)
         optimizer.zero_grad()
         loss.backward()
@@ -81,11 +84,11 @@ class CustomDatasetPoint(Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-        embedding = torch.tensor(self.dataframe.iloc[idx]['embedding'], dtype=torch.float32)
-        label = torch.tensor(self.dataframe.iloc[idx]['label'], dtype=torch.long)
-        id = torch.tensor(self.dataframe.iloc[idx]['id'], dtype=torch.long)
+        embedding = torch.tensor(self.dataframe.iloc[idx]["embedding"], dtype=torch.float32)
+        label = torch.tensor(self.dataframe.iloc[idx]["label"], dtype=torch.long)
+        id = torch.tensor(self.dataframe.iloc[idx]["id"], dtype=torch.long)
 
-        sample = {'id': id, 'embedding': embedding, 'label': label}
+        sample = {"id": id, "embedding": embedding, "label": label}
 
         return sample
 
@@ -103,10 +106,7 @@ def custom_loss(output, target_dicts, original, lam=0.1):
 
     # Gather the corresponding output values using the IDs
     selected_output = torch.index_select(output, 0, target_ids_tensor)
-    #print("selected o")
-    #print(selected_output)
-    #print("target")
-    #print(target_pos_tensor)
+
     # Calculate MSE loss for selected indices
     if selected_output.nelement() == 0 or target_pos_tensor.nelement() == 0:
         mse_loss_selected = torch.tensor(0.0, dtype=output.dtype).to(output.device)
@@ -123,10 +123,7 @@ def custom_loss(output, target_dicts, original, lam=0.1):
     # Gather the corresponding original and output values using the non-target IDs
     selected_original = torch.index_select(original, 0, non_target_indices)
     selected_output_non_target = torch.index_select(output, 0, non_target_indices)
-    #print("selected_non")
-    #print(selected_output_non_target)
-    #print("selected_orig")
-    #print(selected_original)
+
     # Calculate MSE loss for non-target indices with regularization
     mse_loss_non_target = mse_loss(selected_output_non_target, selected_original)
 
@@ -135,13 +132,14 @@ def custom_loss(output, target_dicts, original, lam=0.1):
 
     return total_loss
 
+
 def collate_fn(batch, corrections):
     relevant_corrections = []
     batch_dict= {k: np.array([dic[k] for dic in batch]) for k in batch[0]}
 
     for idx, item in enumerate(batch):
         for correction in corrections:
-            if correction['id'] == item.get('id'):
+            if correction["id"] == item.get("id"):
                 correction["batch_idx"] = idx
                 relevant_corrections.append(correction)
     return {'id': batch_dict["id"], 'embedding': torch.stack(batch_dict["embedding"].tolist()), 'label': batch_dict["label"], 'corrections': relevant_corrections}
@@ -152,13 +150,10 @@ def train_points(data, model, correction):
     # TODO add get neural net:
     neural_net = model._model.model.encoder
     optimizer = optim.Adam(params=neural_net.parameters(), lr=0.00005)
-    #outputs = neural_net(batch['embedding'])
-    #original = outputs.detach()
+    triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
     for batch in tqdm(dataloader):
-        outputs = neural_net(batch['embedding'])
-        alpha = 0.95
-        #original = alpha * original + (1 - alpha) * output.detach()
-        loss = custom_loss(outputs, batch['corrections'], outputs)
+        outputs = neural_net(batch["embedding"])
+        loss = custom_loss(outputs, batch["corrections"], batch["embedding"])
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
