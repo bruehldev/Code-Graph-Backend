@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from db import models
 
 from utilities.string_operations import get_project_path
 
@@ -24,3 +25,28 @@ def build_category_tree(codes):
         else:
             category_tree[code.code_id] = mapper[code.code_id]
     return category_tree
+
+def has_circular_dependency(session, project_id, code_id, parent_code_id):
+    visited = set()
+
+    current_code_id = parent_code_id
+    while current_code_id is not None:
+        if current_code_id == code_id:
+            return True
+
+        if current_code_id in visited:
+            return True
+
+        visited.add(current_code_id)
+        current_code = (
+            session.query(models.Code)
+            .filter(models.Code.project_id == project_id,
+                    models.Code.code_id == current_code_id)
+            .first()
+        )
+
+        if current_code is None:
+            return False
+        current_code_id = current_code.parent_code_id
+
+    return False
