@@ -111,27 +111,25 @@ def get_sentences_segments_route(
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
 
-    # Query for sentences with segments
-    sentences_with_segments = (
-        db.query(models.Sentence, models.Segment)
-        .filter(models.Sentence.dataset_id == dataset_id)
-        .join(models.Segment, models.Segment.sentence_id == models.Sentence.sentence_id)
-        .offset(page * page_size)
-        .limit(page_size)
-        .all()
-    )
+    # Query for sentences without text_tsv
+    sentences = db.query(models.Sentence).filter(models.Sentence.dataset_id == dataset_id).offset((page - 1) * page_size).limit(page_size).all()
+
+    # Fetch all segments for the selected sentences
+    segments = db.query(models.Segment).filter(models.Segment.sentence_id.in_([sentence.sentence_id for sentence in sentences])).all()
 
     # Organize the data into a dictionary with sentences and their associated segments
-    sentences_data = {}
-    for sentence, segment in sentences_with_segments:
-        if sentence not in sentences_data:
-            sentences_data[sentence] = {"segments": []}
-        sentences_data[sentence]["segments"].append(segment)
+    sentences_dict = {sentence.sentence_id: sentence for sentence in sentences}
+    segments_dict = {}
+    for segment in segments:
+        if segment.sentence_id not in segments_dict:
+            segments_dict[segment.sentence_id] = []
+        segments_dict[segment.sentence_id].append(segment)
 
-    # Convert the dictionary values to a list to return as JSON
-    sentences = [{"sentence": sentence, "segments": data["segments"]} for sentence, data in sentences_data.items()]
+    # Add the segments to the sentences
+    for sentence_id, segments in segments_dict.items():
+        sentences_dict[sentence_id].segments = segments
 
-    return sentences
+    return {"length": len(sentences_dict), "data": list(sentences_dict.values())}
 
 
 @router.delete("/{dataset_id}/sentence/")
