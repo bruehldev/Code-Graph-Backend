@@ -52,7 +52,6 @@ def get_plot_endpoint(
         .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
         .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
         .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
-        .limit(page_size)
     )
     response: PlotTable = {}
     if all:
