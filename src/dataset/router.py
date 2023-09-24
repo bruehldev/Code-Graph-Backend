@@ -153,3 +153,29 @@ def delete_sentence_route(
     db.commit()
 
     return {"id": sentence_id, "deleted": True}
+
+
+@router.put("/{dataset_id}/segment/{segment_id}/")
+def update_segment_code(
+    project_id: int,
+    dataset_id: int,
+    segment_id: int,
+    code_id: int,
+    db: Session = Depends(session.get_db),
+):
+    # Get sentences with their segments
+    dataset = db.query(models.Dataset).filter(models.Dataset.project_id == project_id, models.Dataset.dataset_id == dataset_id).all()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
+
+    # Query for sentences with segments
+    segment = db.query(models.Segment).filter(models.Segment.segment_id == segment_id).first()
+    if not segment:
+        raise HTTPException(status_code=404, detail="Segment not found or you don't have permission to access it.")
+
+    segment.code_id = code_id
+    db.add(segment)
+    db.commit()
+    db.refresh(segment)
+
+    return segment
