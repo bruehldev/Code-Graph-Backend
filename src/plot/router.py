@@ -11,6 +11,7 @@ from plot.file_operations import extract_plot
 from plot.schemas import PlotTable
 from project.router import create_project_route
 from reduced_embeddings.router import extract_embeddings_reduced_endpoint
+from project.service import ProjectService
 
 # TODO: dont use the router, move stuff to services
 router = APIRouter()
@@ -35,6 +36,10 @@ def get_plot_endpoint(
     SentenceAlias = aliased(Sentence)
     CodeAlias = aliased(Code)
     ProjectAlias = aliased(Project)
+    # get config id from project id
+    project: ProjectService = ProjectService(project_id, db)
+    model_entry = project.get_model_entry("cluster_config")
+
     query = (
         db.query(
             Cluster,
@@ -46,6 +51,7 @@ def get_plot_endpoint(
             ProjectAlias,
         )
         .filter(ProjectAlias.project_id == project_id)
+        .filter(Cluster.model_id == model_entry.model_id)
         .join(ReducedEmbeddingAlias, Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
         .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
         .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
@@ -370,8 +376,7 @@ def stats_endpoint(project_id: int, db: Session = Depends(get_db)):
                         ProjectAlias,
                     )
                     .filter(and_(ProjectAlias.project_id == project_id, CodeAlias.code_id == code.code_id))
-                    .join(ReducedEmbeddingAlias,
-                          Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
+                    .join(ReducedEmbeddingAlias, Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
                     .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
                     .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
                     .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
@@ -385,7 +390,14 @@ def stats_endpoint(project_id: int, db: Session = Depends(get_db)):
                     sum_x += position[1].pos_x
                     sum_y += position[1].pos_y
                 segments_count = len(code.segments)
-                code_segments_count["codes"].append({"code_id": code.code_id, "text": code.text, "segment_count": segments_count, "average_position": {"x": sum_x/segments_count, "y": sum_y/segments_count}})
+                code_segments_count["codes"].append(
+                    {
+                        "code_id": code.code_id,
+                        "text": code.text,
+                        "segment_count": segments_count,
+                        "average_position": {"x": sum_x / segments_count, "y": sum_y / segments_count},
+                    }
+                )
 
         result = {
             "code_segments_count": code_segments_count,
