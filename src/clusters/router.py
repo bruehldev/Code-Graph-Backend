@@ -18,7 +18,7 @@ class ClustersTableResponse(BaseModel):
 
 @router.get("/extract")
 def extract_clusters_endpoint(
-    project_id: int, all: bool = False, page: int = 1, page_size: int = 100, return_data: bool = False, db: Session = Depends(get_db)
+    project_id: int, all: bool = False, page: int = 0, page_size: int = 100, return_data: bool = False, db: Session = Depends(get_db)
 ):
     clusters = []
     project: ProjectService = ProjectService(project_id, db)
@@ -60,7 +60,7 @@ def extract_clusters_endpoint(
 
 
 @router.get("/")
-def get_clusters_endpoint(project_id: int, all: bool = False, page: int = 1, page_size: int = 100, db: Session = Depends(get_db)):
+def get_clusters_endpoint(project_id: int, all: bool = False, page: int = 0, page_size: int = 100, db: Session = Depends(get_db)):
     clusters = []
     project = ProjectService(project_id, db)
     model_entry = project.get_model_entry("cluster_config")

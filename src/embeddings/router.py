@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def get_embeddings_endpoint(
     project_id: int,
     all: bool = False,
-    page: int = 1,
+    page: int = 0,
     page_size: int = 100,
     reduce_length: int = 3,
     db: Session = Depends(get_db),

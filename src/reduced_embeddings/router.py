@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/")
-def get_reduced_embeddings_endpoint(project_id: int, all: bool = False, page: int = 1, page_size: int = 100, db: Session = Depends(get_db)):
+def get_reduced_embeddings_endpoint(project_id: int, all: bool = False, page: int = 0, page_size: int = 100, db: Session = Depends(get_db)):
     reduced_embeddings = []
     project = ProjectService(project_id, db)
     model_entry = project.get_model_entry("reduction_config")
