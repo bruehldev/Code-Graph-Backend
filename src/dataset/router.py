@@ -22,7 +22,7 @@ async def upload_dataset(
     sentence_split: str = "\\n\\n",
     word_idx: int = 0,
     label_idx: int = 1,
-    label_split: str = "None",
+    label_split: str = "-",
     type: str = "plain",
     file: UploadFile = File(...),
     db: Session = Depends(session.get_db),
