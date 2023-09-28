@@ -27,6 +27,7 @@ def get_embeddings_endpoint(
     embeddings = []
     project = ProjectService(project_id, db)
     model_entry = project.get_model_entry("embedding_config")
+    count = db.query(Embedding).filter(Embedding.model_id == model_entry.model_id).count()
 
     if all:
         embeddings = db.query(Embedding).filter(Embedding.model_id == model_entry.model_id).all()
@@ -37,7 +38,7 @@ def get_embeddings_endpoint(
     result = limit_embeddings_length(
         [{"id": embedding.embedding_id, "embedding": pickle.loads(embedding.embedding_value).tolist()} for embedding in embeddings], reduce_length
     )
-    return_dict.update({"length": len(result), "data": result})
+    return_dict.update({"length": len(result), "count": count, "data": result})
 
     return return_dict
 

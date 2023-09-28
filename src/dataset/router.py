@@ -117,6 +117,8 @@ def get_sentences_segments_route(
     # Fetch all segments for the selected sentences
     segments = db.query(models.Segment).filter(models.Segment.sentence_id.in_([sentence.sentence_id for sentence in sentences])).all()
 
+    count = db.query(models.Sentence).filter(models.Sentence.dataset_id == dataset_id).count()
+
     # Organize the data into a dictionary with sentences and their associated segments
     sentences_dict = {sentence.sentence_id: sentence for sentence in sentences}
     segments_dict = {}
@@ -129,7 +131,7 @@ def get_sentences_segments_route(
     for sentence_id, segments in segments_dict.items():
         sentences_dict[sentence_id].segments = segments
 
-    return {"length": len(sentences_dict), "data": list(sentences_dict.values())}
+    return {"length": len(sentences_dict), "count": count, "data": list(sentences_dict.values())}
 
 
 @router.delete("/{dataset_id}/sentence/")

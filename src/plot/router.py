@@ -59,6 +59,7 @@ def get_plot_endpoint(
         .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
         .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
     )
+    count = query.count()
     response: PlotTable = {}
     if all:
         plots = query.all()
@@ -76,7 +77,7 @@ def get_plot_endpoint(
         }
         for row in plots
     ]
-    response.update({"data": result_dicts, "length": len(result_dicts)})
+    response.update({"data": result_dicts, "length": len(result_dicts), "count": count})
 
     return response
     """

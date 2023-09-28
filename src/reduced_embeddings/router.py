@@ -20,6 +20,7 @@ def get_reduced_embeddings_endpoint(project_id: int, all: bool = False, page: in
     project = ProjectService(project_id, db)
     model_entry = project.get_model_entry("reduction_config")
     return_dict = {}
+    count = db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == model_entry.model_id).count()
 
     if all:
         reduced_embeddings = db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == model_entry.model_id).all()
@@ -29,7 +30,7 @@ def get_reduced_embeddings_endpoint(project_id: int, all: bool = False, page: in
         )
         return_dict.update({"page": page, "page_size": page_size})
 
-    return_dict.update({"length": len(reduced_embeddings), "data": reduced_embeddings})
+    return_dict.update({"length": len(reduced_embeddings), "count": count, "data": reduced_embeddings})
 
     return return_dict
 

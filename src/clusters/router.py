@@ -65,6 +65,7 @@ def get_clusters_endpoint(project_id: int, all: bool = False, page: int = 0, pag
     project = ProjectService(project_id, db)
     model_entry = project.get_model_entry("cluster_config")
     return_dict = {}
+    count = db.query(Cluster).filter(Cluster.model_id == model_entry.model_id).count()
 
     if all:
         clusters = db.query(Cluster).filter(Cluster.model_id == model_entry.model_id).all()
@@ -72,6 +73,6 @@ def get_clusters_endpoint(project_id: int, all: bool = False, page: int = 0, pag
         clusters = db.query(Cluster).filter(Cluster.model_id == model_entry.model_id).offset(page * page_size).limit(page_size).all()
         return_dict.update({"page": page, "page_size": page_size})
 
-    return_dict.update({"length": len(clusters), "data": clusters})
+    return_dict.update({"length": len(clusters), "count": count, "data": clusters})
 
     return return_dict
