@@ -102,7 +102,7 @@ def delete_datasets_route(project_id: int, dataset_id: int, db: Session = Depend
 def get_sentences_segments_route(
     project_id: int,
     dataset_id: int,
-    page: int = 1,
+    page: int = 0,
     page_size: int = 10,
     db: Session = Depends(session.get_db),
 ):
@@ -112,7 +112,15 @@ def get_sentences_segments_route(
         raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
 
     # Query for sentences without text_tsv
-    sentences = db.query(models.Sentence).filter(models.Sentence.dataset_id == dataset_id).offset((page - 1) * page_size).limit(page_size).all()
+    sentences = (
+        db.query(models.Sentence)
+        .filter(
+            models.Sentence.dataset_id == dataset_id,
+        )
+        .offset(page * page_size)
+        .limit(page_size)
+        .all()
+    )
 
     # Fetch all segments for the selected sentences
     segments = db.query(models.Segment).filter(models.Segment.sentence_id.in_([sentence.sentence_id for sentence in sentences])).all()
