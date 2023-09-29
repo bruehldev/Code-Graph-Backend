@@ -12,22 +12,24 @@ from plot.schemas import PlotTable
 from project.router import create_project_route
 from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 from project.service import ProjectService
-
+from utilities.locks import db_lock
 # TODO: dont use the router, move stuff to services
 router = APIRouter()
 
 
 @router.get("/")
-def get_plot_endpoint(
+async def get_plot_endpoint(
     project_id: int,
     all: bool = False,
     page: int = 0,
     page_size: int = 100,
     db: Session = Depends(get_db),
 ) -> PlotTable:
-    extract_embeddings_endpoint(project_id, db=db)
-    extract_embeddings_reduced_endpoint(project_id, db=db)
-    extract_clusters_endpoint(project_id, db=db)
+    async with db_lock:
+        extract_embeddings_endpoint(project_id, db=db)
+        extract_embeddings_reduced_endpoint(project_id, db=db)
+        extract_clusters_endpoint(project_id, db=db)
+        db.commit()
     plots = []
 
     ReducedEmbeddingAlias = aliased(ReducedEmbedding)

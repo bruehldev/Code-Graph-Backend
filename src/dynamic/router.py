@@ -3,23 +3,28 @@ from typing import List, Dict
 
 import pandas as pd
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy import and_
 from sqlalchemy.orm import Session, aliased
 from tqdm import tqdm
 
 from db.models import Cluster, Code, Embedding, Project, ReducedEmbedding, Segment, Sentence
 from db.session import get_db
-from dynamic.service import train_clusters, train_points
+from dynamic.service import train_clusters, train_points_epochs, delete_old_reduced_embeddings, \
+    extract_embeddings_reduced
 from embeddings.router import extract_embeddings_endpoint
 from project.service import ProjectService
 from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 from utilities.timer import Timer
+from utilities.locks import db_lock
 
 router = APIRouter()
-
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @router.post("/cluster")
-def train_for_clusters(
+async def train_for_clusters(
     project_id: int,
     ids: List[int] = None,
     epochs: int = 10,
@@ -66,28 +71,29 @@ def train_for_clusters(
         logger.info(f"Training epoch {epoch}")
         new_model = train_clusters(data, dyn_red_model, ids)
         dyn_red_model = new_model
-        # recalculate reduced_embeddings and clusters TODO
+    async with db_lock:
+        delete_old_reduced_embeddings(db, dyn_red_entry)
+        extract_embeddings_reduced(project, dyn_red_model, db)
+        db.commit()
 
-    data_to_replace = db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).all()
-    logger.info("Deleting old reduced embeddings")
-    db.query(Cluster).filter(
-        Cluster.reduced_embedding_id.in_(db.query(ReducedEmbedding.embedding_id).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id))
-    ).delete(synchronize_session=False)
-    db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).delete(synchronize_session=False)
-    db.commit()
-    logger.info("Adding new reduced embeddings")
-    project.save_model("reduction_config", dyn_red_model)
-    extract_embeddings_reduced_endpoint(project_id, db=db)
+    #delete_old_reduced_embeddings(db, dyn_red_entry)
+    #extract_embeddings_reduced(project, dyn_red_model, db)
     return True
 
+class Correction(BaseModel):
+    id: int
+    pos: List[float]
 
 @router.post("/correction")
 def train_for_correction(
     project_id: int,
-    correction: List[Dict[str, List[float]]] = None,
+    correction: List[Correction] = list(),
     epochs: int = 10,
     db: Session = Depends(get_db),
 ):
+    for i, c in enumerate(correction):
+        correction[i] = c.dict()
+    print(correction)
     with Timer("setup"):
         project = ProjectService(project_id, db=db)
         embedding_model = project.get_model_entry("embedding_config")
@@ -123,22 +129,21 @@ def train_for_correction(
             }
             for segment, embedding, code in query
         ]
-
         data = pd.DataFrame(training_dicts)
-    for epoch in range(epochs):
-        logger.info(f"Training epoch {epoch}")
-        new_model = train_points(data, dyn_red_model, correction)
-        dyn_red_model = new_model
-        # recalculate reduced_embeddings and clusters TODO
+
+    with Timer("train"):
+        dyn_red_model = train_points_epochs(data, epochs, dyn_red_model, correction)
+
+        """for epoch in range(epochs):
+            logger.info(f"Training epoch {epoch}")
+            new_model = train_points(data, dyn_red_model, correction)
+            dyn_red_model = new_model
+            # recalculate reduced_embeddings and clusters TODO"""
 
     data_to_replace = db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).all()
-    logger.info("Deleting old reduced embeddings")
-    db.query(Cluster).filter(
-        Cluster.reduced_embedding_id.in_(db.query(ReducedEmbedding.embedding_id).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id))
-    ).delete(synchronize_session=False)
-    db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).delete(synchronize_session=False)
-    db.commit()
-    logger.info("Adding new reduced embeddings")
-    project.save_model("reduction_config", dyn_red_model)
-    extract_embeddings_reduced_endpoint(project_id, db=db)
+    delete_old_reduced_embeddings(db, dyn_red_entry)
+    extract_embeddings_reduced(project, dyn_red_model, db)
     return True
+
+
+

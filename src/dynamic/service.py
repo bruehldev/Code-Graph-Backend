@@ -4,9 +4,16 @@ import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
-
+import numpy as np
 from models.model_definitions import DynamicUmap
+from db.models import Cluster, Code, Embedding, Project, ReducedEmbedding, Segment, Sentence
+import logging
 
+from reduced_embeddings.router import extract_embeddings_reduced_endpoint
+from utilities.timer import Timer
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class CustomDataset(Dataset):
     def __init__(self, dataframe):
@@ -27,7 +34,7 @@ class CustomDataset(Dataset):
         return sample
 
 
-def form_triplets(outputs, labels, num_triplets=10):
+def form_triplets(outputs, labels, num_triplets=30):
     anchors, positives, negatives = [], [], []
     unique_labels = torch.unique(labels)
 
@@ -55,13 +62,14 @@ def form_triplets(outputs, labels, num_triplets=10):
 def train_clusters(data, model: DynamicUmap, focus_ids):
     # create data loader
     dataset = CustomDataset(data)
-    dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+
 
     # right now only for dynamic umap
     # TODO add get neural net:
     neural_net = model._model.model.encoder
 
-    optimizer = optim.Adam(params=neural_net.parameters(), lr=0.0003)
+    optimizer = optim.Adam(params=neural_net.parameters(), lr=0.0002)
     triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
     for batch in tqdm(dataloader):
         outputs = neural_net(batch["embedding"])
@@ -106,7 +114,6 @@ def custom_loss(output, target_dicts, original, lam=0.1):
 
     # Gather the corresponding output values using the IDs
     selected_output = torch.index_select(output, 0, target_ids_tensor)
-
     # Calculate MSE loss for selected indices
     if selected_output.nelement() == 0 or target_pos_tensor.nelement() == 0:
         mse_loss_selected = torch.tensor(0.0, dtype=output.dtype).to(output.device)
@@ -126,7 +133,6 @@ def custom_loss(output, target_dicts, original, lam=0.1):
 
     # Calculate MSE loss for non-target indices with regularization
     mse_loss_non_target = mse_loss(selected_output_non_target, selected_original)
-
     # Combine both losses with lambda
     total_loss = mse_loss_selected + lam * mse_loss_non_target
 
@@ -135,7 +141,7 @@ def custom_loss(output, target_dicts, original, lam=0.1):
 
 def collate_fn(batch, corrections):
     relevant_corrections = []
-    batch_dict= {k: np.array([dic[k] for dic in batch]) for k in batch[0]}
+    batch_dict = {k: np.array([dic[k] for dic in batch]) for k in batch[0]}
 
     for idx, item in enumerate(batch):
         for correction in corrections:
@@ -144,18 +150,46 @@ def collate_fn(batch, corrections):
                 relevant_corrections.append(correction)
     return {'id': batch_dict["id"], 'embedding': torch.stack(batch_dict["embedding"].tolist()), 'label': batch_dict["label"], 'corrections': relevant_corrections}
 
-def train_points(data, model, correction):
-    dataset = CustomDatasetPoint(data)
-    dataloader = DataLoader(dataset, batch_size=32, shuffle=True, collate_fn=lambda batch: collate_fn(batch, correction))
-    # TODO add get neural net:
-    neural_net = model._model.model.encoder
+
+def train_points_epochs(data, epochs, dyn_red_model, correction):
+    neural_net = dyn_red_model._model.model.encoder
     optimizer = optim.Adam(params=neural_net.parameters(), lr=0.00005)
-    triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
-    for batch in tqdm(dataloader):
-        outputs = neural_net(batch["embedding"])
-        loss = custom_loss(outputs, batch["corrections"], batch["embedding"])
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-    model._model.model.encoder = neural_net
-    return model
+    dataset = CustomDatasetPoint(data)
+    dataloader = DataLoader(dataset, batch_size=32, shuffle=True,
+                            collate_fn=lambda batch: collate_fn(batch, correction))
+    original = {}
+
+    for batch in dataloader:
+        embeddings = neural_net(batch["embedding"]).detach()
+        for idx, embedding in zip(batch["id"], embeddings):
+            original[idx] = embedding
+    for epoch in range(epochs):
+        logger.info(f"Training epoch {epoch}")
+        for i, batch in tqdm(enumerate(dataloader)):
+            outputs = neural_net(batch["embedding"])
+            alpha = 0.95
+            #original[i] = alpha * original[i] + (1 - alpha) * outputs.detach()
+            #print(original[i].shape, outputs.shape, batch["corrections"])
+            current_originals = torch.stack([original[idx] for idx in batch["id"]])
+            loss = custom_loss(outputs, batch["corrections"], current_originals, 1)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+    dyn_red_model._model.model.encoder = neural_net
+    return dyn_red_model
+
+
+def delete_old_reduced_embeddings(db, dyn_red_entry):
+    with Timer("delete old reduced embeddings"):
+        db.query(Cluster).filter(
+            Cluster.reduced_embedding_id.in_(
+                db.query(ReducedEmbedding.embedding_id).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id))
+        ).delete(synchronize_session=False)
+        db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).delete(
+            synchronize_session=False)
+        db.commit()
+
+def extract_embeddings_reduced(project, dyn_red_model, db):
+    with Timer("add new reduced embeddings"):
+        project.save_model("reduction_config", dyn_red_model)
+        extract_embeddings_reduced_endpoint(project.project_id, db=db)
