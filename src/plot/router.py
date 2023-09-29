@@ -13,6 +13,7 @@ from project.router import create_project_route
 from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 from project.service import ProjectService
 from utilities.locks import db_lock
+
 # TODO: dont use the router, move stuff to services
 router = APIRouter()
 
@@ -316,11 +317,11 @@ def search_segment_route(project_id: int, search_segment_query: str, limit: int 
 
 # extract plot route
 @router.get("/exportToFiles/")
-def extract_plot_endpoint(
+async def export_plot_endpoint(
     project_id: int,
     db: Session = Depends(get_db),
 ):
-    plots = get_plot_endpoint(project_id=project_id, all=True, db=db)
+    plots = await get_plot_endpoint(project_id=project_id, all=True, db=db)
     extract_plot(project_id=project_id, plots=plots["data"])
     return {"message": "Plot data extracted successfully"}
 
