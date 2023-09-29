@@ -399,7 +399,10 @@ def stats_endpoint(project_id: int, db: Session = Depends(get_db)):
                         "code_id": code.code_id,
                         "text": code.text,
                         "segment_count": segments_count,
-                        "average_position": {"x": sum_x / segments_count, "y": sum_y / segments_count},
+                        "average_position": {
+                            "x": sum_x / segments_count if segments_count != 0 else 0,
+                            "y": sum_y / segments_count if segments_count != 0 else 0,
+                        },
                     }
                 )
 
