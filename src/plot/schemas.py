@@ -27,7 +27,7 @@ class PlotEntry(BaseModel):
 
 class PlotTable(BaseModel):
     length: int
-    count: int
+    count: Optional[int]
     limit: Optional[int]
     page: Optional[int]
     page_size: Optional[int]
