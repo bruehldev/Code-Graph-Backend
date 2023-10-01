@@ -167,9 +167,9 @@ def train_points_epochs(data, epochs, dyn_red_model, correction):
         logger.info(f"Training epoch {epoch}")
         for i, batch in tqdm(enumerate(dataloader)):
             outputs = neural_net(batch["embedding"])
-            alpha = 0.95
-            #original[i] = alpha * original[i] + (1 - alpha) * outputs.detach()
-            #print(original[i].shape, outputs.shape, batch["corrections"])
+            # alpha = 0.95
+            # original[i] = alpha * original[i] + (1 - alpha) * outputs.detach()
+            # print(original[i].shape, outputs.shape, batch["corrections"])
             current_originals = torch.stack([original[idx] for idx in batch["id"]])
             loss = custom_loss(outputs, batch["corrections"], current_originals, 1)
             optimizer.zero_grad()
