@@ -115,3 +115,8 @@ class ProjectService:
         with open(model_path, "wb") as f:
             pickle.dump(model, f)
         logger.info(f"Saved model to file {model_path}")
+
+    def delete_model(self, model_name):
+        model_path = get_file_path(self.project_id, "models", f"{model_name}.pkl")
+        os.remove(model_path)
+        logger.info(f"Deleted model from file {model_path}")

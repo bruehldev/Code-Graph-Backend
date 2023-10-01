@@ -458,21 +458,25 @@ def cluster_endpoint(project_id: int, db: Session = Depends(get_db)):
 async def refresh_databases(project_id: int, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.project_id == project_id).first()
     project_service = ProjectService(project_id, db)
-    cluster_model_id = project_service.get_model_entry("cluster_config").model_id
-    reduction_model_id = project_service.get_model_entry("reduction_config").model_id
-    print("model_ids", cluster_model_id, reduction_model_id)
+    cluster_model = project_service.get_model_entry("cluster_config")
+    reduction_model = project_service.get_model_entry("reduction_config")
+
+    print("model_ids", cluster_model, reduction_model)
 
     if project:
         # Delete all clusters
-        db.query(Cluster).filter(Cluster.model_id == cluster_model_id).delete()
+        db.query(Cluster).filter(Cluster.model_id == cluster_model.model_id).delete()
         # Delete all reduced embeddings
-        db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == reduction_model_id).delete()
+        db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == reduction_model.model_id).delete()
         # Delete models
-        db.query(Model).filter(Model.model_id == cluster_model_id).delete()
-        db.query(Model).filter(Model.model_id == reduction_model_id).delete()
+        db.query(Model).filter(Model.model_id == cluster_model.model_id).delete()
+        db.query(Model).filter(Model.model_id == reduction_model.model_id).delete()
 
         # Commit changes
         db.commit()
+
+        # project_service.delete_model(cluster_model.model_hash)
+        project_service.delete_model(reduction_model.model_hash)
 
         async with db_lock:
             extract_embeddings_endpoint(project_id, db=db)
@@ -483,17 +487,3 @@ async def refresh_databases(project_id: int, db: Session = Depends(get_db)):
         return {"message": "Databases refreshed successfully"}
     else:
         return {"error": f"Project with ID {project_id} not found."}
-
-
-"""
-        # Delete all clusters
-        db.query(Cluster).filter(Dataset.project_id == project_id).delete()
-        # Delete all reduced embeddings
-        db.query(Embedding).join(Segment).join(Sentence).join(Dataset).filter(Dataset.project_id == project_id).delete()
-        db.query(ReducedEmbedding).join(Embedding).join(Segment).join(Sentence).join(Dataset).filter(Dataset.project_id == project_id).delete()
-        # Delete all clusters
-        # Delete models
-        db.query(Model).join(Project).filter(Project.project_id == project_id).delete()
-        # Commit changes
-        db.commit()
-"""
