@@ -4,7 +4,7 @@ from sqlalchemy import and_
 
 from clusters.router import extract_clusters_endpoint
 from dataset.router import upload_dataset
-from db.models import Cluster, Code, Dataset, Embedding, Project, ReducedEmbedding, Segment, Sentence
+from db.models import Cluster, Code, Dataset, Embedding, Project, ReducedEmbedding, Segment, Sentence, Model
 from db.session import get_db
 from embeddings.router import extract_embeddings_endpoint
 from plot.file_operations import extract_plot
@@ -13,6 +13,7 @@ from project.router import create_project_route
 from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 from project.service import ProjectService
 from utilities.locks import db_lock
+
 
 # TODO: dont use the router, move stuff to services
 router = APIRouter()
@@ -451,3 +452,48 @@ def cluster_endpoint(project_id: int, db: Session = Depends(get_db)):
         }
     else:
         return {"error": f"Project with ID {project_id} not found."}
+
+
+@router.get("/refreshEntries/")
+async def refresh_databases(project_id: int, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.project_id == project_id).first()
+    project_service = ProjectService(project_id, db)
+    cluster_model_id = project_service.get_model_entry("cluster_config").model_id
+    reduction_model_id = project_service.get_model_entry("reduction_config").model_id
+    print("model_ids", cluster_model_id, reduction_model_id)
+
+    if project:
+        # Delete all clusters
+        db.query(Cluster).filter(Cluster.model_id == cluster_model_id).delete()
+        # Delete all reduced embeddings
+        db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == reduction_model_id).delete()
+        # Delete models
+        db.query(Model).filter(Model.model_id == cluster_model_id).delete()
+        db.query(Model).filter(Model.model_id == reduction_model_id).delete()
+
+        # Commit changes
+        db.commit()
+
+        async with db_lock:
+            extract_embeddings_endpoint(project_id, db=db)
+            extract_embeddings_reduced_endpoint(project_id, db=db)
+            extract_clusters_endpoint(project_id, db=db)
+            db.commit()
+
+        return {"message": "Databases refreshed successfully"}
+    else:
+        return {"error": f"Project with ID {project_id} not found."}
+
+
+"""
+        # Delete all clusters
+        db.query(Cluster).filter(Dataset.project_id == project_id).delete()
+        # Delete all reduced embeddings
+        db.query(Embedding).join(Segment).join(Sentence).join(Dataset).filter(Dataset.project_id == project_id).delete()
+        db.query(ReducedEmbedding).join(Embedding).join(Segment).join(Sentence).join(Dataset).filter(Dataset.project_id == project_id).delete()
+        # Delete all clusters
+        # Delete models
+        db.query(Model).join(Project).filter(Project.project_id == project_id).delete()
+        # Commit changes
+        db.commit()
+"""
