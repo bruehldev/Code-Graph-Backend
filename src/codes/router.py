@@ -101,7 +101,11 @@ def update_code_route(
             raise HTTPException(status_code=404, detail="Code not found")
         if code_name:
             data.text = code_name
-        if not has_circular_dependency(db, project_id, code_id, parent_id):
+        if parent_id:
+            if has_circular_dependency(db, project_id, code_id, parent_id):
+                codes_to_update = db.query(models.Code).filter(models.Code.project_id == project_id, models.Code.parent_code_id == code_id).all()
+                for code in codes_to_update:
+                    code.parent_code_id = None
             data.parent_code_id = parent_id
         db.add(data)
         db.commit()
