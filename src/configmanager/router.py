@@ -46,7 +46,7 @@ def get_config(id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{id}")
-def update_config(id: int, config: ConfigModel = ConfigManager.get_default_model(), db: Session = Depends(get_db)):
+def update_config(id: int, config: ConfigModel = ConfigModel(), db: Session = Depends(get_db)):
     config_manager = ConfigManager(db)
 
     existing_config = config_manager.get_config(id)
