@@ -328,130 +328,140 @@ async def export_plot_endpoint(
 
 
 @router.get("/stats/project/")
-def project_endpoint(project_id: int, db: Session = Depends(get_db)):
-    project = db.query(Project).filter(Project.project_id == project_id).first()
-    if project:
-        dataset_count = len(project.datasets)
-        code_count = len(project.codes)
-        model_count = len(project.models)
-        sentence_count = db.query(Sentence).join(Dataset).filter(Dataset.project_id == project_id).count()
-        segment_count = db.query(Segment).join(Sentence).join(Dataset).filter(Dataset.project_id == project_id).count()
-        embedding_count = db.query(Embedding).join(Segment).join(Sentence).join(Dataset).filter(Dataset.project_id == project_id).count()
+async def project_endpoint(project_id: int, db: Session = Depends(get_db)):
+    async with db_lock:
+        project = db.query(Project).filter(Project.project_id == project_id).first()
+        if project:
+            dataset_count = len(project.datasets)
+            code_count = len(project.codes)
+            model_count = len(project.models)
+            sentence_count = db.query(Sentence).join(Dataset).filter(Dataset.project_id == project_id).count()
+            segment_count = db.query(Segment).join(Sentence).join(Dataset).filter(Dataset.project_id == project_id).count()
+            embedding_count = db.query(Embedding).join(Segment).join(Sentence).join(Dataset).filter(Dataset.project_id == project_id).count()
 
-        result = {
-            "project_id": project.project_id,
-            "project_name": project.project_name,
-            "dataset_count": dataset_count,
-            "code_count": code_count,
-            "model_count": model_count,
-            "sentence_count": sentence_count,
-            "segment_count": segment_count,
-            "embedding_count": embedding_count,
-        }
+            result = {
+                "project_id": project.project_id,
+                "project_name": project.project_name,
+                "dataset_count": dataset_count,
+                "code_count": code_count,
+                "model_count": model_count,
+                "sentence_count": sentence_count,
+                "segment_count": segment_count,
+                "embedding_count": embedding_count,
+            }
 
-        return result
+            return result
 
-    else:
-        return {"error": f"Project with ID {project_id} not found."}
+        else:
+            return {"error": f"Project with ID {project_id} not found."}
 
 
 @router.get("/stats/code/")
-def stats_endpoint(project_id: int, db: Session = Depends(get_db)):
-    project = db.query(Project).filter(Project.project_id == project_id).first()
-    if project:
-        # Count codes with segments
-        code_segments_count = {}
-        if project.codes:
-            code_segments_count["codes"] = []
-            for code in project.codes:
-                ProjectAlias = aliased(Project)
-                SentenceAlias = aliased(Sentence)
-                SegmentAlias = aliased(Segment)
-                ReducedEmbeddingAlias = aliased(ReducedEmbedding)
-                EmbeddingAlias = aliased(Embedding)
-                CodeAlias = aliased(Code)
-                query = (
-                    db.query(
-                        Cluster,
-                        ReducedEmbeddingAlias,
-                        EmbeddingAlias,
-                        SegmentAlias,
-                        SentenceAlias,
-                        CodeAlias,
-                        ProjectAlias,
+async def stats_endpoint(project_id: int, db: Session = Depends(get_db)):
+    async with db_lock:
+        project = db.query(Project).filter(Project.project_id == project_id).first()
+        if project:
+            # Count codes with segments
+            code_segments_count = {}
+            if project.codes:
+                code_segments_count["codes"] = []
+                for code in project.codes:
+                    ProjectAlias = aliased(Project)
+                    SentenceAlias = aliased(Sentence)
+                    SegmentAlias = aliased(Segment)
+                    ReducedEmbeddingAlias = aliased(ReducedEmbedding)
+                    EmbeddingAlias = aliased(Embedding)
+                    CodeAlias = aliased(Code)
+                    query = (
+                        db.query(
+                            Cluster,
+                            ReducedEmbeddingAlias,
+                            EmbeddingAlias,
+                            SegmentAlias,
+                            SentenceAlias,
+                            CodeAlias,
+                            ProjectAlias,
+                        )
+                        .filter(and_(ProjectAlias.project_id == project_id, CodeAlias.code_id == code.code_id))
+                        .join(ReducedEmbeddingAlias, Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
+                        .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
+                        .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
+                        .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
+                        .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
+                        .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
                     )
-                    .filter(and_(ProjectAlias.project_id == project_id, CodeAlias.code_id == code.code_id))
-                    .join(ReducedEmbeddingAlias, Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
-                    .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
-                    .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
-                    .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
-                    .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
-                    .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
-                )
-                positions = query.all()
-                sum_x = 0
-                sum_y = 0
-                for position in positions:
-                    sum_x += position[1].pos_x
-                    sum_y += position[1].pos_y
-                segments_count = len(code.segments)
-                code_segments_count["codes"].append(
-                    {
-                        "code_id": code.code_id,
-                        "text": code.text,
-                        "segment_count": segments_count,
-                        "average_position": {
-                            "x": sum_x / segments_count if segments_count != 0 else 0,
-                            "y": sum_y / segments_count if segments_count != 0 else 0,
-                        },
-                    }
-                )
+                    positions = query.all()
+                    sum_x = 0
+                    sum_y = 0
+                    for position in positions:
+                        sum_x += position[1].pos_x
+                        sum_y += position[1].pos_y
+                    segments_count = len(code.segments)
+                    code_segments_count["codes"].append(
+                        {
+                            "code_id": code.code_id,
+                            "text": code.text,
+                            "segment_count": segments_count,
+                            "average_position": {
+                                "x": sum_x / segments_count if segments_count != 0 else 0,
+                                "y": sum_y / segments_count if segments_count != 0 else 0,
+                            },
+                        }
+                    )
 
-        result = {
-            "code_segments_count": code_segments_count,
-        }
+            result = {
+                "code_segments_count": code_segments_count,
+            }
 
-        return result
+            return result
 
-    else:
-        return {"error": f"Project with ID {project_id} not found."}
+        else:
+            return {"error": f"Project with ID {project_id} not found."}
 
 
 @router.get("/stats/cluster/")
-def cluster_endpoint(project_id: int, db: Session = Depends(get_db)):
-    project = db.query(Project).filter(Project.project_id == project_id).first()
-    if project:
-        clusters = (
-            db.query(Cluster).join(ReducedEmbedding).join(Embedding).join(Segment).join(Sentence).join(Dataset).filter(Dataset.project_id == project_id).all()
-        )
+async def cluster_endpoint(project_id: int, db: Session = Depends(get_db)):
+    async with db_lock:
+        project = db.query(Project).filter(Project.project_id == project_id).first()
+        if project:
+            clusters = (
+                db.query(Cluster)
+                .join(ReducedEmbedding)
+                .join(Embedding)
+                .join(Segment)
+                .join(Sentence)
+                .join(Dataset)
+                .filter(Dataset.project_id == project_id)
+                .all()
+            )
 
-        cluster_count = len(clusters)
-        unique_clusters = set()
-        cluster_segments_count = {}  # Dictionary to store cluster values and segment counts
+            cluster_count = len(clusters)
+            unique_clusters = set()
+            cluster_segments_count = {}  # Dictionary to store cluster values and segment counts
 
-        for cluster in clusters:
-            cluster_value = cluster.cluster
-            if cluster_value is not None:
-                unique_clusters.add(cluster_value)
-                if cluster_value not in cluster_segments_count:
-                    cluster_segments_count[cluster_value] = 1
-                else:
-                    cluster_segments_count[cluster_value] += 1
+            for cluster in clusters:
+                cluster_value = cluster.cluster
+                if cluster_value is not None:
+                    unique_clusters.add(cluster_value)
+                    if cluster_value not in cluster_segments_count:
+                        cluster_segments_count[cluster_value] = 1
+                    else:
+                        cluster_segments_count[cluster_value] += 1
 
-        unique_cluster_count = len(unique_clusters)
+            unique_cluster_count = len(unique_clusters)
 
-        # Convert cluster_segments_count to a list of dictionaries for JSON response
-        cluster_info = [{"cluster_value": cluster_value, "segment_count": segment_count} for cluster_value, segment_count in cluster_segments_count.items()]
+            # Convert cluster_segments_count to a list of dictionaries for JSON response
+            cluster_info = [{"cluster_value": cluster_value, "segment_count": segment_count} for cluster_value, segment_count in cluster_segments_count.items()]
 
-        return {
-            "project_name": project.project_name,
-            "project_id": project.project_id,
-            "cluster_count": cluster_count,
-            "unique_cluster_count": unique_cluster_count,
-            "cluster_info": cluster_info,
-        }
-    else:
-        return {"error": f"Project with ID {project_id} not found."}
+            return {
+                "project_name": project.project_name,
+                "project_id": project.project_id,
+                "cluster_count": cluster_count,
+                "unique_cluster_count": unique_cluster_count,
+                "cluster_info": cluster_info,
+            }
+        else:
+            return {"error": f"Project with ID {project_id} not found."}
 
 
 @router.get("/refreshEntries/")
