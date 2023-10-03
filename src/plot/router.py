@@ -497,3 +497,36 @@ async def refresh_databases(project_id: int, db: Session = Depends(get_db)):
         return {"message": "Databases refreshed successfully"}
     else:
         return {"error": f"Project with ID {project_id} not found."}
+
+
+@router.get("/segment/{segment_id}")
+async def get_segment_plot(project_id: int, segment_id: int, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.project_id == project_id).first()
+    if project:
+        segment = db.query(Segment).filter(Segment.segment_id == segment_id).first()
+        if segment:
+            return {"segment_id": segment.segment_id, "code_id": segment.code_id}
+
+
+@router.put("/segment/{segment_id}")
+async def update_segment_plot(project_id: int, segment_id: int, code_id: int, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.project_id == project_id).first()
+    if project:
+        segment = db.query(Segment).filter(Segment.segment_id == segment_id).first()
+        if segment:
+            segment.code_id = code_id
+            db.add(segment)
+            db.commit()
+            db.refresh(segment)
+            return {"message": "Segment plot updated successfully"}
+
+
+@router.delete("/segment/{segment_id}")
+async def delete_segment_plot(project_id: int, segment_id: int, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.project_id == project_id).first()
+    if project:
+        segment = db.query(Segment).filter(Segment.segment_id == segment_id).first()
+        if segment:
+            db.delete(segment)
+            db.commit()
+            return {"message": "Segment plot deleted successfully"}
