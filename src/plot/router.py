@@ -464,8 +464,8 @@ async def cluster_endpoint(project_id: int, db: Session = Depends(get_db)):
             return {"error": f"Project with ID {project_id} not found."}
 
 
-@router.get("/refreshEntries/")
-async def refresh_databases(project_id: int, db: Session = Depends(get_db)):
+@router.get("/recalculate/")
+async def recalculate_databases(project_id: int, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.project_id == project_id).first()
     project_service = ProjectService(project_id, db)
     cluster_model = project_service.get_model_entry("cluster_config")
@@ -494,7 +494,7 @@ async def refresh_databases(project_id: int, db: Session = Depends(get_db)):
             extract_clusters_endpoint(project_id, db=db)
             db.commit()
 
-        return {"message": "Databases refreshed successfully"}
+        return {"message": "Databases recalculated successfully"}
     else:
         return {"error": f"Project with ID {project_id} not found."}
 
