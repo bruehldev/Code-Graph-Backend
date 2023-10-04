@@ -419,6 +419,8 @@ async def stats_endpoint(project_id: int, db: Session = Depends(get_db)):
     async with db_lock:
         project = db.query(Project).filter(Project.project_id == project_id).first()
         if project:
+            project_service: ProjectService = ProjectService(project_id, db)
+            model_entry = project_service.get_model_entry("cluster_config")
             # Count codes with segments
             code_segments_count = {}
             if project.codes:
@@ -441,6 +443,7 @@ async def stats_endpoint(project_id: int, db: Session = Depends(get_db)):
                             ProjectAlias,
                         )
                         .filter(and_(ProjectAlias.project_id == project_id, CodeAlias.code_id == code.code_id))
+                        .filter(Cluster.model_id == model_entry.model_id)
                         .join(ReducedEmbeddingAlias, Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
                         .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
                         .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)

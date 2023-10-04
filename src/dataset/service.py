@@ -16,9 +16,10 @@ def text_to_json(input_text, options=None):
 
     for sentence in sentences:
         lines = sentence.split("\n")
-
+        lines = [line for line in lines if not line.strip().startswith('#')]
         # Extract the words and labels from each line
         words = [line.split(options.split)[options.word_idx].strip() for line in lines]
+
         labels = [line.split(options.split)[options.label_idx].strip() for line in lines]
 
         # Construct the sentence

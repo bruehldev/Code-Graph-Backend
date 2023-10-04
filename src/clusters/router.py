@@ -1,12 +1,14 @@
 import numpy as np
+import pandas as pd
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import and_, exists, not_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
-from db.models import Cluster, Model, Project, ReducedEmbedding
+from db.models import Cluster, Model, Project, ReducedEmbedding, Embedding, Segment, Sentence, Code
 from db.session import get_db
 from project.service import ProjectService
+from utilities.locks import db_lock
 
 router = APIRouter()
 
@@ -76,3 +78,81 @@ def get_clusters_endpoint(project_id: int, all: bool = False, page: int = 0, pag
     return_dict.update({"length": len(clusters), "count": count, "data": clusters})
 
     return return_dict
+
+
+@router.get("/errors")
+def get_error_endpoint(project_id:int, max_count: int = 20, cutoff: float = 0.7, db: Session = Depends(get_db)):
+    plots = []
+
+    ReducedEmbeddingAlias = aliased(ReducedEmbedding)
+    EmbeddingAlias = aliased(Embedding)
+    SegmentAlias = aliased(Segment)
+    SentenceAlias = aliased(Sentence)
+    CodeAlias = aliased(Code)
+    ProjectAlias = aliased(Project)
+    # get config id from project id
+    project: ProjectService = ProjectService(project_id, db)
+    model_entry = project.get_model_entry("cluster_config")
+
+    query = (
+        db.query(
+            Cluster,
+            ReducedEmbeddingAlias,
+            EmbeddingAlias,
+            SegmentAlias,
+            SentenceAlias,
+            CodeAlias,
+            ProjectAlias,
+        )
+        .filter(ProjectAlias.project_id == project_id)
+        .filter(Cluster.model_id == model_entry.model_id)
+        .join(ReducedEmbeddingAlias, Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
+        .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
+        .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
+        .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
+        .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
+        .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
+    )
+    plots = query.all()
+    result_dicts = [
+        {
+            "id": row[3].segment_id,
+            "sentence": row[4].text,
+            "segment": row[3].text,
+            "code": row[5].code_id,
+            "reduced_embedding": {"x": row[1].pos_x, "y": row[1].pos_y},
+            "cluster": row[0].cluster,
+        }
+        for row in plots
+    ]
+    pandas_df = pd.DataFrame(result_dicts)
+
+    labels = pandas_df.groupby("cluster")["code"].value_counts()
+
+    primary_codes = {}
+    for cluster, code_counts in labels.groupby(level=0):
+        if cluster == -1:
+            continue
+
+        total = code_counts.sum()
+        print(cluster)
+        print(code_counts)
+        print(total)
+        primary_code, primary_code_count = code_counts.idxmax(), code_counts.max()
+        print(f"primary code {primary_code}")
+        print(f"primary_code_count {primary_code_count}")
+        if primary_code_count / total > cutoff:
+            primary_codes[primary_code[0]] = primary_code[1]
+
+    mismatched_ids = []
+    for cluster, primary_code in primary_codes.items():
+        print(f"cluster {cluster}")
+        print(f"primary_code {primary_code}")
+        print(pandas_df[(pandas_df['cluster'] == cluster) & (pandas_df['code'] != primary_code)])
+        mismatched_ids.extend(
+            pandas_df[(pandas_df['cluster'] == cluster) & (pandas_df['code'] != primary_code)]['id'].tolist())
+
+    print(mismatched_ids)
+    return {"data": mismatched_ids[:max_count]}
+
+
