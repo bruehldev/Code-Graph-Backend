@@ -1,6 +1,6 @@
 # Code-Graph-Backend
 
-This is a FastAPI-based API that provides topic modeling and sentence embedding functionalities using BERTopic and BERT models. The API supports two datasets: `fetch_20newsgroups` and `few_nerd`.
+This is a FastAPI-based API that provides topic modeling and sentence embedding functionalities using BERT models. The API supports NER dataset like `few_nerd`. You can find the frontend for this project [here](https://github.com/jsp1999/Code-Graph-Frontend).
 
 ## Requirements
 
