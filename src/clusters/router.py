@@ -135,24 +135,15 @@ def get_error_endpoint(project_id:int, max_count: int = 20, cutoff: float = 0.7,
             continue
 
         total = code_counts.sum()
-        print(cluster)
-        print(code_counts)
-        print(total)
         primary_code, primary_code_count = code_counts.idxmax(), code_counts.max()
-        print(f"primary code {primary_code}")
-        print(f"primary_code_count {primary_code_count}")
         if primary_code_count / total > cutoff:
             primary_codes[primary_code[0]] = primary_code[1]
 
     mismatched_ids = []
     for cluster, primary_code in primary_codes.items():
-        print(f"cluster {cluster}")
-        print(f"primary_code {primary_code}")
-        print(pandas_df[(pandas_df['cluster'] == cluster) & (pandas_df['code'] != primary_code)])
         mismatched_ids.extend(
             pandas_df[(pandas_df['cluster'] == cluster) & (pandas_df['code'] != primary_code)]['id'].tolist())
 
-    print(mismatched_ids)
     return {"data": mismatched_ids[:max_count]}
 
 
