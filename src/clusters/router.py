@@ -1,33 +1,28 @@
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
 from sqlalchemy import and_, exists, not_
 from sqlalchemy.orm import Session, aliased
 
 from db.models import Cluster, Model, Project, ReducedEmbedding, Embedding, Segment, Sentence, Code
 from db.session import get_db
 from project.service import ProjectService
-from utilities.locks import db_lock
 
 router = APIRouter()
-
-
-class ClustersTableResponse(BaseModel):
-    id: int
-    cluster: int
 
 
 @router.get("/extract")
 def extract_clusters_endpoint(
     project_id: int, all: bool = False, page: int = 0, page_size: int = 100, return_data: bool = False, db: Session = Depends(get_db)
 ):
+    """Extract clusters from reduced embeddings"""
     clusters = []
     project: ProjectService = ProjectService(project_id, db)
     model_entry, cluster_model = project.get_model("cluster_config")
     reduction_hash = project.get_reduction_hash()
     reduction_model_entry = db.query(Model).filter(Model.model_hash == reduction_hash).first()
 
+    # get reduced embeddings without clusters
     reduced_embeddings_todo = (
         db.query(ReducedEmbedding)
         .join(Model, Model.model_id == ReducedEmbedding.model_id)
@@ -38,8 +33,8 @@ def extract_clusters_endpoint(
     )
 
     if not len(reduced_embeddings_todo) == 0:
+        # extract clusters and save to db
         reduced_embeddings_arrays = np.stack([np.array([reduced_embedding.pos_x, reduced_embedding.pos_y]) for reduced_embedding in reduced_embeddings_todo])
-
         clusters = cluster_model.transform(reduced_embeddings_arrays)
         cluster_mappings = [
             {"reduced_embedding_id": reduced_embedding.reduced_embedding_id, "model_id": model_entry.model_id, "cluster": int(cluster)}
@@ -63,6 +58,7 @@ def extract_clusters_endpoint(
 
 @router.get("/")
 def get_clusters_endpoint(project_id: int, all: bool = False, page: int = 0, page_size: int = 100, db: Session = Depends(get_db)):
+    """Get clusters"""
     clusters = []
     project = ProjectService(project_id, db)
     model_entry = project.get_model_entry("cluster_config")
@@ -81,7 +77,8 @@ def get_clusters_endpoint(project_id: int, all: bool = False, page: int = 0, pag
 
 
 @router.get("/errors")
-def get_error_endpoint(project_id:int, max_count: int = 20, cutoff: float = 0.7, db: Session = Depends(get_db)):
+def get_error_endpoint(project_id: int, max_count: int = 20, cutoff: float = 0.7, db: Session = Depends(get_db)):
+    """Get clusters with mismatched primary codes"""
     plots = []
 
     ReducedEmbeddingAlias = aliased(ReducedEmbedding)
@@ -90,6 +87,7 @@ def get_error_endpoint(project_id:int, max_count: int = 20, cutoff: float = 0.7,
     SentenceAlias = aliased(Sentence)
     CodeAlias = aliased(Code)
     ProjectAlias = aliased(Project)
+
     # get config id from project id
     project: ProjectService = ProjectService(project_id, db)
     model_entry = project.get_model_entry("cluster_config")
@@ -141,9 +139,6 @@ def get_error_endpoint(project_id:int, max_count: int = 20, cutoff: float = 0.7,
 
     mismatched_ids = []
     for cluster, primary_code in primary_codes.items():
-        mismatched_ids.extend(
-            pandas_df[(pandas_df['cluster'] == cluster) & (pandas_df['code'] != primary_code)]['id'].tolist())
+        mismatched_ids.extend(pandas_df[(pandas_df["cluster"] == cluster) & (pandas_df["code"] != primary_code)]["id"].tolist())
 
     return {"data": mismatched_ids[:max_count]}
-
-
