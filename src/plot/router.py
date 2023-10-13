@@ -84,13 +84,6 @@ async def get_plot_endpoint(
     response.update({"data": result_dicts, "length": len(result_dicts), "count": count})
 
     return response
-    """
-    else: TODO: Implement pagination
-        start = (page - 1) * page_size
-        end = page * page_size
-        segments = get_plot(dataset_name, model_name, start=start, end=end)
-        return {"data": segments, "page": page, "page_size": page_size, "length": len(segments)}
-    """
 
 
 @router.get("/test/")
@@ -108,12 +101,13 @@ async def setup_test_environment(db: Session = Depends(get_db)):
 
 
 @router.get("/sentence/")
-def search_segments_route(
+def search_sentence_route(
     project_id: int,
     search_query: str,
     limit: int = 100,
     db: Session = Depends(get_db),
 ) -> PlotTable:
+    """Search for sentences in a project"""
     plots = []
     ProjectAlias = aliased(Project)
     SentenceAlias = aliased(Sentence)
@@ -165,6 +159,7 @@ def search_segments_route(
 
 @router.get("/code/")
 def search_code_route(project_id: int, search_code_id: int, limit: int = 100, db: Session = Depends(get_db)) -> PlotTable:
+    """Search for code in a project"""
     plots = []
     ProjectAlias = aliased(Project)
     SentenceAlias = aliased(Sentence)
@@ -216,6 +211,7 @@ def search_code_route(project_id: int, search_code_id: int, limit: int = 100, db
 
 @router.get("/cluster/")
 def search_clusters_route(project_id: int, search_cluster_id: int, limit: int = 100, db: Session = Depends(get_db)) -> PlotTable:
+    """Search for clusters in a project"""
     plots = []
     ProjectAlias = aliased(Project)
     SentenceAlias = aliased(Sentence)
@@ -273,6 +269,7 @@ def search_code_segments_route(
     limit: int = 100,
     db: Session = Depends(get_db),
 ) -> PlotTable:
+    """Search for segments text in a code"""
     plots = []
     ProjectAlias = aliased(Project)
     SentenceAlias = aliased(Sentence)
@@ -325,6 +322,7 @@ def search_code_segments_route(
 
 @router.get("/segment")
 def search_segment_route(project_id: int, search_segment_query: str, limit: int = 100, db: Session = Depends(get_db)) -> PlotTable:
+    """Search for segments in a project"""
     plots = []
     ProjectAlias = aliased(Project)
     SentenceAlias = aliased(Sentence)
@@ -387,6 +385,7 @@ async def export_plot_endpoint(
 
 @router.get("/stats/project/")
 async def project_endpoint(project_id: int, db: Session = Depends(get_db)):
+    """Get project statistics"""
     async with db_lock:
         project = db.query(Project).filter(Project.project_id == project_id).first()
         if project:
@@ -416,6 +415,7 @@ async def project_endpoint(project_id: int, db: Session = Depends(get_db)):
 
 @router.get("/stats/code/")
 async def stats_endpoint(project_id: int, db: Session = Depends(get_db)):
+    """Get code statistics for a project"""
     async with db_lock:
         project = db.query(Project).filter(Project.project_id == project_id).first()
         if project:
@@ -482,6 +482,7 @@ async def stats_endpoint(project_id: int, db: Session = Depends(get_db)):
 
 @router.get("/stats/cluster/")
 async def cluster_endpoint(project_id: int, db: Session = Depends(get_db)):
+    """Get cluster statistics for a project"""
     async with db_lock:
         project = db.query(Project).filter(Project.project_id == project_id).first()
         if project:
@@ -498,7 +499,7 @@ async def cluster_endpoint(project_id: int, db: Session = Depends(get_db)):
 
             cluster_count = len(clusters)
             unique_clusters = set()
-            cluster_segments_count = {}  # Dictionary to store cluster values and segment counts
+            cluster_segments_count = {}
 
             for cluster in clusters:
                 cluster_value = cluster.cluster
@@ -527,12 +528,11 @@ async def cluster_endpoint(project_id: int, db: Session = Depends(get_db)):
 
 @router.get("/recalculate/")
 async def recalculate_databases(project_id: int, db: Session = Depends(get_db)):
+    """Recalculate all databases for a project"""
     project = db.query(Project).filter(Project.project_id == project_id).first()
     project_service = ProjectService(project_id, db)
     cluster_model = project_service.get_model_entry("cluster_config")
     reduction_model = project_service.get_model_entry("reduction_config")
-
-    print("model_ids", cluster_model, reduction_model)
 
     if project:
         # Delete all clusters

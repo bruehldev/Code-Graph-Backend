@@ -10,7 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 def extract_plot(project_id: str, plots):
-    # Convert index, data, embedding, and topic to JSON structure
+    """Extract plot data from the project's database and save it to a file."""
+
     json_plot_file = get_plot_file(project_id, suffix="json")
     csv_plot_file = get_plot_file(project_id, suffix="csv")
 
@@ -20,6 +21,7 @@ def extract_plot(project_id: str, plots):
 
 
 def save_plot_csv(plot_data, plot_file):
+    """Save plot data to a csv file."""
     with open(plot_file, "w", newline="") as file:
         csv_writer = csv.writer(file)
 
