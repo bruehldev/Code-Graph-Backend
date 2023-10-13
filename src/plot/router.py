@@ -4,7 +4,17 @@ from sqlalchemy import and_
 
 from clusters.router import extract_clusters_endpoint
 from dataset.router import upload_dataset
-from db.models import Cluster, Code, Dataset, Embedding, Project, ReducedEmbedding, Segment, Sentence, Model
+from db.models import (
+    Cluster,
+    Code,
+    Dataset,
+    Embedding,
+    Project,
+    ReducedEmbedding,
+    Segment,
+    Sentence,
+    Model,
+)
 from db.session import get_db
 from embeddings.router import extract_embeddings_endpoint
 from plot.file_operations import extract_plot
@@ -56,8 +66,14 @@ async def get_plot_endpoint(
         )
         .filter(ProjectAlias.project_id == project_id)
         .filter(Cluster.model_id == model_entry.model_id)
-        .join(ReducedEmbeddingAlias, Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
-        .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
+        .join(
+            ReducedEmbeddingAlias,
+            Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id,
+        )
+        .join(
+            EmbeddingAlias,
+            ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id,
+        )
         .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
         .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
         .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
@@ -133,8 +149,15 @@ def search_sentence_route(
         .filter(ProjectAlias.project_id == project_id)
         .filter(SentenceAlias.dataset_id.in_(dataset_ids))
         .where(SentenceAlias.text_tsv.match(search_query, postgresql_regconfig="english"))
-        .join(ReducedEmbeddingAlias, ClusterAlias.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
-        .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
+        .join(
+            ReducedEmbeddingAlias,
+            ClusterAlias.reduced_embedding_id
+            == ReducedEmbeddingAlias.reduced_embedding_id,
+        )
+        .join(
+            EmbeddingAlias,
+            ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id,
+        )
         .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
         .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
         .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
@@ -158,7 +181,9 @@ def search_sentence_route(
 
 
 @router.get("/code/")
-def search_code_route(project_id: int, search_code_id: int, limit: int = 100, db: Session = Depends(get_db)) -> PlotTable:
+def search_code_route(
+    project_id: int, search_code_id: int, limit: int = 100, db: Session = Depends(get_db)
+) -> PlotTable:
     """Search for code in a project"""
     plots = []
     ProjectAlias = aliased(Project)
@@ -185,8 +210,15 @@ def search_code_route(project_id: int, search_code_id: int, limit: int = 100, db
         .filter(ProjectAlias.project_id == project_id)
         .filter(SentenceAlias.dataset_id.in_(dataset_ids))
         .where(CodeAlias.code_id == search_code_id)
-        .join(ReducedEmbeddingAlias, ClusterAlias.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
-        .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
+        .join(
+            ReducedEmbeddingAlias,
+            ClusterAlias.reduced_embedding_id
+            == ReducedEmbeddingAlias.reduced_embedding_id,
+        )
+        .join(
+            EmbeddingAlias,
+            ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id,
+        )
         .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
         .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
         .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
@@ -210,7 +242,12 @@ def search_code_route(project_id: int, search_code_id: int, limit: int = 100, db
 
 
 @router.get("/cluster/")
-def search_clusters_route(project_id: int, search_cluster_id: int, limit: int = 100, db: Session = Depends(get_db)) -> PlotTable:
+def search_clusters_route(
+    project_id: int,
+    search_cluster_id: int,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+) -> PlotTable:
     """Search for clusters in a project"""
     plots = []
     ProjectAlias = aliased(Project)
@@ -237,8 +274,15 @@ def search_clusters_route(project_id: int, search_cluster_id: int, limit: int = 
         .filter(ProjectAlias.project_id == project_id)
         .filter(SentenceAlias.dataset_id.in_(dataset_ids))
         .where(search_cluster_id == ClusterAlias.cluster)
-        .join(ReducedEmbeddingAlias, ClusterAlias.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
-        .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
+        .join(
+            ReducedEmbeddingAlias,
+            ClusterAlias.reduced_embedding_id
+            == ReducedEmbeddingAlias.reduced_embedding_id,
+        )
+        .join(
+            EmbeddingAlias,
+            ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id,
+        )
         .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
         .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
         .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
@@ -295,9 +339,20 @@ def search_code_segments_route(
         .filter(ProjectAlias.project_id == project_id)
         .filter(SentenceAlias.dataset_id.in_(dataset_ids))
         .where(CodeAlias.code_id == code_id)
-        .where(SegmentAlias.text_tsv.match(search_segment_query, postgresql_regconfig="english"))
-        .join(ReducedEmbeddingAlias, ClusterAlias.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
-        .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
+        .where(
+            SegmentAlias.text_tsv.match(
+                search_segment_query, postgresql_regconfig="english"
+            )
+        )
+        .join(
+            ReducedEmbeddingAlias,
+            ClusterAlias.reduced_embedding_id
+            == ReducedEmbeddingAlias.reduced_embedding_id,
+        )
+        .join(
+            EmbeddingAlias,
+            ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id,
+        )
         .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
         .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
         .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
@@ -321,7 +376,12 @@ def search_code_segments_route(
 
 
 @router.get("/segment")
-def search_segment_route(project_id: int, search_segment_query: str, limit: int = 100, db: Session = Depends(get_db)) -> PlotTable:
+def search_segment_route(
+    project_id: int,
+    search_segment_query: str,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+) -> PlotTable:
     """Search for segments in a project"""
     plots = []
     ProjectAlias = aliased(Project)
@@ -347,9 +407,20 @@ def search_segment_route(project_id: int, search_segment_query: str, limit: int 
         )
         .filter(ProjectAlias.project_id == project_id)
         .filter(SentenceAlias.dataset_id.in_(dataset_ids))
-        .where(SegmentAlias.text_tsv.match(search_segment_query, postgresql_regconfig="english"))
-        .join(ReducedEmbeddingAlias, ClusterAlias.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
-        .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
+        .where(
+            SegmentAlias.text_tsv.match(
+                search_segment_query, postgresql_regconfig="english"
+            )
+        )
+        .join(
+            ReducedEmbeddingAlias,
+            ClusterAlias.reduced_embedding_id
+            == ReducedEmbeddingAlias.reduced_embedding_id,
+        )
+        .join(
+            EmbeddingAlias,
+            ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id,
+        )
         .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
         .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
         .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
@@ -392,9 +463,27 @@ async def project_endpoint(project_id: int, db: Session = Depends(get_db)):
             dataset_count = len(project.datasets)
             code_count = len(project.codes)
             model_count = len(project.models)
-            sentence_count = db.query(Sentence).join(Dataset).filter(Dataset.project_id == project_id).count()
-            segment_count = db.query(Segment).join(Sentence).join(Dataset).filter(Dataset.project_id == project_id).count()
-            embedding_count = db.query(Embedding).join(Segment).join(Sentence).join(Dataset).filter(Dataset.project_id == project_id).count()
+            sentence_count = (
+                db.query(Sentence)
+                .join(Dataset)
+                .filter(Dataset.project_id == project_id)
+                .count()
+            )
+            segment_count = (
+                db.query(Segment)
+                .join(Sentence)
+                .join(Dataset)
+                .filter(Dataset.project_id == project_id)
+                .count()
+            )
+            embedding_count = (
+                db.query(Embedding)
+                .join(Segment)
+                .join(Sentence)
+                .join(Dataset)
+                .filter(Dataset.project_id == project_id)
+                .count()
+            )
 
             result = {
                 "project_id": project.project_id,
@@ -442,14 +531,35 @@ async def stats_endpoint(project_id: int, db: Session = Depends(get_db)):
                             CodeAlias,
                             ProjectAlias,
                         )
-                        .filter(and_(ProjectAlias.project_id == project_id, CodeAlias.code_id == code.code_id))
+                        .filter(
+                            and_(
+                                ProjectAlias.project_id == project_id,
+                                CodeAlias.code_id == code.code_id,
+                            )
+                        )
                         .filter(Cluster.model_id == model_entry.model_id)
-                        .join(ReducedEmbeddingAlias, Cluster.reduced_embedding_id == ReducedEmbeddingAlias.reduced_embedding_id)
-                        .join(EmbeddingAlias, ReducedEmbeddingAlias.embedding_id == EmbeddingAlias.embedding_id)
-                        .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
-                        .join(SentenceAlias, SegmentAlias.sentence_id == SentenceAlias.sentence_id)
+                        .join(
+                            ReducedEmbeddingAlias,
+                            Cluster.reduced_embedding_id
+                            == ReducedEmbeddingAlias.reduced_embedding_id,
+                        )
+                        .join(
+                            EmbeddingAlias,
+                            ReducedEmbeddingAlias.embedding_id
+                            == EmbeddingAlias.embedding_id,
+                        )
+                        .join(
+                            SegmentAlias,
+                            EmbeddingAlias.segment_id == SegmentAlias.segment_id,
+                        )
+                        .join(
+                            SentenceAlias,
+                            SegmentAlias.sentence_id == SentenceAlias.sentence_id,
+                        )
                         .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
-                        .join(ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id)
+                        .join(
+                            ProjectAlias, CodeAlias.project_id == ProjectAlias.project_id
+                        )
                     )
                     positions = query.all()
                     sum_x = 0
@@ -513,7 +623,10 @@ async def cluster_endpoint(project_id: int, db: Session = Depends(get_db)):
             unique_cluster_count = len(unique_clusters)
 
             # Convert cluster_segments_count to a list of dictionaries for JSON response
-            cluster_info = [{"cluster_value": cluster_value, "segment_count": segment_count} for cluster_value, segment_count in cluster_segments_count.items()]
+            cluster_info = [
+                {"cluster_value": cluster_value, "segment_count": segment_count}
+                for cluster_value, segment_count in cluster_segments_count.items()
+            ]
 
             return {
                 "project_name": project.project_name,
@@ -538,7 +651,9 @@ async def recalculate_databases(project_id: int, db: Session = Depends(get_db)):
         # Delete all clusters
         db.query(Cluster).filter(Cluster.model_id == cluster_model.model_id).delete()
         # Delete all reduced embeddings
-        db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == reduction_model.model_id).delete()
+        db.query(ReducedEmbedding).filter(
+            ReducedEmbedding.model_id == reduction_model.model_id
+        ).delete()
         # Delete models
         db.query(Model).filter(Model.model_id == cluster_model.model_id).delete()
         db.query(Model).filter(Model.model_id == reduction_model.model_id).delete()
@@ -561,7 +676,9 @@ async def recalculate_databases(project_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/segment/{segment_id}")
-async def get_segment_plot(project_id: int, segment_id: int, db: Session = Depends(get_db)):
+async def get_segment_plot(
+    project_id: int, segment_id: int, db: Session = Depends(get_db)
+):
     project = db.query(Project).filter(Project.project_id == project_id).first()
     if project:
         segment = db.query(Segment).filter(Segment.segment_id == segment_id).first()
@@ -570,7 +687,9 @@ async def get_segment_plot(project_id: int, segment_id: int, db: Session = Depen
 
 
 @router.put("/segment/{segment_id}")
-async def update_segment_plot(project_id: int, segment_id: int, code_id: int, db: Session = Depends(get_db)):
+async def update_segment_plot(
+    project_id: int, segment_id: int, code_id: int, db: Session = Depends(get_db)
+):
     project = db.query(Project).filter(Project.project_id == project_id).first()
     if project:
         segment = db.query(Segment).filter(Segment.segment_id == segment_id).first()
@@ -583,7 +702,9 @@ async def update_segment_plot(project_id: int, segment_id: int, code_id: int, db
 
 
 @router.delete("/segment/{segment_id}")
-async def delete_segment_plot(project_id: int, segment_id: int, db: Session = Depends(get_db)):
+async def delete_segment_plot(
+    project_id: int, segment_id: int, db: Session = Depends(get_db)
+):
     project = db.query(Project).filter(Project.project_id == project_id).first()
     if project:
         segment = db.query(Segment).filter(Segment.segment_id == segment_id).first()

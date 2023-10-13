@@ -16,7 +16,7 @@ def text_to_json(input_text, options=None):
 
     for sentence in sentences:
         lines = sentence.split("\n")
-        lines = [line for line in lines if not line.strip().startswith('#')]
+        lines = [line for line in lines if not line.strip().startswith("#")]
         # Extract the words and labels from each line
         words = [line.split(options.split)[options.word_idx].strip() for line in lines]
 
@@ -37,16 +37,22 @@ def text_to_json(input_text, options=None):
                         entity_label = label
                         in_entity = True
                     elif entity_label != label:
-                        entities.append({"start": start, "end": start_pos - 1, "label": entity_label})
+                        entities.append(
+                            {"start": start, "end": start_pos - 1, "label": entity_label}
+                        )
                         start = start_pos
                         entity_label = label
                 else:
                     if in_entity:
-                        entities.append({"start": start, "end": start_pos - 1, "label": entity_label})
+                        entities.append(
+                            {"start": start, "end": start_pos - 1, "label": entity_label}
+                        )
                         in_entity = False
                 start_pos += len(word) + 1
             if in_entity:
-                entities.append({"start": start, "end": start_pos - 1, "label": entity_label})
+                entities.append(
+                    {"start": start, "end": start_pos - 1, "label": entity_label}
+                )
 
             results.append({"text": text, "entities": entities})
 
@@ -58,7 +64,9 @@ def text_to_json(input_text, options=None):
                 if label.startswith("B-"):
                     # If we are already in an entity, we close it first
                     if in_entity:
-                        entities.append({"start": start, "end": start_pos - 1, "label": entity_label})
+                        entities.append(
+                            {"start": start, "end": start_pos - 1, "label": entity_label}
+                        )
 
                     # Start of a new entity
                     start = start_pos
@@ -71,14 +79,18 @@ def text_to_json(input_text, options=None):
                     in_entity = True
                 elif label.startswith("O") and in_entity:
                     # End of the current entity
-                    entities.append({"start": start, "end": start_pos - 1, "label": entity_label})
+                    entities.append(
+                        {"start": start, "end": start_pos - 1, "label": entity_label}
+                    )
                     in_entity = False
 
                 start_pos += len(word) + 1  # +1 for the space
 
             # If the last word was part of an entity
             if in_entity:
-                entities.append({"start": start, "end": start_pos - 1, "label": entity_label})
+                entities.append(
+                    {"start": start, "end": start_pos - 1, "label": entity_label}
+                )
 
             results.append({"text": text, "entities": entities})
     if options.label_split:
@@ -90,7 +102,9 @@ def text_to_json(input_text, options=None):
 
 def add_data_to_db(project_id, database_name, json_data, session):
     start_time = time.time()
-    project = session.query(Project).filter(and_(Project.project_id == project_id)).first()
+    project = (
+        session.query(Project).filter(and_(Project.project_id == project_id)).first()
+    )
     if not project:
         raise Exception("Project not found in the database!")
 
@@ -101,13 +115,19 @@ def add_data_to_db(project_id, database_name, json_data, session):
     session.add(dataset)
     session.commit()
 
-    sentence_dicts = [{"text": item["text"], "dataset_id": dataset.dataset_id, "position_in_dataset": i} for i, item in enumerate(json_data["data"])]
+    sentence_dicts = [
+        {"text": item["text"], "dataset_id": dataset.dataset_id, "position_in_dataset": i}
+        for i, item in enumerate(json_data["data"])
+    ]
 
     insert_stmt = insert(Sentence).values(sentence_dicts).returning(Sentence.sentence_id)
     sentence_ids = [row[0] for row in session.execute(insert_stmt).fetchall()]
 
     segment_dicts = []
-    codes_dict = {(a.text, a.parent_code_id): a for a in session.query(Code).filter_by(project_id=project.project_id).all()}
+    codes_dict = {
+        (a.text, a.parent_code_id): a
+        for a in session.query(Code).filter_by(project_id=project.project_id).all()
+    }
     new_codes = set()
 
     for item, sentence_id in zip(json_data["data"], sentence_ids):
@@ -122,7 +142,11 @@ def add_data_to_db(project_id, database_name, json_data, session):
                 # If the code doesn't exist, add it to the database and the dictionary
                 if code is None or code.parent_code_id != last_id:
                     if (label, last_id) not in new_codes:
-                        new_code = Code(text=label, project_id=project.project_id, parent_code_id=last_id)
+                        new_code = Code(
+                            text=label,
+                            project_id=project.project_id,
+                            parent_code_id=last_id,
+                        )
                         session.add(new_code)
                         session.commit()
                         code_id = new_code.code_id
@@ -149,4 +173,6 @@ def add_data_to_db(project_id, database_name, json_data, session):
     segment_time = time.time()
 
     logger.info(f"Added {len(json_data['data'])} sentences to the database.")
-    logger.info(f"Adding the data to the database took {time.time() - start_time} seconds.")
+    logger.info(
+        f"Adding the data to the database took {time.time() - start_time} seconds."
+    )

@@ -28,7 +28,9 @@ async def upload_dataset(
     db: Session = Depends(session.get_db),
 ):
     # Check if the project exists and belongs to the user
-    project = db.query(models.Project).filter(models.Project.project_id == project_id).first()
+    project = (
+        db.query(models.Project).filter(models.Project.project_id == project_id).first()
+    )
 
     options = DatasetTextOptions(
         split=split.encode().decode("unicode_escape"),
@@ -40,7 +42,10 @@ async def upload_dataset(
     )
 
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found or you don't have permission to access it.")
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found or you don't have permission to access it.",
+        )
     file_content = await file.read()
     file_content = file_content.decode("utf-8")
 
@@ -66,21 +71,47 @@ async def upload_dataset(
 
 @router.get("/")
 def get_datasets_route(project_id: int, db: Session = Depends(session.get_db)):
-    datasets = db.query(models.Dataset).filter(models.Dataset.project_id == project_id).all()
+    datasets = (
+        db.query(models.Dataset).filter(models.Dataset.project_id == project_id).all()
+    )
     return datasets
 
 
 @router.get("/{dataset_id}/")
-def get_dataset_route(project_id: int, dataset_id: int, db: Session = Depends(session.get_db)):
-    dataset = db.query(models.Dataset).filter(models.Dataset.project_id == project_id and models.Dataset.dataset_id == dataset_id).first()
+def get_dataset_route(
+    project_id: int, dataset_id: int, db: Session = Depends(session.get_db)
+):
+    dataset = (
+        db.query(models.Dataset)
+        .filter(
+            models.Dataset.project_id == project_id
+            and models.Dataset.dataset_id == dataset_id
+        )
+        .first()
+    )
     if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
+        raise HTTPException(
+            status_code=404,
+            detail="Dataset not found or you don't have permission to access it.",
+        )
     return dataset
 
 
 @router.put("/{dataset_id}/")
-def update_dataset_route(project_id: int, dataset_id: int, dataset_name: str, db: Session = Depends(session.get_db)):
-    dataset = db.query(models.Dataset).filter(models.Dataset.project_id == project_id and models.Dataset.dataset_id == dataset_id).first()
+def update_dataset_route(
+    project_id: int,
+    dataset_id: int,
+    dataset_name: str,
+    db: Session = Depends(session.get_db),
+):
+    dataset = (
+        db.query(models.Dataset)
+        .filter(
+            models.Dataset.project_id == project_id
+            and models.Dataset.dataset_id == dataset_id
+        )
+        .first()
+    )
     dataset.dataset_name = dataset_name
     db.add(dataset)
     db.commit()
@@ -89,10 +120,24 @@ def update_dataset_route(project_id: int, dataset_id: int, dataset_name: str, db
 
 
 @router.delete("/{dataset_id}/", response_model=DeleteResponse)
-def delete_datasets_route(project_id: int, dataset_id: int, db: Session = Depends(session.get_db)):
-    dataset = db.query(models.Dataset).filter(and_(models.Dataset.project_id == project_id, models.Dataset.dataset_id == dataset_id)).first()
+def delete_datasets_route(
+    project_id: int, dataset_id: int, db: Session = Depends(session.get_db)
+):
+    dataset = (
+        db.query(models.Dataset)
+        .filter(
+            and_(
+                models.Dataset.project_id == project_id,
+                models.Dataset.dataset_id == dataset_id,
+            )
+        )
+        .first()
+    )
     if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
+        raise HTTPException(
+            status_code=404,
+            detail="Dataset not found or you don't have permission to access it.",
+        )
     db.delete(dataset)
     db.commit()
     return {"id": dataset_id, "deleted": True}
@@ -107,9 +152,19 @@ def get_sentences_segments_route(
     db: Session = Depends(session.get_db),
 ):
     # Get sentences with their segments
-    dataset = db.query(models.Dataset).filter(models.Dataset.project_id == project_id, models.Dataset.dataset_id == dataset_id).first()
+    dataset = (
+        db.query(models.Dataset)
+        .filter(
+            models.Dataset.project_id == project_id,
+            models.Dataset.dataset_id == dataset_id,
+        )
+        .first()
+    )
     if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
+        raise HTTPException(
+            status_code=404,
+            detail="Dataset not found or you don't have permission to access it.",
+        )
 
     # Query for sentences without text_tsv
     sentences = (
@@ -123,9 +178,19 @@ def get_sentences_segments_route(
     )
 
     # Fetch all segments for the selected sentences
-    segments = db.query(models.Segment).filter(models.Segment.sentence_id.in_([sentence.sentence_id for sentence in sentences])).all()
+    segments = (
+        db.query(models.Segment)
+        .filter(
+            models.Segment.sentence_id.in_(
+                [sentence.sentence_id for sentence in sentences]
+            )
+        )
+        .all()
+    )
 
-    count = db.query(models.Sentence).filter(models.Sentence.dataset_id == dataset_id).count()
+    count = (
+        db.query(models.Sentence).filter(models.Sentence.dataset_id == dataset_id).count()
+    )
 
     # Organize the data into a dictionary with sentences and their associated segments
     sentences_dict = {sentence.sentence_id: sentence for sentence in sentences}
@@ -139,7 +204,11 @@ def get_sentences_segments_route(
     for sentence_id, segments in segments_dict.items():
         sentences_dict[sentence_id].segments = segments
 
-    return {"length": len(sentences_dict), "count": count, "data": list(sentences_dict.values())}
+    return {
+        "length": len(sentences_dict),
+        "count": count,
+        "data": list(sentences_dict.values()),
+    }
 
 
 @router.delete("/{dataset_id}/sentence/")
@@ -150,14 +219,31 @@ def delete_sentence_route(
     db: Session = Depends(session.get_db),
 ):
     # Get sentences with their segments
-    dataset = db.query(models.Dataset).filter(models.Dataset.project_id == project_id, models.Dataset.dataset_id == dataset_id).all()
+    dataset = (
+        db.query(models.Dataset)
+        .filter(
+            models.Dataset.project_id == project_id,
+            models.Dataset.dataset_id == dataset_id,
+        )
+        .all()
+    )
     if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
+        raise HTTPException(
+            status_code=404,
+            detail="Dataset not found or you don't have permission to access it.",
+        )
 
     # Query for sentences with segments
-    sentence = db.query(models.Sentence).filter(models.Sentence.sentence_id == sentence_id).first()
+    sentence = (
+        db.query(models.Sentence)
+        .filter(models.Sentence.sentence_id == sentence_id)
+        .first()
+    )
     if not sentence:
-        raise HTTPException(status_code=404, detail="Sentence not found or you don't have permission to access it.")
+        raise HTTPException(
+            status_code=404,
+            detail="Sentence not found or you don't have permission to access it.",
+        )
 
     db.delete(sentence)
     db.commit()
@@ -174,14 +260,29 @@ def update_segment_code(
     db: Session = Depends(session.get_db),
 ):
     # Get sentences with their segments
-    dataset = db.query(models.Dataset).filter(models.Dataset.project_id == project_id, models.Dataset.dataset_id == dataset_id).all()
+    dataset = (
+        db.query(models.Dataset)
+        .filter(
+            models.Dataset.project_id == project_id,
+            models.Dataset.dataset_id == dataset_id,
+        )
+        .all()
+    )
     if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found or you don't have permission to access it.")
+        raise HTTPException(
+            status_code=404,
+            detail="Dataset not found or you don't have permission to access it.",
+        )
 
     # Query for sentences with segments
-    segment = db.query(models.Segment).filter(models.Segment.segment_id == segment_id).first()
+    segment = (
+        db.query(models.Segment).filter(models.Segment.segment_id == segment_id).first()
+    )
     if not segment:
-        raise HTTPException(status_code=404, detail="Segment not found or you don't have permission to access it.")
+        raise HTTPException(
+            status_code=404,
+            detail="Segment not found or you don't have permission to access it.",
+        )
 
     segment.code_id = code_id
     db.add(segment)

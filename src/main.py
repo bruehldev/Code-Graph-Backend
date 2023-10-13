@@ -24,15 +24,27 @@ app.add_middleware(
 )
 app.include_router(db_router, prefix="/databases", tags=["databases"])
 app.include_router(project_router, prefix="/projects", tags=["projects"])
-app.include_router(dataset_router, prefix="/projects/{project_id}/datasets", tags=["datasets"])
+app.include_router(
+    dataset_router, prefix="/projects/{project_id}/datasets", tags=["datasets"]
+)
 app.include_router(plot_router, prefix="/projects/{project_id}/plots", tags=["plots"])
 app.include_router(code_router, prefix="/projects/{project_id}/codes", tags=["codes"])
-app.include_router(dynamic_router, prefix="/projects/{project_id}/dynamic", tags=["dynamic"])
+app.include_router(
+    dynamic_router, prefix="/projects/{project_id}/dynamic", tags=["dynamic"]
+)
 
 
-app.include_router(embeddings_router, prefix="/projects/{project_id}/embeddings", tags=["embeddings"])
-app.include_router(reduced_embeddings_router, prefix="/projects/{project_id}/reduced_embeddings", tags=["reduced_embeddings"])
-app.include_router(clusters_router, prefix="/projects/{project_id}/clusters", tags=["clusters"])
+app.include_router(
+    embeddings_router, prefix="/projects/{project_id}/embeddings", tags=["embeddings"]
+)
+app.include_router(
+    reduced_embeddings_router,
+    prefix="/projects/{project_id}/reduced_embeddings",
+    tags=["reduced_embeddings"],
+)
+app.include_router(
+    clusters_router, prefix="/projects/{project_id}/clusters", tags=["clusters"]
+)
 
 
 app.include_router(config_router, prefix="/configs", tags=["configs"])

@@ -22,7 +22,11 @@ class ProjectService:
         if self.project_id is None:
             raise HTTPException(status_code=400, detail="No project id provided")
         try:
-            project = self.db.query(Project).filter(Project.project_id == self.project_id).first()
+            project = (
+                self.db.query(Project)
+                .filter(Project.project_id == self.project_id)
+                .first()
+            )
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"{str(e)}")
         if project is None:
@@ -44,7 +48,9 @@ class ProjectService:
 
     def get_embedding_hash(self):
         config = self.get_project_config()
-        model_hash = generate_hash({"project_id": self.project_id, "model": config["embedding_config"]})
+        model_hash = generate_hash(
+            {"project_id": self.project_id, "model": config["embedding_config"]}
+        )
         model_name = config["embedding_config"]["model_name"]
         return f"embedding_{model_name}_" + model_hash
 
@@ -53,7 +59,10 @@ class ProjectService:
         model_hash = generate_hash(
             {
                 "project_id": self.project_id,
-                "model": {"embedding_model": config["embedding_config"], "reduction_model": config["reduction_config"]},
+                "model": {
+                    "embedding_model": config["embedding_config"],
+                    "reduction_model": config["reduction_config"],
+                },
             }
         )
         model_name = config["reduction_config"]["model_name"]

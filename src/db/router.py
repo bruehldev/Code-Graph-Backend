@@ -5,7 +5,13 @@ from fastapi.responses import FileResponse
 from pathlib import Path as FilePath
 from sqlalchemy.orm import Session
 
-from db.service import delete_all_tables, delete_table, get_table_info, get_table_names, init_db
+from db.service import (
+    delete_all_tables,
+    delete_table,
+    get_table_info,
+    get_table_names,
+    init_db,
+)
 from db.session import get_db
 
 from utilities.string_operations import get_root_path

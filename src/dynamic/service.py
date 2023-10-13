@@ -27,7 +27,9 @@ class CustomDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        embedding = torch.tensor(self.dataframe.iloc[idx]["embedding"], dtype=torch.float32)
+        embedding = torch.tensor(
+            self.dataframe.iloc[idx]["embedding"], dtype=torch.float32
+        )
         label = torch.tensor(self.dataframe.iloc[idx]["label"], dtype=torch.long)
 
         sample = {"embedding": embedding, "label": label}
@@ -92,7 +94,9 @@ class CustomDatasetPoint(Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-        embedding = torch.tensor(self.dataframe.iloc[idx]["embedding"], dtype=torch.float32)
+        embedding = torch.tensor(
+            self.dataframe.iloc[idx]["embedding"], dtype=torch.float32
+        )
         label = torch.tensor(self.dataframe.iloc[idx]["label"], dtype=torch.long)
         id = torch.tensor(self.dataframe.iloc[idx]["id"], dtype=torch.long)
 
@@ -161,7 +165,12 @@ def train_points_epochs(data, epochs, dyn_red_model, correction):
     neural_net = dyn_red_model._model.model.encoder
     optimizer = optim.Adam(params=neural_net.parameters(), lr=0.00005)
     dataset = CustomDatasetPoint(data)
-    dataloader = DataLoader(dataset, batch_size=32, shuffle=True, collate_fn=lambda batch: collate_fn(batch, correction))
+    dataloader = DataLoader(
+        dataset,
+        batch_size=32,
+        shuffle=True,
+        collate_fn=lambda batch: collate_fn(batch, correction),
+    )
     original = {}
 
     for batch in dataloader:
@@ -187,9 +196,15 @@ def train_points_epochs(data, epochs, dyn_red_model, correction):
 def delete_old_reduced_embeddings(db, dyn_red_entry):
     with Timer("delete old reduced embeddings"):
         db.query(Cluster).filter(
-            Cluster.reduced_embedding_id.in_(db.query(ReducedEmbedding.embedding_id).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id))
+            Cluster.reduced_embedding_id.in_(
+                db.query(ReducedEmbedding.embedding_id).filter(
+                    ReducedEmbedding.model_id == dyn_red_entry.model_id
+                )
+            )
         ).delete(synchronize_session=False)
-        db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).delete(synchronize_session=False)
+        db.query(ReducedEmbedding).filter(
+            ReducedEmbedding.model_id == dyn_red_entry.model_id
+        ).delete(synchronize_session=False)
         db.commit()
 
 

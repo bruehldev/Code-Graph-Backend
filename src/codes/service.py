@@ -21,10 +21,13 @@ def build_category_tree(codes):
         mapper[code.code_id] = temp_code
     for code in codes:
         if code.parent_code_id is not None:
-            mapper[code.parent_code_id]["subcategories"][code.code_id] = mapper[code.code_id]
+            mapper[code.parent_code_id]["subcategories"][code.code_id] = mapper[
+                code.code_id
+            ]
         else:
             category_tree[code.code_id] = mapper[code.code_id]
     return category_tree
+
 
 def has_circular_dependency(session, project_id, code_id, parent_code_id):
     visited = set()
@@ -40,8 +43,10 @@ def has_circular_dependency(session, project_id, code_id, parent_code_id):
         visited.add(current_code_id)
         current_code = (
             session.query(models.Code)
-            .filter(models.Code.project_id == project_id,
-                    models.Code.code_id == current_code_id)
+            .filter(
+                models.Code.project_id == project_id,
+                models.Code.code_id == current_code_id,
+            )
             .first()
         )
 

@@ -1,4 +1,14 @@
-from sqlalchemy import JSON, Column, Computed, Float, ForeignKey, Integer, LargeBinary, String, Text
+from sqlalchemy import (
+    JSON,
+    Column,
+    Computed,
+    Float,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import relationship
 
@@ -13,10 +23,16 @@ class Project(Base):
 
     project_name = Column(String(255), nullable=False)
 
-    datasets = relationship("Dataset", cascade="all, delete, delete-orphan", back_populates="project")
-    codes = relationship("Code", cascade="all, delete, delete-orphan", back_populates="project")
+    datasets = relationship(
+        "Dataset", cascade="all, delete, delete-orphan", back_populates="project"
+    )
+    codes = relationship(
+        "Code", cascade="all, delete, delete-orphan", back_populates="project"
+    )
     # config = relationship("Config", cascade="all, delete, delete-orphan", back_populates="project")
-    models = relationship("Model", cascade="all, delete, delete-orphan", back_populates="project")
+    models = relationship(
+        "Model", cascade="all, delete, delete-orphan", back_populates="project"
+    )
 
 
 class Dataset(Base):
@@ -28,7 +44,9 @@ class Dataset(Base):
     dataset_name = Column(String(255), nullable=False)
 
     project = relationship("Project", back_populates="datasets")
-    sentences = relationship("Sentence", cascade="all, delete, delete-orphan", back_populates="dataset")
+    sentences = relationship(
+        "Sentence", cascade="all, delete, delete-orphan", back_populates="dataset"
+    )
 
 
 class Sentence(Base):
@@ -42,7 +60,9 @@ class Sentence(Base):
     position_in_dataset = Column(Integer)
 
     dataset = relationship("Dataset", back_populates="sentences")
-    segments = relationship("Segment", cascade="all, delete, delete-orphan", back_populates="sentence")
+    segments = relationship(
+        "Segment", cascade="all, delete, delete-orphan", back_populates="sentence"
+    )
 
 
 class Segment(Base):
@@ -57,7 +77,9 @@ class Segment(Base):
     code_id = Column(Integer, ForeignKey("Code.code_id", ondelete="CASCADE"))
 
     sentence = relationship("Sentence", back_populates="segments")
-    embedding = relationship("Embedding", cascade="all, delete, delete-orphan", back_populates="segment")
+    embedding = relationship(
+        "Embedding", cascade="all, delete, delete-orphan", back_populates="segment"
+    )
     code = relationship("Code", back_populates="segments")
 
 
@@ -71,7 +93,11 @@ class Embedding(Base):
     embedding_value = Column(LargeBinary, nullable=False)
 
     segment = relationship("Segment", back_populates="embedding")
-    reduced_embeddings = relationship("ReducedEmbedding", cascade="all, delete, delete-orphan", back_populates="embedding")
+    reduced_embeddings = relationship(
+        "ReducedEmbedding",
+        cascade="all, delete, delete-orphan",
+        back_populates="embedding",
+    )
     model = relationship("Model")
 
 
@@ -79,7 +105,9 @@ class ReducedEmbedding(Base):
     __tablename__ = "ReducedEmbedding"
 
     reduced_embedding_id = Column(Integer, primary_key=True)
-    embedding_id = Column(Integer, ForeignKey("Embedding.embedding_id", ondelete="CASCADE"))
+    embedding_id = Column(
+        Integer, ForeignKey("Embedding.embedding_id", ondelete="CASCADE")
+    )
     model_id = Column(Integer, ForeignKey("Model.model_id"))
 
     pos_x = Column(Float, nullable=False)
@@ -116,7 +144,9 @@ class Cluster(Base):
     __tablename__ = "Cluster"
 
     cluster_id = Column(Integer, primary_key=True)
-    reduced_embedding_id = Column(Integer, ForeignKey("ReducedEmbedding.reduced_embedding_id", ondelete="CASCADE"))
+    reduced_embedding_id = Column(
+        Integer, ForeignKey("ReducedEmbedding.reduced_embedding_id", ondelete="CASCADE")
+    )
     model_id = Column(Integer, ForeignKey("Model.model_id"))
     cluster = Column("cluster", Integer)
 

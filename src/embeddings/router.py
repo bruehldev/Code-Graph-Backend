@@ -30,13 +30,28 @@ def get_embeddings_endpoint(
     count = db.query(Embedding).filter(Embedding.model_id == model_entry.model_id).count()
 
     if all:
-        embeddings = db.query(Embedding).filter(Embedding.model_id == model_entry.model_id).all()
+        embeddings = (
+            db.query(Embedding).filter(Embedding.model_id == model_entry.model_id).all()
+        )
     else:
-        embeddings = db.query(Embedding).filter(Embedding.model_id == model_entry.model_id).offset(page * page_size).limit(page_size).all()
+        embeddings = (
+            db.query(Embedding)
+            .filter(Embedding.model_id == model_entry.model_id)
+            .offset(page * page_size)
+            .limit(page_size)
+            .all()
+        )
         return_dict.update({"page": page, "page_size": page_size})
 
     result = limit_embeddings_length(
-        [{"id": embedding.embedding_id, "embedding": pickle.loads(embedding.embedding_value).tolist()} for embedding in embeddings], reduce_length
+        [
+            {
+                "id": embedding.embedding_id,
+                "embedding": pickle.loads(embedding.embedding_value).tolist(),
+            }
+            for embedding in embeddings
+        ],
+        reduce_length,
     )
     return_dict.update({"length": len(result), "count": count, "data": result})
 
@@ -54,7 +69,12 @@ def extract_embeddings_endpoint(
     embeddings = []
     project = ProjectService(project_id, db)
     model_entry, embedding_model = project.get_model("embedding_config")
-    subquery = exists().where(and_(Embedding.segment_id == Segment.segment_id, Embedding.model_id == model_entry.model_id))
+    subquery = exists().where(
+        and_(
+            Embedding.segment_id == Segment.segment_id,
+            Embedding.model_id == model_entry.model_id,
+        )
+    )
 
     segments_and_sentences = (
         db.query(Segment, Sentence)
@@ -78,7 +98,11 @@ def extract_embeddings_endpoint(
         ## saving
 
         embedding_mappings = [
-            {"segment_id": segment.segment_id, "model_id": model_entry.model_id, "embedding_value": pickle.dumps(embedding_value)}
+            {
+                "segment_id": segment.segment_id,
+                "model_id": model_entry.model_id,
+                "embedding_value": pickle.dumps(embedding_value),
+            }
             for embedding_value, segment in zip(embeddings, segments)
         ]
 
@@ -92,6 +116,9 @@ def extract_embeddings_endpoint(
 
 
 def limit_embeddings_length(embeddings, reduce_length):
-    embeddings = [{"id": embedding["id"], "embedding": embedding["embedding"][:reduce_length]} for embedding in embeddings]
+    embeddings = [
+        {"id": embedding["id"], "embedding": embedding["embedding"][:reduce_length]}
+        for embedding in embeddings
+    ]
 
     return embeddings

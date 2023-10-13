@@ -15,6 +15,7 @@ from db.schema import DeleteResponse
 
 router = APIRouter()
 
+
 @router.get("/")
 def get_codes_route(project_id: int, db: Session = Depends(session.get_db)):
     codes = db.query(models.Code).filter(models.Code.project_id == project_id).all()
@@ -24,9 +25,12 @@ def get_codes_route(project_id: int, db: Session = Depends(session.get_db)):
 
 
 @router.get("/roots")
-def get_top_level_codes_route(
-    project_id: int, db: Session = Depends(session.get_db)):
-    codes = db.query(models.Code).filter(models.Code.project_id == project_id, models.Code.parent_code_id == None).all()
+def get_top_level_codes_route(project_id: int, db: Session = Depends(session.get_db)):
+    codes = (
+        db.query(models.Code)
+        .filter(models.Code.project_id == project_id, models.Code.parent_code_id == None)
+        .all()
+    )
     if codes is None:
         raise HTTPException(status_code=404, detail="Data not found")
     return {"data": codes}
@@ -34,11 +38,17 @@ def get_top_level_codes_route(
 
 @router.get("/leaves")
 def get_leaf_codes_route(project_id: int, db: Session = Depends(session.get_db)):
-    subquery = db.query(models.Code.parent_code_id).filter(models.Code.project_id == project_id).distinct()
+    subquery = (
+        db.query(models.Code.parent_code_id)
+        .filter(models.Code.project_id == project_id)
+        .distinct()
+    )
     subquery_result = subquery.all()
     code_ids = [item[0] for item in subquery_result if item[0] is not None]
     codes = (
-        db.query(models.Code).filter(models.Code.project_id == project_id, ~models.Code.code_id.in_(code_ids)).all()
+        db.query(models.Code)
+        .filter(models.Code.project_id == project_id, ~models.Code.code_id.in_(code_ids))
+        .all()
     )
     if codes is None:
         raise HTTPException(status_code=404, detail="Data not found")
@@ -55,9 +65,12 @@ def get_code_tree(project_id: int, db: Session = Depends(session.get_db)):
 
 
 @router.get("/{id}")
-def get_code_route(
-    project_id: int, id: int, db: Session = Depends(session.get_db)):
-    data = db.query(models.Code).filter(models.Code.project_id == project_id, models.Code.code_id == id).first()
+def get_code_route(project_id: int, id: int, db: Session = Depends(session.get_db)):
+    data = (
+        db.query(models.Code)
+        .filter(models.Code.project_id == project_id, models.Code.code_id == id)
+        .first()
+    )
     if data is None:
         raise HTTPException(status_code=404, detail="Code not found")
 
@@ -80,9 +93,15 @@ def delete_code_route(project_id: int, id: int, db: Session = Depends(session.ge
 
 @router.post("/")
 def insert_code_route(
-    project_id: int, code_name: str, parent_id: Optional[int] = None, db: Session = Depends(session.get_db)):
+    project_id: int,
+    code_name: str,
+    parent_id: Optional[int] = None,
+    db: Session = Depends(session.get_db),
+):
     try:
-        new_code = models.Code(parent_code_id=parent_id, project_id=project_id, text = code_name)
+        new_code = models.Code(
+            parent_code_id=parent_id, project_id=project_id, text=code_name
+        )
         db.add(new_code)
         db.commit()
         db.refresh(new_code)
@@ -94,16 +113,32 @@ def insert_code_route(
 
 @router.put("/{id}")
 def update_code_route(
-    project_id: int, code_id: int, code_name: Optional[str] = None, parent_id: Optional[int] = None, db: Session = Depends(session.get_db)):
+    project_id: int,
+    code_id: int,
+    code_name: Optional[str] = None,
+    parent_id: Optional[int] = None,
+    db: Session = Depends(session.get_db),
+):
     try:
-        data = db.query(models.Code).filter(models.Code.project_id == project_id, models.Code.code_id == code_id).first()
+        data = (
+            db.query(models.Code)
+            .filter(models.Code.project_id == project_id, models.Code.code_id == code_id)
+            .first()
+        )
         if data is None:
             raise HTTPException(status_code=404, detail="Code not found")
         if code_name:
             data.text = code_name
         if parent_id:
             if has_circular_dependency(db, project_id, code_id, parent_id):
-                codes_to_update = db.query(models.Code).filter(models.Code.project_id == project_id, models.Code.parent_code_id == code_id).all()
+                codes_to_update = (
+                    db.query(models.Code)
+                    .filter(
+                        models.Code.project_id == project_id,
+                        models.Code.parent_code_id == code_id,
+                    )
+                    .all()
+                )
                 for code in codes_to_update:
                     code.parent_code_id = None
             data.parent_code_id = parent_id
@@ -116,21 +151,25 @@ def update_code_route(
         raise HTTPException(status_code=400, detail="Foreign key constraint violation.")
 
 
-
 @router.post("/merge")
 def merge_codes_route(
-    project_id: int, data: MergeOperation, db: Session = Depends(session.get_db)):
+    project_id: int, data: MergeOperation, db: Session = Depends(session.get_db)
+):
     try:
-
         url = f"http://localhost:8000/projects/{project_id}/codes/?code_name={data.new_code_name}"
         new_code_response = requests.post(url)
 
         new_code_id = new_code_response.json().get("code_id")
 
-        db.query(models.Code).filter(models.Code.project_id == project_id, models.Code.parent_code_id.in_(data.list_of_codes)).update({models.Code.parent_code_id: new_code_id}, synchronize_session=False)
+        db.query(models.Code).filter(
+            models.Code.project_id == project_id,
+            models.Code.parent_code_id.in_(data.list_of_codes),
+        ).update({models.Code.parent_code_id: new_code_id}, synchronize_session=False)
         db.commit()
 
-        db.query(models.Segment).filter(models.Segment.code_id.in_(data.list_of_codes)).update({models.Segment.code_id: new_code_id}, synchronize_session=False)
+        db.query(models.Segment).filter(
+            models.Segment.code_id.in_(data.list_of_codes)
+        ).update({models.Segment.code_id: new_code_id}, synchronize_session=False)
         db.commit()
 
         for code_id in data.list_of_codes:
