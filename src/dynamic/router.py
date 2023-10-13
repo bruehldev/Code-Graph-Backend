@@ -1,27 +1,31 @@
 import pickle
-from typing import List, Dict
+from typing import List
 
 import pandas as pd
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
 from sqlalchemy import and_
 from sqlalchemy.orm import Session, aliased
-from tqdm import tqdm
 
-from db.models import Cluster, Code, Embedding, Project, ReducedEmbedding, Segment, Sentence
+from db.models import Code, Embedding, ReducedEmbedding, Segment
 from db.session import get_db
-from dynamic.service import train_clusters, train_points_epochs, delete_old_reduced_embeddings, \
-    extract_embeddings_reduced
+from dynamic.service import (
+    train_clusters,
+    train_points_epochs,
+    delete_old_reduced_embeddings,
+    extract_embeddings_reduced,
+)
 from embeddings.router import extract_embeddings_endpoint
 from project.service import ProjectService
-from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 from utilities.timer import Timer
 from utilities.locks import db_lock
+from dynamic.schema import Correction
 
 router = APIRouter()
 import logging
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 @router.post("/cluster")
 async def train_for_clusters(
@@ -34,10 +38,17 @@ async def train_for_clusters(
         project = ProjectService(project_id, db=db)
         embedding_model = project.get_model_entry("embedding_config")
         extract_embeddings_endpoint(project_id, db=db)
-        embeddings = db.query(Embedding).filter(Embedding.model_id == embedding_model.model_id).all()
+        embeddings = (
+            db.query(Embedding)
+            .filter(Embedding.model_id == embedding_model.model_id)
+            .all()
+        )
         # TODO currently only trains dynamic umap
         dyn_red_entry, dyn_red_model = project.get_model("reduction_config")
-        if not hasattr(dyn_red_model, "is_dynamic") or getattr(dyn_red_model, "is_dynamic") == False:
+        if (
+            not hasattr(dyn_red_model, "is_dynamic")
+            or getattr(dyn_red_model, "is_dynamic") == False
+        ):
             raise Exception("Currently only dynamic reduction is supported.")
     # get all embeddings, get all corresponding segment ids and all labels
     # should stay the same
@@ -46,11 +57,7 @@ async def train_for_clusters(
         SegmentAlias = aliased(Segment)
         CodeAlias = aliased(Code)
         query = (
-            db.query(
-                SegmentAlias,
-                EmbeddingAlias,
-                CodeAlias
-            )
+            db.query(SegmentAlias, EmbeddingAlias, CodeAlias)
             .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
             .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
             .filter(EmbeddingAlias.model_id == embedding_model.model_id)
@@ -61,7 +68,7 @@ async def train_for_clusters(
             {
                 "id": segment.segment_id,
                 "label": code.code_id,
-                "embedding": pickle.loads(embedding.embedding_value)
+                "embedding": pickle.loads(embedding.embedding_value),
             }
             for segment, embedding, code in query
         ]
@@ -76,13 +83,10 @@ async def train_for_clusters(
         extract_embeddings_reduced(project, dyn_red_model, db)
         db.commit()
 
-    #delete_old_reduced_embeddings(db, dyn_red_entry)
-    #extract_embeddings_reduced(project, dyn_red_model, db)
+    # delete_old_reduced_embeddings(db, dyn_red_entry)
+    # extract_embeddings_reduced(project, dyn_red_model, db)
     return True
 
-class Correction(BaseModel):
-    id: int
-    pos: List[float]
 
 @router.post("/correction")
 def train_for_correction(
@@ -98,10 +102,17 @@ def train_for_correction(
         project = ProjectService(project_id, db=db)
         embedding_model = project.get_model_entry("embedding_config")
         extract_embeddings_endpoint(project_id, db=db)
-        embeddings = db.query(Embedding).filter(Embedding.model_id == embedding_model.model_id).all()
+        embeddings = (
+            db.query(Embedding)
+            .filter(Embedding.model_id == embedding_model.model_id)
+            .all()
+        )
         # TODO currently only trains dynamic umap
         dyn_red_entry, dyn_red_model = project.get_model("reduction_config")
-        if not hasattr(dyn_red_model, "is_dynamic") or getattr(dyn_red_model, "is_dynamic") == False:
+        if (
+            not hasattr(dyn_red_model, "is_dynamic")
+            or getattr(dyn_red_model, "is_dynamic") == False
+        ):
             raise Exception("Currently only dynamic reduction is supported.")
     # get all embeddings, get all corresponding segment ids and all labels
     # should stay the same
@@ -110,11 +121,7 @@ def train_for_correction(
         SegmentAlias = aliased(Segment)
         CodeAlias = aliased(Code)
         query = (
-            db.query(
-                SegmentAlias,
-                EmbeddingAlias,
-                CodeAlias
-            )
+            db.query(SegmentAlias, EmbeddingAlias, CodeAlias)
             .join(SegmentAlias, EmbeddingAlias.segment_id == SegmentAlias.segment_id)
             .join(CodeAlias, SegmentAlias.code_id == CodeAlias.code_id)
             .filter(EmbeddingAlias.model_id == embedding_model.model_id)
@@ -125,7 +132,7 @@ def train_for_correction(
             {
                 "id": segment.segment_id,
                 "label": code.code_id,
-                "embedding": pickle.loads(embedding.embedding_value)
+                "embedding": pickle.loads(embedding.embedding_value),
             }
             for segment, embedding, code in query
         ]
@@ -140,10 +147,11 @@ def train_for_correction(
             dyn_red_model = new_model
             # recalculate reduced_embeddings and clusters TODO"""
 
-    data_to_replace = db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).all()
+    data_to_replace = (
+        db.query(ReducedEmbedding)
+        .filter(ReducedEmbedding.model_id == dyn_red_entry.model_id)
+        .all()
+    )
     delete_old_reduced_embeddings(db, dyn_red_entry)
     extract_embeddings_reduced(project, dyn_red_model, db)
     return True
-
-
-

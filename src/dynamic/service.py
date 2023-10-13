@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 import numpy as np
 from models.model_definitions import DynamicUmap
-from db.models import Cluster, Code, Embedding, Project, ReducedEmbedding, Segment, Sentence
+from db.models import Cluster, ReducedEmbedding
 import logging
 
 from reduced_embeddings.router import extract_embeddings_reduced_endpoint
@@ -14,6 +14,7 @@ from utilities.timer import Timer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class CustomDataset(Dataset):
     def __init__(self, dataframe):
@@ -39,8 +40,8 @@ def form_triplets(outputs, labels, num_triplets=30):
     unique_labels = torch.unique(labels)
 
     for label in unique_labels:
-        label_mask = (labels == label)
-        other_label_mask = (labels != label)
+        label_mask = labels == label
+        other_label_mask = labels != label
         label_indices = torch.nonzero(label_mask).squeeze(1)
         other_label_indices = torch.nonzero(other_label_mask).squeeze(1)
 
@@ -63,7 +64,6 @@ def train_clusters(data, model: DynamicUmap, focus_ids):
     # create data loader
     dataset = CustomDataset(data)
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
-
 
     # right now only for dynamic umap
     # TODO add get neural net:
@@ -100,13 +100,14 @@ class CustomDatasetPoint(Dataset):
 
         return sample
 
+
 def custom_loss(output, target_dicts, original, lam=0.1):
     # Initialize MSE loss function
     mse_loss = nn.MSELoss()
 
     # Extract the IDs and positions from the target list of dictionaries
-    target_ids = [d['batch_idx'] for d in target_dicts]
-    target_pos = [d['pos'] for d in target_dicts]
+    target_ids = [d["batch_idx"] for d in target_dicts]
+    target_pos = [d["pos"] for d in target_dicts]
 
     # Create tensors from the extracted values
     target_ids_tensor = torch.tensor(target_ids, dtype=torch.long)
@@ -148,15 +149,19 @@ def collate_fn(batch, corrections):
             if correction["id"] == item.get("id"):
                 correction["batch_idx"] = idx
                 relevant_corrections.append(correction)
-    return {'id': batch_dict["id"], 'embedding': torch.stack(batch_dict["embedding"].tolist()), 'label': batch_dict["label"], 'corrections': relevant_corrections}
+    return {
+        "id": batch_dict["id"],
+        "embedding": torch.stack(batch_dict["embedding"].tolist()),
+        "label": batch_dict["label"],
+        "corrections": relevant_corrections,
+    }
 
 
 def train_points_epochs(data, epochs, dyn_red_model, correction):
     neural_net = dyn_red_model._model.model.encoder
     optimizer = optim.Adam(params=neural_net.parameters(), lr=0.00005)
     dataset = CustomDatasetPoint(data)
-    dataloader = DataLoader(dataset, batch_size=32, shuffle=True,
-                            collate_fn=lambda batch: collate_fn(batch, correction))
+    dataloader = DataLoader(dataset, batch_size=32, shuffle=True, collate_fn=lambda batch: collate_fn(batch, correction))
     original = {}
 
     for batch in dataloader:
@@ -182,12 +187,11 @@ def train_points_epochs(data, epochs, dyn_red_model, correction):
 def delete_old_reduced_embeddings(db, dyn_red_entry):
     with Timer("delete old reduced embeddings"):
         db.query(Cluster).filter(
-            Cluster.reduced_embedding_id.in_(
-                db.query(ReducedEmbedding.embedding_id).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id))
+            Cluster.reduced_embedding_id.in_(db.query(ReducedEmbedding.embedding_id).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id))
         ).delete(synchronize_session=False)
-        db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).delete(
-            synchronize_session=False)
+        db.query(ReducedEmbedding).filter(ReducedEmbedding.model_id == dyn_red_entry.model_id).delete(synchronize_session=False)
         db.commit()
+
 
 def extract_embeddings_reduced(project, dyn_red_model, db):
     with Timer("add new reduced embeddings"):
