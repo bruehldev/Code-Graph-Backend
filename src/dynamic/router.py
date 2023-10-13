@@ -8,17 +8,14 @@ from sqlalchemy.orm import Session, aliased
 
 from db.models import Code, Embedding, ReducedEmbedding, Segment
 from db.session import get_db
-from dynamic.service import (
-    train_clusters,
-    train_points_epochs,
-    delete_old_reduced_embeddings,
-    extract_embeddings_reduced,
-)
+from dynamic.schema import Correction
+from dynamic.service import (delete_old_reduced_embeddings,
+                             extract_embeddings_reduced, train_clusters,
+                             train_points_epochs)
 from embeddings.router import extract_embeddings_endpoint
 from project.service import ProjectService
-from utilities.timer import Timer
 from utilities.locks import db_lock
-from dynamic.schema import Correction
+from utilities.timer import Timer
 
 router = APIRouter()
 import logging

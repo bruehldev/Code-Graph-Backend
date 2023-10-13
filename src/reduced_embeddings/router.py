@@ -1,7 +1,7 @@
 import logging
 import pickle
-import numpy as np
 
+import numpy as np
 from fastapi import APIRouter, Depends
 from sqlalchemy import and_, exists, not_
 from sqlalchemy.orm import Session

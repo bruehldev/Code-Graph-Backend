@@ -7,17 +7,8 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.schema import DropTable
 
 from db.base import Base
-from db.models import (
-    Code,
-    Config,
-    Dataset,
-    Embedding,
-    Model,
-    Project,
-    ReducedEmbedding,
-    Segment,
-    Sentence,
-)
+from db.models import (Code, Config, Dataset, Embedding, Model, Project,
+                       ReducedEmbedding, Segment, Sentence)
 from db.session import get_engine
 from utilities.string_operations import get_root_path
 

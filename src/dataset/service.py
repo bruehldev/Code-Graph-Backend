@@ -1,10 +1,10 @@
+import logging
 import time
 
 from sqlalchemy import and_
 from sqlalchemy.dialects.postgresql import insert
 
 from db.models import Code, Dataset, Project, Segment, Sentence
-import logging
 
 logger = logging.getLogger(__name__)
 

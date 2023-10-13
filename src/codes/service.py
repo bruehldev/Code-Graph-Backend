@@ -1,8 +1,8 @@
 import json
 import logging
 import os
-from db import models
 
+from db import models
 from utilities.string_operations import get_project_path
 
 logging.basicConfig(level=logging.INFO)

@@ -1,14 +1,14 @@
+import logging
 from random import choices
 
+import numpy as np
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
-import numpy as np
-from models.model_definitions import DynamicUmap
-from db.models import Cluster, ReducedEmbedding
-import logging
 
+from db.models import Cluster, ReducedEmbedding
+from models.model_definitions import DynamicUmap
 from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 from utilities.timer import Timer
 

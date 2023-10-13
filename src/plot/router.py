@@ -1,29 +1,19 @@
 from fastapi import APIRouter, Depends, UploadFile
-from sqlalchemy.orm import Session, aliased
 from sqlalchemy import and_
+from sqlalchemy.orm import Session, aliased
 
 from clusters.router import extract_clusters_endpoint
 from dataset.router import upload_dataset
-from db.models import (
-    Cluster,
-    Code,
-    Dataset,
-    Embedding,
-    Project,
-    ReducedEmbedding,
-    Segment,
-    Sentence,
-    Model,
-)
+from db.models import (Cluster, Code, Dataset, Embedding, Model, Project,
+                       ReducedEmbedding, Segment, Sentence)
 from db.session import get_db
 from embeddings.router import extract_embeddings_endpoint
 from plot.file_operations import extract_plot
 from plot.schemas import PlotTable
 from project.router import create_project_route
-from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 from project.service import ProjectService
+from reduced_embeddings.router import extract_embeddings_reduced_endpoint
 from utilities.locks import db_lock
-
 
 # TODO: dont use the router, move stuff to services
 router = APIRouter()

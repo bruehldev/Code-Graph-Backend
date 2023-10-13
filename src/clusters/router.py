@@ -4,16 +4,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import and_, exists, not_
 from sqlalchemy.orm import Session, aliased
 
-from db.models import (
-    Cluster,
-    Model,
-    Project,
-    ReducedEmbedding,
-    Embedding,
-    Segment,
-    Sentence,
-    Code,
-)
+from db.models import (Cluster, Code, Embedding, Model, Project,
+                       ReducedEmbedding, Segment, Sentence)
 from db.session import get_db
 from project.service import ProjectService
 

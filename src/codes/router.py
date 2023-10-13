@@ -1,16 +1,15 @@
 from typing import List, Optional, Union
 
+import psycopg2
+import requests
+import sqlalchemy
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import List
-import requests
-import psycopg2
-import sqlalchemy
 
-from codes.service import build_category_tree, has_circular_dependency
 from codes.schemas import MergeOperation
-from db import session, models
+from codes.service import build_category_tree, has_circular_dependency
+from db import models, session
 from db.schema import DeleteResponse
 
 router = APIRouter()

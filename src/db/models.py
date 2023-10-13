@@ -1,14 +1,5 @@
-from sqlalchemy import (
-    JSON,
-    Column,
-    Computed,
-    Float,
-    ForeignKey,
-    Integer,
-    LargeBinary,
-    String,
-    Text,
-)
+from sqlalchemy import (JSON, Column, Computed, Float, ForeignKey, Integer,
+                        LargeBinary, String, Text)
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import relationship
 

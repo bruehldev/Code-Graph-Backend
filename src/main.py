@@ -13,7 +13,6 @@ from plot.router import router as plot_router
 from project.router import router as project_router
 from reduced_embeddings.router import router as reduced_embeddings_router
 
-
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,

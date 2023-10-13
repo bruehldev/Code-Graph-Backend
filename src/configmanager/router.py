@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from configmanager.schemas import ConfigModel
 from configmanager.service import ConfigManager
 from db.models import Config  # Import the Config model
-
 # Create a ConfigManager instance with a database session
 from db.session import get_db
 

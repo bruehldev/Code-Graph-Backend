@@ -1,5 +1,5 @@
-import pickle
 import logging
+import pickle
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import and_, exists, not_
