@@ -1,9 +1,11 @@
-from typing import Any, Dict, List, Literal, Optional, Union
-from pydantic import BaseModel, Field, ValidationError
+from typing import Literal, Optional, Union
+from pydantic import BaseModel, Field
 
 
 class BertArgs(BaseModel):
-    pretrained_model_name_or_path: str = "dbmdz/bert-large-cased-finetuned-conll03-english"
+    pretrained_model_name_or_path: str = (
+        "dbmdz/bert-large-cased-finetuned-conll03-english"
+    )
 
 
 class BertModel(BaseModel):
@@ -52,7 +54,9 @@ class ReductionConfig(BaseModel):
 class ConfigModel(BaseModel):
     name: str = "default"
     embedding_config: Union[BertModel] = Field(BertModel())
-    reduction_config: Union[UmapModel, DynamicUmapModel] = Field(UmapModel(), discriminator="model_name")
+    reduction_config: Union[UmapModel, DynamicUmapModel] = Field(
+        UmapModel(), discriminator="model_name"
+    )
     cluster_config: Union[HDBScanModel] = Field(HDBScanModel())
     default_limit: Optional[int] = None
     model_type: Literal["static", "dynamic"] = "static"
@@ -65,7 +69,9 @@ class ClusterConfig(BaseModel):
 
 
 class BertModelArgs(BaseModel):
-    pretrained_model_name_or_path: str = "dbmdz/bert-large-cased-finetuned-conll03-english"
+    pretrained_model_name_or_path: str = (
+        "dbmdz/bert-large-cased-finetuned-conll03-english"
+    )
 
 
 class EmbeddingConfig(BaseModel):

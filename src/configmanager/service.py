@@ -4,9 +4,8 @@ import logging
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from configmanager.schemas import (ClusterConfig, ConfigModel, EmbeddingConfig,
-                                   ReductionConfig)
-from db.models import Config, Project
+from configmanager.schemas import ConfigModel
+from db.models import Config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

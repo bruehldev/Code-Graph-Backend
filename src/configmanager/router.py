@@ -6,20 +6,24 @@ from sqlalchemy.orm import Session
 from configmanager.schemas import ConfigModel
 from configmanager.service import ConfigManager
 from db.models import Config  # Import the Config model
+
 # Create a ConfigManager instance with a database session
 from db.session import get_db
-from project.service import ProjectService
 
 router = APIRouter()
 
 
 @router.post("/")  # , response_model=ConfigModel)
-def create_config(config: ConfigModel = ConfigModel(), db: Session = Depends(get_db)): # = ConfigManager.get_default_model()
+def create_config(
+    config: ConfigModel = ConfigModel(), db: Session = Depends(get_db)
+):  # = ConfigManager.get_default_model()
     config_manager = ConfigManager(db)
 
     config_json = json.dumps(config.dict())
 
-    new_config = Config(name=config.name, config=config_json)  # Store the JSON string in the 'config' column
+    new_config = Config(
+        name=config.name, config=config_json
+    )  # Store the JSON string in the 'config' column
     db_config = config_manager.save_config(new_config)
     db.expunge(db_config)
     db_config.config = json.loads(db_config.config)
@@ -46,7 +50,9 @@ def get_config(id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{id}")
-def update_config(id: int, config: ConfigModel = ConfigModel(), db: Session = Depends(get_db)):
+def update_config(
+    id: int, config: ConfigModel = ConfigModel(), db: Session = Depends(get_db)
+):
     config_manager = ConfigManager(db)
 
     existing_config = config_manager.get_config(id)
