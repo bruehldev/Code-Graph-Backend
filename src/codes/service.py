@@ -1,14 +1,15 @@
-import json
-import logging
-import os
+"""
+This module provides utility functions for working with category trees in the context of a database.
+It includes functions for building a category tree from a list of codes and checking for circular dependencies.
+"""
 
+import logging
 from db import models
-from utilities.string_operations import get_project_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
+# Build a hierarchical category tree structure from a list of codes
 def build_category_tree(codes):
     category_tree = {}
     mapper = {}
@@ -28,7 +29,7 @@ def build_category_tree(codes):
             category_tree[code.code_id] = mapper[code.code_id]
     return category_tree
 
-
+# Check for circular dependencies in the category tree
 def has_circular_dependency(session, project_id, code_id, parent_code_id):
     visited = set()
 

@@ -1,20 +1,21 @@
-from typing import List, Optional, Union
+"""
+This module defines a FastAPI APIRouter for managing codes in a project.
+It includes routes for retrieving, creating, updating, merging and deleting codes.
+"""
 
-import psycopg2
+from typing import Optional
 import requests
 import sqlalchemy
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from codes.schemas import MergeOperation
 from codes.service import build_category_tree, has_circular_dependency
 from db import models, session
-from db.schema import DeleteResponse
 
 router = APIRouter()
 
-
+# Route to get all codes for a specific project
 @router.get("/")
 def get_codes_route(project_id: int, db: Session = Depends(session.get_db)):
     codes = db.query(models.Code).filter(models.Code.project_id == project_id).all()
@@ -22,7 +23,7 @@ def get_codes_route(project_id: int, db: Session = Depends(session.get_db)):
         raise HTTPException(status_code=404, detail="Data not found")
     return {"data": codes}
 
-
+# Route to get top-level codes for a specific project
 @router.get("/roots")
 def get_top_level_codes_route(project_id: int, db: Session = Depends(session.get_db)):
     codes = (
@@ -34,7 +35,7 @@ def get_top_level_codes_route(project_id: int, db: Session = Depends(session.get
         raise HTTPException(status_code=404, detail="Data not found")
     return {"data": codes}
 
-
+# Route to get leaf codes (codes without children) for a specific project
 @router.get("/leaves")
 def get_leaf_codes_route(project_id: int, db: Session = Depends(session.get_db)):
     subquery = (
@@ -53,7 +54,7 @@ def get_leaf_codes_route(project_id: int, db: Session = Depends(session.get_db))
         raise HTTPException(status_code=404, detail="Data not found")
     return {"codes": codes}
 
-
+# Route to get the hierarchical tree structure of codes for a specific project
 @router.get("/tree")
 def get_code_tree(project_id: int, db: Session = Depends(session.get_db)):
     codes = db.query(models.Code).filter(models.Code.project_id == project_id).all()
@@ -63,6 +64,7 @@ def get_code_tree(project_id: int, db: Session = Depends(session.get_db)):
     return {"codes": codes}
 
 
+# Route to get a specific code by its id
 @router.get("/{id}")
 def get_code_route(project_id: int, id: int, db: Session = Depends(session.get_db)):
     data = (
@@ -75,7 +77,7 @@ def get_code_route(project_id: int, id: int, db: Session = Depends(session.get_d
 
     return data
 
-
+# Route to delete a code by its id
 @router.delete("/{id}")
 def delete_code_route(project_id: int, id: int, db: Session = Depends(session.get_db)):
     try:
@@ -89,7 +91,7 @@ def delete_code_route(project_id: int, id: int, db: Session = Depends(session.ge
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
+# Route to insert a new code
 @router.post("/")
 def insert_code_route(
     project_id: int,
@@ -109,7 +111,7 @@ def insert_code_route(
         db.rollback()
         raise HTTPException(status_code=400, detail="Foreign key constraint violation.")
 
-
+# Route to update an existing code
 @router.put("/{id}")
 def update_code_route(
     project_id: int,
@@ -149,7 +151,7 @@ def update_code_route(
         db.rollback()
         raise HTTPException(status_code=400, detail="Foreign key constraint violation.")
 
-
+# Route to merge multiple codes into a new code
 @router.post("/merge")
 def merge_codes_route(
     project_id: int, data: MergeOperation, db: Session = Depends(session.get_db)
