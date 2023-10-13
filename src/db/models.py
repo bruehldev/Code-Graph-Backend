@@ -1,5 +1,4 @@
-from sqlalchemy import (JSON, Column, Computed, Float, ForeignKey, Integer,
-                        LargeBinary, String, Table, Text, UniqueConstraint)
+from sqlalchemy import JSON, Column, Computed, Float, ForeignKey, Integer, LargeBinary, String, Text
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import relationship
 
@@ -10,13 +9,13 @@ class Project(Base):
     __tablename__ = "Project"
 
     project_id = Column(Integer, primary_key=True)
-    project_name = Column(String(255), nullable=False)
     config_id = Column(Integer, ForeignKey("Config.config_id", ondelete="CASCADE"))
+
+    project_name = Column(String(255), nullable=False)
 
     datasets = relationship("Dataset", cascade="all, delete, delete-orphan", back_populates="project")
     codes = relationship("Code", cascade="all, delete, delete-orphan", back_populates="project")
     # config = relationship("Config", cascade="all, delete, delete-orphan", back_populates="project")
-
     models = relationship("Model", cascade="all, delete, delete-orphan", back_populates="project")
 
 
@@ -25,6 +24,7 @@ class Dataset(Base):
 
     dataset_id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey("Project.project_id", ondelete="CASCADE"))
+
     dataset_name = Column(String(255), nullable=False)
 
     project = relationship("Project", back_populates="datasets")
@@ -35,10 +35,10 @@ class Sentence(Base):
     __tablename__ = "Sentence"
 
     sentence_id = Column(Integer, primary_key=True)
+    dataset_id = Column(Integer, ForeignKey("Dataset.dataset_id", ondelete="CASCADE"))
+
     text = Column(Text, nullable=False)
     text_tsv = Column("sentence_tsv", TSVECTOR, Computed("to_tsvector('english', text)"))
-
-    dataset_id = Column(Integer, ForeignKey("Dataset.dataset_id", ondelete="CASCADE"))
     position_in_dataset = Column(Integer)
 
     dataset = relationship("Dataset", back_populates="sentences")
@@ -50,9 +50,9 @@ class Segment(Base):
 
     segment_id = Column(Integer, primary_key=True)
     sentence_id = Column(Integer, ForeignKey("Sentence.sentence_id", ondelete="CASCADE"))
+
     text = Column(Text, nullable=False)
     text_tsv = Column("sentence_tsv", TSVECTOR, Computed("to_tsvector('english', text)"))
-
     start_position = Column(Integer, nullable=False)
     code_id = Column(Integer, ForeignKey("Code.code_id", ondelete="CASCADE"))
 
@@ -67,6 +67,7 @@ class Embedding(Base):
     embedding_id = Column(Integer, primary_key=True)
     segment_id = Column(Integer, ForeignKey("Segment.segment_id", ondelete="CASCADE"))
     model_id = Column(Integer, ForeignKey("Model.model_id"))
+
     embedding_value = Column(LargeBinary, nullable=False)
 
     segment = relationship("Segment", back_populates="embedding")
@@ -80,6 +81,7 @@ class ReducedEmbedding(Base):
     reduced_embedding_id = Column(Integer, primary_key=True)
     embedding_id = Column(Integer, ForeignKey("Embedding.embedding_id", ondelete="CASCADE"))
     model_id = Column(Integer, ForeignKey("Model.model_id"))
+
     pos_x = Column(Float, nullable=False)
     pos_y = Column(Float, nullable=False)
 
@@ -91,9 +93,10 @@ class Code(Base):
     __tablename__ = "Code"
 
     code_id = Column(Integer, primary_key=True)
-    text = Column(Text, nullable=False)
     parent_code_id = Column(Integer, ForeignKey("Code.code_id", ondelete="CASCADE"))
     project_id = Column(Integer, ForeignKey("Project.project_id", ondelete="CASCADE"))
+
+    text = Column(Text, nullable=False)
 
     project = relationship("Project", back_populates="codes")
     segments = relationship("Segment", back_populates="code")

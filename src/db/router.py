@@ -1,15 +1,12 @@
 import os
 
-from typing import List
 from fastapi import APIRouter, Depends
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
 from pathlib import Path as FilePath
-from sqlalchemy import Column, Integer, MetaData, Table, text
 from sqlalchemy.orm import Session
 
 from db.service import delete_all_tables, delete_table, get_table_info, get_table_names, init_db
-from db.session import get_db, get_engine
+from db.session import get_db
 
 from utilities.string_operations import get_root_path
 
