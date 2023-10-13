@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import and_, exists, not_
 from sqlalchemy.orm import Session
 
-from db.models import Dataset, Embedding, Model, Project, Segment, Sentence
+from db.models import Dataset, Embedding, Project, Segment, Sentence
 from db.schema import DeleteResponse
 from db.session import get_db
 from project.service import ProjectService

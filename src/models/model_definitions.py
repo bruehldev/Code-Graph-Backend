@@ -1,25 +1,21 @@
 import os
 import copy
-import sys
-import time
 import pickle
 import logging
-from typing import Any, List, Union
+from typing import Any, Union
 
 import numpy as np
 import torch
 import tqdm
 import umap
-from fastapi import Depends
 from hdbscan import HDBSCAN
-from pydantic import BaseModel, Field
+from pydantic import Field
 from sklearn.cluster import DBSCAN
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 from transformers import BertModel, BertTokenizerFast
 from umap_pytorch import PUMAP
 
-from db.session import get_db
 from utilities.string_operations import get_root_path
 from utilities.timer import Timer
 
@@ -141,10 +137,16 @@ class BertEmbeddingModel:
         if len(segments) == 0:
             return np.array([])
         with Timer("Calculate Sentence Embeddings"):
-            sentence_embedding = self.transform_sentences(unique_sentences, batch_size=batch_size, use_disk_storage=use_disk_storage)
+            sentence_embedding = self.transform_sentences(
+                unique_sentences, batch_size=batch_size, use_disk_storage=use_disk_storage
+            )
         with Timer("Calculating Segment Offset Indexes"):
-            positions = self.get_segment_positions(segments, sentences, sentence_embedding)
-        return self.segment_embedding([sentence_embedding[s.sentence_id][0] for s in sentences], positions)
+            positions = self.get_segment_positions(
+                segments, sentences, sentence_embedding
+            )
+        return self.segment_embedding(
+            [sentence_embedding[s.sentence_id][0] for s in sentences], positions
+        )
 
     def transform_sentences(self, sentences, batch_size=124, use_disk_storage=False):
         tokenizer = BertTokenizerFast.from_pretrained(**self.arguments)
@@ -162,7 +164,13 @@ class BertEmbeddingModel:
 
         # Tokenization
         with Timer("Tokenization"):
-            inputs = tokenizer(sentences_text, return_tensors="np", return_offsets_mapping=True, return_attention_mask=True, max_length=max_input_length)
+            inputs = tokenizer(
+                sentences_text,
+                return_tensors="np",
+                return_offsets_mapping=True,
+                return_attention_mask=True,
+                max_length=max_input_length,
+            )
 
         # Sortieren der Sätze nach der Länge
         with Timer("Sorting"):
@@ -176,24 +184,44 @@ class BertEmbeddingModel:
         # Erstellen des Datasets und Dataloader
         with Timer("Creating Dataset and Loader"):
             # Torch Approach Note: Be carefull with large batch size, to large files for torch.save can crash operating system. Using pickle instead.
-            dataset = np.stack((sorted_input_ids_array, sorted_attention_mask_array, sorted_offset_mapping_array, sorted_sentences_id), axis=1)
-            dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=self.collate_fn)
+            dataset = np.stack(
+                (
+                    sorted_input_ids_array,
+                    sorted_attention_mask_array,
+                    sorted_offset_mapping_array,
+                    sorted_sentences_id,
+                ),
+                axis=1,
+            )
+            dataloader = DataLoader(
+                dataset, batch_size=batch_size, shuffle=False, collate_fn=self.collate_fn
+            )
 
         model.eval()  # Set the model to evaluation mode
 
         all_embeddings = {}
 
         if not use_disk_storage:
-            for i, (batch_input_ids, batch_attention_mask, batch_offset_mapping, batch_sentence_ids) in enumerate(tqdm.tqdm(dataloader)):
+            for i, (
+                batch_input_ids,
+                batch_attention_mask,
+                batch_offset_mapping,
+                batch_sentence_ids,
+            ) in enumerate(tqdm.tqdm(dataloader)):
                 # Alle 10 batches die GPU leeren
                 if i % 10 == 0:
                     torch.cuda.empty_cache()
 
                 # Prepare the batch
-                batch_inputs = {"input_ids": batch_input_ids, "attention_mask": batch_attention_mask}
+                batch_inputs = {
+                    "input_ids": batch_input_ids,
+                    "attention_mask": batch_attention_mask,
+                }
 
                 if torch.cuda.is_available():
-                    batch_inputs = {key: tensor.to(device) for key, tensor in batch_inputs.items()}
+                    batch_inputs = {
+                        key: tensor.to(device) for key, tensor in batch_inputs.items()
+                    }
 
                 with torch.no_grad():
                     outputs = model(**batch_inputs)
@@ -202,7 +230,12 @@ class BertEmbeddingModel:
                     all_embeddings.update(
                         {
                             id: (embedding, offset, mask)
-                            for id, embedding, offset, mask in zip(batch_sentence_ids, embeddings, batch_offset_mapping, batch_attention_mask)
+                            for id, embedding, offset, mask in zip(
+                                batch_sentence_ids,
+                                embeddings,
+                                batch_offset_mapping,
+                                batch_attention_mask,
+                            )
                         }
                     )
         else:
@@ -211,22 +244,39 @@ class BertEmbeddingModel:
             export_folder = os.path.join(get_root_path(), "tmp")
             os.makedirs(export_folder, exist_ok=True)
 
-            for i, (batch_input_ids, batch_attention_mask, batch_offset_mapping, batch_sentence_ids) in enumerate(tqdm.tqdm(dataloader)):
+            for i, (
+                batch_input_ids,
+                batch_attention_mask,
+                batch_offset_mapping,
+                batch_sentence_ids,
+            ) in enumerate(tqdm.tqdm(dataloader)):
                 # Alle 10 batches die GPU leeren
                 if i % 10 == 0:
                     torch.cuda.empty_cache()
 
                 # Prepare the batch
-                batch_inputs = {"input_ids": batch_input_ids, "attention_mask": batch_attention_mask}
+                batch_inputs = {
+                    "input_ids": batch_input_ids,
+                    "attention_mask": batch_attention_mask,
+                }
 
                 if torch.cuda.is_available():
-                    batch_inputs = {key: tensor.to(device) for key, tensor in batch_inputs.items()}
+                    batch_inputs = {
+                        key: tensor.to(device) for key, tensor in batch_inputs.items()
+                    }
 
                 with torch.no_grad():
                     outputs = model(**batch_inputs)
                     embeddings = outputs.last_hidden_state
                     embeddings = embeddings.cpu().numpy()
-                    all_embeddings_list.append([batch_sentence_ids, embeddings, batch_offset_mapping, batch_attention_mask])
+                    all_embeddings_list.append(
+                        [
+                            batch_sentence_ids,
+                            embeddings,
+                            batch_offset_mapping,
+                            batch_attention_mask,
+                        ]
+                    )
                 pickle.dump(all_embeddings_list, open(export_folder + f"/{i}.pkl", "wb"))
                 all_embeddings_list = []
 
@@ -245,7 +295,11 @@ class BertEmbeddingModel:
     def get_segment_positions(self, segments, sentence, embeddings):
         def find_subrange(true_range, all_ranges):
             start, end = true_range
-            mask = (all_ranges[:, 0] <= end) & (all_ranges[:, 1] >= start) & (all_ranges[:, 0] != all_ranges[:, 1])
+            mask = (
+                (all_ranges[:, 0] <= end)
+                & (all_ranges[:, 1] >= start)
+                & (all_ranges[:, 0] != all_ranges[:, 1])
+            )
             mask = torch.Tensor(mask)
             result = torch.nonzero(mask).squeeze().tolist()
             del mask
@@ -258,7 +312,11 @@ class BertEmbeddingModel:
             len_seg = len(segments[i].text)
             attention_mask = embeddings[id][2]
             offset = embeddings[id][1]
-            valid_length = torch.where(attention_mask == 0)[0][0] if 0 in attention_mask else len(attention_mask)
+            valid_length = (
+                torch.where(attention_mask == 0)[0][0]
+                if 0 in attention_mask
+                else len(attention_mask)
+            )
             temp_offsets = offset[:valid_length]
             result = find_subrange((start, start + len_seg), temp_offsets)
             if type(result) != type([]):
