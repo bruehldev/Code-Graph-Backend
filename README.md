@@ -92,6 +92,5 @@ project/
 ```
 
 - `exported/`: .Used to store generated data
-- `data/`: Stores the datasets.
 - `.gitignore`: Specifies files and folders to exclude from version control.
 - `main.py`: The main entry point of the application.
