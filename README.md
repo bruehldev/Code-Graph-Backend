@@ -64,6 +64,18 @@ To access the API documentation use:
 
 [http://localhost:8000/docs](http://localhost:8000/docs)
 
+## Demo
+The demo video can be found in the file TryDemoVideo.mp4.
+
+Datasets used by us can be found in the datasets folder:
+- movie datasets:
+  - from:
+  - movie dataset german labels (demo):
+  - movie dataset english labels (demo):
+  - huggingface model which worked well for us:
+- few-ner datasets:
+- bio-ner datasets:
+- german datasets:
 
 ## Contributing
 
