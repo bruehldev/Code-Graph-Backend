@@ -84,7 +84,7 @@ Datasets used by us can be found in the datasets folder:
   - normal: bio_ner.txt
   - huggingface model which worked well for us: d4data/biomedical-ner-all
 - german datasets:
-  - from: ??? forgot
+  - from: https://github.com/davidsbatista/NER-datasets/tree/master/GermEval2014
   - test: NER_de_test.txt
   - train: NER_de_train.txt
   - huggingface model which worked well for us: mschiesser/ner-bert-german
