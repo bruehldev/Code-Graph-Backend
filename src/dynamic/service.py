@@ -38,6 +38,7 @@ class CustomDataset(Dataset):
 
 
 def form_triplets(outputs, labels, num_triplets=30):
+    """ find anchors positives and negatives for triplet loss"""
     anchors, positives, negatives = [], [], []
     unique_labels = torch.unique(labels)
 
@@ -63,6 +64,7 @@ def form_triplets(outputs, labels, num_triplets=30):
 
 
 def train_clusters(data, model: DynamicUmap, focus_ids):
+    """ train function clusters, trains dynamic umap to cluster labels using TripletMarginLoss"""
     # create data loader
     dataset = CustomDataset(data)
     dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
@@ -106,6 +108,7 @@ class CustomDatasetPoint(Dataset):
 
 
 def custom_loss(output, target_dicts, original, lam=0.1):
+    """ custom loss for correction training, makes sure the loss also grows when non corrected points move etc."""
     # Initialize MSE loss function
     mse_loss = nn.MSELoss()
 
@@ -145,6 +148,7 @@ def custom_loss(output, target_dicts, original, lam=0.1):
 
 
 def collate_fn(batch, corrections):
+    """ custom collate function to also pass on only the necessary corrections, and handle data shuffeling (keep track of ids)"""
     relevant_corrections = []
     batch_dict = {k: np.array([dic[k] for dic in batch]) for k in batch[0]}
 
@@ -162,6 +166,7 @@ def collate_fn(batch, corrections):
 
 
 def train_points_epochs(data, epochs, dyn_red_model, correction):
+    """ train the correction of points """
     neural_net = dyn_red_model._model.model.encoder
     optimizer = optim.Adam(params=neural_net.parameters(), lr=0.00005)
     dataset = CustomDatasetPoint(data)
@@ -194,6 +199,7 @@ def train_points_epochs(data, epochs, dyn_red_model, correction):
 
 
 def delete_old_reduced_embeddings(db, dyn_red_entry):
+    """ delete old reduced embeddings, for speedup, delete connected clusters manually"""
     with Timer("delete old reduced embeddings"):
         db.query(Cluster).filter(
             Cluster.reduced_embedding_id.in_(
@@ -209,6 +215,7 @@ def delete_old_reduced_embeddings(db, dyn_red_entry):
 
 
 def extract_embeddings_reduced(project, dyn_red_model, db):
+    """ this function handles the model saving and re-calculation of reduced embeddings after training """
     with Timer("add new reduced embeddings"):
         project.save_model("reduction_config", dyn_red_model)
         extract_embeddings_reduced_endpoint(project.project_id, db=db)
