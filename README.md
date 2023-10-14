@@ -3,7 +3,6 @@
 This is a FastAPI-based API that provides topic modeling and sentence embedding functionalities using BERT models. The API supports NER dataset like `few_nerd`. You can find the frontend for this project [here](https://github.com/jsp1999/Code-Graph-Frontend).
 
 ## Requirements
-
 - Conda for package management
 - Ensure you have an NVIDIA GPU with the required drivers:
   ```
@@ -67,17 +66,28 @@ To access the API documentation use:
 ## Demo
 The demo video can be found in the file TryDemoVideo.mp4.
 
-
+## Datasets
 Datasets used by us can be found in the datasets folder:
 - movie datasets:
-  - from:
-  - movie dataset german labels (demo):
-  - movie dataset english labels (demo):
-  - huggingface model which worked well for us:
+  - from: https://github.com/juand-r/entity-recognition-datasets/tree/master/data/MITMovieCorpus
+  - normal dataset: movie_ner.txt
+  - movie dataset german labels (demo): movie_ner_renamed_german.txt
+  - movie dataset english labels (demo): movie_ner_renamed.txt
+  - huggingface model which worked well for us: dbmdz/bert-large-cased-finetuned-conll03-english
 - few-ner datasets:
+  - from: https://www.kaggle.com/datasets/nbroad/fewnerd
+  - small: few_ner_small.txt
+  - medium: dev.txt
+  - huggingface model which worked well for us: dbmdz/bert-large-cased-finetuned-conll03-english
 - bio-ner datasets:
+  - from: https://github.com/juand-r/entity-recognition-datasets/tree/master/data/AnEM
+  - normal: bio_ner.txt
+  - huggingface model which worked well for us: d4data/biomedical-ner-all
 - german datasets:
-
+  - from: ??? forgot
+  - test: NER_de_test.txt
+  - train: NER_de_train.txt
+  - huggingface model which worked well for us: mschiesser/ner-bert-german
 ## Contributing
 
 Contributions are welcome! If you have any suggestions, improvements, or bug fixes, please submit a pull request.
