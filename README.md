@@ -112,7 +112,8 @@ project/
 │ ├─ ...
 ├─ exported/ 
 ├─ .gitignore
-├─ requirements.txt
+├─ environment.yml
+├─ ...
 ```
 
 - `exported/`: .Used to store generated data
