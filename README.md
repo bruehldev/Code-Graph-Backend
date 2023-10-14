@@ -67,8 +67,6 @@ To access the API documentation use:
 
 [http://localhost:8000/docs](http://localhost:8000/docs)
 
-## Demo
-The demo video can be found in the file TryDemoVideo.mp4.
 
 ## Datasets
 Datasets used by us can be found in the datasets folder:
@@ -113,7 +111,6 @@ project/
 │ │ └─ schema.py
 │ ├─ ...
 ├─ exported/ 
-├─ data/
 ├─ .gitignore
 ├─ requirements.txt
 ```
