@@ -31,6 +31,7 @@ async def train_for_clusters(
     epochs: int = 10,
     db: Session = Depends(get_db),
 ):
+    """Train dynmaic umap model (if selected in configs) to cluster positions based on code label"""
     with Timer("setup"):
         project = ProjectService(project_id, db=db)
         embedding_model = project.get_model_entry("embedding_config")
@@ -92,6 +93,7 @@ def train_for_correction(
     epochs: int = 10,
     db: Session = Depends(get_db),
 ):
+  """Train dynmaic umap model (if selected in configs) to move selected points to their marked positions (from corrections), all other points should move as little as possible"""
     for i, c in enumerate(correction):
         correction[i] = c.dict()
     print(correction)
