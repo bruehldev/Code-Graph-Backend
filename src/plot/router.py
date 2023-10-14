@@ -4,8 +4,17 @@ from sqlalchemy.orm import Session, aliased
 
 from clusters.router import extract_clusters_endpoint
 from dataset.router import upload_dataset
-from db.models import (Cluster, Code, Dataset, Embedding, Model, Project,
-                       ReducedEmbedding, Segment, Sentence)
+from db.models import (
+    Cluster,
+    Code,
+    Dataset,
+    Embedding,
+    Model,
+    Project,
+    ReducedEmbedding,
+    Segment,
+    Sentence,
+)
 from db.session import get_db
 from embeddings.router import extract_embeddings_endpoint
 from plot.file_operations import extract_plot
@@ -511,6 +520,8 @@ async def stats_endpoint(project_id: int, db: Session = Depends(get_db)):
                     ReducedEmbeddingAlias = aliased(ReducedEmbedding)
                     EmbeddingAlias = aliased(Embedding)
                     CodeAlias = aliased(Code)
+                    if model_entry is None:
+                        continue
                     query = (
                         db.query(
                             Cluster,
