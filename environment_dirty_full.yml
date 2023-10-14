@@ -128,4 +128,3 @@ dependencies:
     - umap-pytorch==0.0.7
     - urllib3==2.0.6
     - yarl==1.9.2
-prefix: /home/jack/anaconda3/envs/CodeGraphNoBT2
