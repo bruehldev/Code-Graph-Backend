@@ -2,6 +2,10 @@
 
 This is a FastAPI-based API that provides topic modeling and sentence embedding functionalities using BERT models. The API supports NER dataset like `few_nerd`. You can find the frontend for this project [here](https://github.com/jsp1999/Code-Graph-Frontend).
 
+## Demo
+https://github.com/bruehldev/Code-Graph-Backend/assets/15344369/faf1d89a-28cc-4416-a649-0567688ec25a
+
+
 ## Requirements
 - Conda for package management
 - Ensure you have an NVIDIA GPU with the required drivers:
