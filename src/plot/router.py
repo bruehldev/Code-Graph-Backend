@@ -442,12 +442,12 @@ def search_segment_route(
     return {"data": result_dicts, "length": len(result_dicts), "limit": limit}
 
 
-# extract plot route
 @router.get("/exportToFiles/")
 async def export_plot_endpoint(
     project_id: int,
     db: Session = Depends(get_db),
 ):
+    """Extract plot data to files"""
     plots = await get_plot_endpoint(project_id=project_id, all=True, db=db)
     extract_plot(project_id=project_id, plots=plots["data"])
     return {"message": "Plot data extracted successfully"}
