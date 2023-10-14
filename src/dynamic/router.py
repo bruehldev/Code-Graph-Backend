@@ -93,7 +93,7 @@ def train_for_correction(
     epochs: int = 10,
     db: Session = Depends(get_db),
 ):
-  """Train dynmaic umap model (if selected in configs) to move selected points to their marked positions (from corrections), all other points should move as little as possible"""
+    """Train dynmaic umap model (if selected in configs) to move selected points to their marked positions (from corrections), all other points should move as little as possible"""
     for i, c in enumerate(correction):
         correction[i] = c.dict()
     print(correction)
