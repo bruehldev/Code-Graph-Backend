@@ -49,9 +49,13 @@ https://github.com/bruehldev/Code-Graph-Backend/assets/15344369/faf1d89a-28cc-44
 ## Usage
 
 1. Install the required packages by running the following command:
-  - Using conda:
+  - Create:
     ```
     conda env create --name CodeGraph --file environment.yml
+    ```
+  - Activate:
+    ```
+    conda activate CodeGraph
     ```
 
 2. Start the server using the following command:
